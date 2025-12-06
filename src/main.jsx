@@ -9,6 +9,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
+/* 🚫 TEMP: disable service worker for Wiz – it’s breaking the build on GH Pages
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -17,3 +19,5 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.error('SW registration failed', err));
   });
 }
+
+*/
