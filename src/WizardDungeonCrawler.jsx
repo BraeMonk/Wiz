@@ -20,10 +20,16 @@ const WizardDungeonCrawler = () => {
 
   // Player stats
   const [player, setPlayer] = useState({
-    x: 5, y: 5, angle: 0,
-    health: 100, maxHealth: 100,
-    mana: 100, maxMana: 100,
-    level: 1, xp: 0, xpToNext: 100,
+    x: 5,
+    y: 5,
+    angle: 0,
+    health: 100,
+    maxHealth: 100,
+    mana: 100,
+    maxMana: 100,
+    level: 1,
+    xp: 0,
+    xpToNext: 100,
     gold: 0,
     kills: 0
   });
@@ -463,7 +469,8 @@ const WizardDungeonCrawler = () => {
 
   // Game loop
   useEffect(() => {
-    if (gameState !== 'playing') return;
+    // ⛔ don’t start the loop until dungeon is generated
+    if (gameState !== 'playing' || !dungeon.length) return;
 
     let animationId;
     const gameLoop = () => {
@@ -474,8 +481,8 @@ const WizardDungeonCrawler = () => {
       // Player movement
       setPlayer(prev => {
         let newAngle = prev.angle;
-        let moveX = 0,
-          moveY = 0;
+        let moveX = 0;
+        let moveY = 0;
 
         // Rotation
         if (keysPressed.current['arrowleft'] || keysPressed.current['q']) {
@@ -508,16 +515,25 @@ const WizardDungeonCrawler = () => {
         let newY = prev.y + moveY;
 
         const checkTile = (x, y) => {
+          // If dungeon isn't ready, don't block movement on it
+          if (!dungeon.length) return false;
+
           const tileX = Math.floor(x);
           const tileY = Math.floor(y);
+
           if (
             tileX < 0 ||
             tileX >= DUNGEON_SIZE ||
             tileY < 0 ||
             tileY >= DUNGEON_SIZE
-          )
+          ) {
             return true;
-          return dungeon[tileY][tileX] > 0;
+          }
+
+          const row = dungeon[tileY];
+          if (!row) return true;
+
+          return row[tileX] > 0;
         };
 
         if (checkTile(newX, prev.y)) newX = prev.x;
@@ -770,7 +786,6 @@ const WizardDungeonCrawler = () => {
     <div className="mb-2">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1">
-          {/* Tailwind can't see dynamic color classes reliably, so just use inline color */}
           <Icon size={16} style={{ color }} />
           <span className="text-xs text-white">{label}</span>
         </div>
