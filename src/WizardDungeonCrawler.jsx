@@ -239,9 +239,10 @@ const WizardDungeonCrawler = () => {
   // Initialize game on play
   useEffect(() => {
     if (gameState === 'playing') {
-      generateDungeon(currentLevel);
+      const newMap = generateDungeon(currentLevel);
       setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
       setProjectiles([]);
+      setDungeon(newMap);
     }
   }, [gameState, currentLevel, generateDungeon]);
 
@@ -511,7 +512,7 @@ const WizardDungeonCrawler = () => {
 
   // Game loop
   useEffect(() => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' || dungeon.length === 0) return;
 
     const updateGamepadState = () => {
       if (!navigator.getGamepads) return;
