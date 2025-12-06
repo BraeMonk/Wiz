@@ -902,6 +902,114 @@ const WizardDungeonCrawler = () => {
       }
     }
 
+    // ---- ELEVATION EDGES (VISIBLE STEP WALLS) ----
+    // These are little vertical walls where the floor height changes between tiles.
+    // They make raised / lowered platforms visually obvious.
+    
+    const stepBase = hexToRgb(env.floorTop); // base color for step edges
+    
+    for (let i = 0; i < RESOLUTION; i++) {
+      const rayAngle = startAngle + i * rayAngleStep;
+      const rayDirX = Math.cos(rayAngle);
+      const rayDirY = Math.sin(rayAngle);
+    
+      let dist = 0;
+      let lastHeight = playerHeight;
+    
+      const sliceWidth = width / RESOLUTION;
+      const sliceX = i * sliceWidth;
+    
+      // March forward along the ray, but only looking at FLOOR (no walls)
+      while (dist < RENDER_DISTANCE) {
+        dist += 0.3; // coarser than wall raycast for performance
+    
+        const worldX = player.x + rayDirX * dist;
+        const worldY = player.y + rayDirY * dist;
+    
+        const tileX = Math.floor(worldX);
+        const tileY = Math.floor(worldY);
+    
+        // Out-of-bounds: stop
+        if (
+          tileX < 0 ||
+          tileX >= DUNGEON_SIZE ||
+          tileY < 0 ||
+          tileY >= DUNGEON_SIZE
+        ) {
+          break;
+        }
+    
+        // If there's a wall here, don't draw step edges behind it
+        if (dungeon[tileY][tileX] > 0) {
+          break;
+        }
+    
+        const tileHeight = heightMap[tileY]?.[tileX] ?? 0;
+    
+        if (tileHeight !== lastHeight) {
+          const step = tileHeight - lastHeight;
+    
+          // Ignore tiny noise, only show "real" steps
+          if (Math.abs(step) > 0.2) {
+            // Use distance corrected for fisheye, same as walls
+            const correctedDist = dist * Math.cos(rayAngle - player.angle);
+    
+            // Don't draw if behind an existing wall
+            if (correctedDist > 0.05 && correctedDist < zBuffer[i]) {
+              // How tall this vertical face is on screen
+              const edgeHeightPixels = Math.max(
+                PIXEL_STEP,
+                Math.floor(
+                  (Math.abs(step) * TILE_HEIGHT_UNIT) / PIXEL_STEP
+                ) * PIXEL_STEP
+              );
+    
+              // Which height level is closer to the camera (front-facing side)
+              const frontHeight = step > 0 ? lastHeight : tileHeight;
+    
+              // Center of the face in screen Y
+              const centerY =
+                horizon - (frontHeight - playerHeight) * TILE_HEIGHT_UNIT;
+    
+              const yTop = Math.floor(
+                (centerY - edgeHeightPixels / 2) / PIXEL_STEP
+              ) * PIXEL_STEP;
+              const yHeight = edgeHeightPixels;
+    
+              // Shade by distance
+              let brightness = 1.0 - correctedDist / RENDER_DISTANCE;
+              brightness = Math.max(0.25, Math.min(0.9, brightness));
+    
+              const rr = Math.max(
+                0,
+                Math.min(255, stepBase.r * brightness)
+              );
+              const gg = Math.max(
+                0,
+                Math.min(255, stepBase.g * brightness * 0.9)
+              );
+              const bb = Math.max(
+                0,
+                Math.min(255, stepBase.b * brightness * 0.8)
+              );
+    
+              ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
+    
+              ctx.fillRect(
+                Math.floor(sliceX),
+                yTop,
+                Math.ceil(sliceWidth) + 1,
+                yHeight
+              );
+            }
+          }
+    
+          // Update last floor height
+          lastHeight = tileHeight;
+        }
+      }
+    }
+
     // Draw sprites (enemies, items, projectiles)
     const allSprites = [
       ...enemies.map(e => ({ ...e, spriteType: 'enemy' })),
