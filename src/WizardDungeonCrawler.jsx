@@ -126,17 +126,44 @@ const WizardDungeonCrawler = () => {
     });
   };
 
-  // Dungeon → cave theme based on depth
-  const getEnvironmentColors = (level) => {
-    // t = 0 early levels (cold stone dungeon), t = 1 deep levels (earthy cave)
+  // Dungeon → cave → deep cave theme based on depth
+  const getEnvironmentTheme = (level) => {
+    // t = 0 early levels (cold stone dungeon), t = 1 deep earth cave
     const t = Math.max(0, Math.min(1, (level - 1) / 8));
-
-    const ceiling = lerpColor('#1a1024', '#050608', t);         // purple → almost black
-    const floorTop = lerpColor('#2b1a33', '#2b2015', t);        // arcane stone → earth
-    const floorBottom = lerpColor('#130b1c', '#120b08', t);     // deep purple → dark brown
-    const fog = lerpColor('#05030a', '#040305', t);             // subtle fog
-
-    return { ceiling, floorTop, floorBottom, fog };
+  
+    // Ceiling / floor / fog
+    const ceiling = lerpColor('#151826', '#050608', t);        // blue-purple → almost black
+    const floorTop = lerpColor('#2b2838', '#3a2818', t);       // arcane stone → warm earth
+    const floorBottom = lerpColor('#14101e', '#1a0c08', t);    // dark violet → deep brown
+    const fog = lerpColor('#05040b', '#030203', t);            // soft arcane haze → heavy dark fog
+  
+    // Wall palette progression:
+    //  - early: cooler, bluish stone
+    //  - mid: warmer torch-lit stone
+    //  - deep: earthy + lava veins + bright moss
+    const wallPalette = {
+      1: lerpColor('#3a3248', '#3b2f24', t),  // stone → earth stone
+      2: lerpColor('#5b3b2a', '#6a4324', t),  // strata: gets warmer
+      3: lerpColor('#244026', '#3f6b32', t),  // moss: brighter / more alive deeper
+      4: lerpColor('#5a1010', '#c13a16', t),  // vein: becomes hotter, lava-like
+      5: lerpColor('#40304a', '#2c1d24', t),  // stalactite: darkens overhead
+      6: lerpColor('#3b2f24', '#4b2b1a', t),  // stalagmite: warmer rock
+      7: lerpColor('#4b3a30', '#3a2a20', t)   // boulder: heavier, darker
+    };
+  
+    // Optional extra accents if you ever want them (e.g. torch/mushroom lights)
+    const accentTorch = lerpColor('#ffb347', '#ff7b1a', t);     // warm fire
+    const accentFungi = lerpColor('#6bd6ff', '#9cffc5', t);     // blue → green bio-glow
+  
+    return {
+      ceiling,
+      floorTop,
+      floorBottom,
+      fog,
+      wallPalette,
+      accentTorch,
+      accentFungi
+    };
   };
 
   // Detect mobile
@@ -679,7 +706,7 @@ const WizardDungeonCrawler = () => {
     const ctx = canvas.getContext('2d');
     const { width, height } = dimensions;
 
-    const env = getEnvironmentColors(currentLevel);
+    const env = getEnvironmentTheme(currentLevel);
 
     // Clear / fog
     ctx.fillStyle = env.fog;
@@ -741,46 +768,48 @@ const WizardDungeonCrawler = () => {
         // ---------------------------------------------------------------
 
         const wallType = WALL_TYPES[tileId];
-        if (wallType) {
-          let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
-
-          const depthFactor =
-            0.85 + (1 - Math.max(0, Math.min(1, (currentLevel - 1) / 10))) * 0.15;
-          brightness *= depthFactor;
-
-          if (hit.side === 1) brightness *= 0.75;
-
-          const dither =
-            (i + Math.floor(sliceY / PIXEL_STEP)) % 2 === 0 ? 0.95 : 1.05;
-          brightness *= dither;
-
-          const color = wallType.color;
-          const r = parseInt(color.slice(1, 3), 16);
-          const g = parseInt(color.slice(3, 5), 16);
-          const b = parseInt(color.slice(5, 7), 16);
-
-          const rr = Math.max(0, Math.min(255, r * brightness));
-          const gg = Math.max(0, Math.min(255, g * brightness));
-          const bb = Math.max(0, Math.min(255, b * brightness));
-
-          ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
-          ctx.fillRect(
-            Math.floor(x),
-            sliceY,
-            Math.ceil(sliceWidth) + 1,
-            sliceHeight
-          );
-
-          if (tileId === 7) {
-            ctx.strokeStyle = `rgba(0,0,0,0.35)`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(Math.floor(x) + sliceWidth * 0.3, sliceY + sliceHeight * 0.2);
-            ctx.lineTo(Math.floor(x) + sliceWidth * 0.7, sliceY + sliceHeight * 0.5);
-            ctx.lineTo(Math.floor(x) + sliceWidth * 0.4, sliceY + sliceHeight * 0.8);
-            ctx.stroke();
+          if (wallType) {
+            let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
+          
+            // Slightly darker as you go deeper
+            const depthFactor =
+              0.9 - Math.max(0, Math.min(0.4, (currentLevel - 1) * 0.03));
+            brightness *= depthFactor;
+          
+            // Side shading
+            if (hit.side === 1) brightness *= 0.75;
+          
+            // Tiny dither so it doesn’t look flat
+            const dither =
+              (i + Math.floor(sliceY / PIXEL_STEP)) % 2 === 0 ? 0.95 : 1.05;
+            brightness *= dither;
+          
+            // Use the level-dependent palette first, fall back to base color
+            const baseHex = env.wallPalette[tileId] || wallType.color;
+            const { r, g, b } = hexToRgb(baseHex);
+          
+            const rr = Math.max(0, Math.min(255, r * brightness));
+            const gg = Math.max(0, Math.min(255, g * brightness));
+            const bb = Math.max(0, Math.min(255, b * brightness));
+          
+            ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
+            ctx.fillRect(
+              Math.floor(x),
+              sliceY,
+              Math.ceil(sliceWidth) + 1,
+              sliceHeight
+            );
+          
+            if (tileId === 7) {
+              ctx.strokeStyle = `rgba(0,0,0,0.35)`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(Math.floor(x) + sliceWidth * 0.3, sliceY + sliceHeight * 0.2);
+              ctx.lineTo(Math.floor(x) + sliceWidth * 0.7, sliceY + sliceHeight * 0.5);
+              ctx.lineTo(Math.floor(x) + sliceWidth * 0.4, sliceY + sliceHeight * 0.8);
+              ctx.stroke();
+            }
           }
-        }
 
         zBuffer[i] = hit.distance;
       }
