@@ -98,7 +98,7 @@ const WizardDungeonCrawler = () => {
   const DUNGEON_SIZE = 30;
   const FOV = 60;
   const RENDER_DISTANCE = 20;
-  const RESOLUTION = 320;
+  const RESOLUTION = isMobile ? 160 : 320; // Half resolution on mobile
   const MOVE_SPEED = 3;
   const TURN_SPEED = 2;
   const PIXEL_STEP = 4; // quantization step for "pixel" look
@@ -233,7 +233,7 @@ const WizardDungeonCrawler = () => {
 
   // Ambient dust particles
   useEffect(() => {
-    const count = 60;
+    const count = isMobile ? 30 : 60; // Half particles on mobile
     const particles = [];
     for (let i = 0; i < count; i++) {
       particles.push({
@@ -451,7 +451,7 @@ const WizardDungeonCrawler = () => {
   const castRay = useCallback((origin, angle, map) => {
     const rayDir = { x: Math.cos(angle), y: Math.sin(angle) };
     let distance = 0;
-    const step = 0.05;
+    const step = 0.08; // Larger steps = faster raycasting
 
     while (distance < RENDER_DISTANCE) {
       const checkX = origin.x + rayDir.x * distance;
@@ -956,8 +956,8 @@ const WizardDungeonCrawler = () => {
             );
           }
 
-          // **TEXTURE DETAIL** - Add scanlines for depth
-          if (baseWallHeight > PIXEL_STEP * 3) {
+          // **TEXTURE DETAIL** - Add scanlines for depth (desktop only)
+          if (!isMobile && baseWallHeight > PIXEL_STEP * 3) {
             ctx.strokeStyle = `rgba(0, 0, 0, ${brightness * 0.08})`;
             ctx.lineWidth = 1;
             for (let scan = 0; scan < sliceHeight; scan += PIXEL_STEP * 2) {
@@ -1122,7 +1122,7 @@ const WizardDungeonCrawler = () => {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
     
-    for (let i = 0; i < RESOLUTION; i += 4) {
+    for (let i = 0; i < RESOLUTION; i += 8) { // Sample every 8th ray instead of 4th
       const rayAngle = startAngle + i * rayAngleStep;
       const hit = castRay(player, rayAngle, dungeon);
       
