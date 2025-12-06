@@ -119,11 +119,14 @@ const WizardDungeonCrawler = () => {
   const lerpColor = (hexA, hexB, t) => {
     const a = hexToRgb(hexA);
     const b = hexToRgb(hexB);
-    return rgbToCss({
-      r: Math.round(lerp(a.r, b.r, t)),
-      g: Math.round(lerp(a.g, b.g, t)),
-      b: Math.round(lerp(a.b, b.b, t))
-    });
+  
+    const r = Math.round(lerp(a.r, b.r, t));
+    const g = Math.round(lerp(a.g, b.g, t));
+    const bVal = Math.round(lerp(a.b, b.b, t));
+  
+    const toHex = (v) => v.toString(16).padStart(2, '0');
+  
+    return `#${toHex(r)}${toHex(g)}${toHex(bVal)}`;
   };
 
   // Dungeon → cave → deep cave theme based on depth
