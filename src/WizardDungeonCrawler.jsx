@@ -2345,59 +2345,94 @@ const WizardDungeonCrawler = () => {
       <div className="absolute top-0 left-0 right-0 p-2 md:p-4 pointer-events-none">
         <div className="flex justify-between items-start">
           {/* Left side - Stats */}
-          <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg w-52 md:w-64">
-            <div className="text-white text-xs md:text-sm mb-2 flex justify-between">
-              <span>Level {player.level}</span>
-              <span>Dungeon {currentLevel}</span>
-            </div>
-            <StatBar
-              current={player.health}
-              max={player.maxHealth}
-              color="#f87171"
-              icon={Heart}
-              label="Health"
-            />
-            <StatBar
-              current={player.mana}
-              max={player.maxMana}
-              color="#60a5fa"
-              icon={Droplet}
-              label="Mana"
-            />
-            <div className="mt-3 pt-3 border-t border-gray-600">
-              <div className="flex justify-between text-xs text-gray-300 mb-1">
-                <span>
-                  XP: {Math.floor(player.xp)}/{player.xpToNext}
-                </span>
+          <div className={`bg-black bg-opacity-60 rounded-lg ${isMobile ? 'p-2 w-36' : 'p-3 md:p-4 w-52 md:w-64'}`}>
+            {!isMobile && (
+              <div className="text-white text-xs md:text-sm mb-2 flex justify-between">
+                <span>Level {player.level}</span>
+                <span>Dungeon {currentLevel}</span>
               </div>
-              <div className="w-full h-2 bg-gray-700 rounded overflow-hidden">
-                <div
-                  className="h-full bg-yellow-500"
-                  style={{
-                    width: `${(player.xp / player.xpToNext) * 100}%`
-                  }}
+            )}
+            
+            {/* Mobile: Compact bars only */}
+            {isMobile ? (
+              <>
+                <div className="flex items-center gap-1 mb-1">
+                  <Heart size={12} style={{ color: '#f87171' }} />
+                  <div className="flex-1 h-2 bg-gray-700 rounded overflow-hidden">
+                    <div
+                      className="h-full transition-all bg-red-400"
+                      style={{ width: `${(player.health / player.maxHealth) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mb-1">
+                  <Droplet size={12} style={{ color: '#60a5fa' }} />
+                  <div className="flex-1 h-2 bg-gray-700 rounded overflow-hidden">
+                    <div
+                      className="h-full transition-all bg-blue-400"
+                      style={{ width: `${(player.mana / player.maxMana) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-yellow-400 text-[9px] mt-1">
+                  Lv{player.level} | 💀{enemies.length}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Desktop: Full stats */}
+                <StatBar
+                  current={player.health}
+                  max={player.maxHealth}
+                  color="#f87171"
+                  icon={Heart}
+                  label="Health"
                 />
-              </div>
-            </div>
-            <div className="mt-2 text-yellow-400 text-xs md:text-sm">
-              💰 {player.gold} Gold | 💀 {player.kills} Kills
-            </div>
+                <StatBar
+                  current={player.mana}
+                  max={player.maxMana}
+                  color="#60a5fa"
+                  icon={Droplet}
+                  label="Mana"
+                />
+                <div className="mt-3 pt-3 border-t border-gray-600">
+                  <div className="flex justify-between text-xs text-gray-300 mb-1">
+                    <span>
+                      XP: {Math.floor(player.xp)}/{player.xpToNext}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-700 rounded overflow-hidden">
+                    <div
+                      className="h-full bg-yellow-500"
+                      style={{
+                        width: `${(player.xp / player.xpToNext) * 100}%`
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 text-yellow-400 text-xs md:text-sm">
+                  💰 {player.gold} Gold | 💀 {player.kills} Kills
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Right side - Info */}
-          <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg">
-            <div className="text-white text-xs md:text-sm text-right space-y-1">
-              <p>Enemies: {enemies.length}</p>
-              <p className="text-gray-400 text-[10px] md:text-xs mt-1">
-                ESC to pause
-              </p>
-              {gamepadConnected && (
-                <p className="text-green-400 text-[10px] md:text-xs">
-                  🎮 Gamepad connected
+          {/* Right side - Info (Desktop only) */}
+          {!isMobile && (
+            <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg">
+              <div className="text-white text-xs md:text-sm text-right space-y-1">
+                <p>Enemies: {enemies.length}</p>
+                <p className="text-gray-400 text-[10px] md:text-xs mt-1">
+                  ESC to pause
                 </p>
-              )}
+                {gamepadConnected && (
+                  <p className="text-green-400 text-[10px] md:text-xs">
+                    🎮 Gamepad connected
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
