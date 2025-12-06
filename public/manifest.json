@@ -1,19 +1,19 @@
 {
   "name": "Wizard's Descent",
   "short_name": "WizardsDescent",
-  "start_url": "/",
+  "start_url": "/Wiz/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#0b021a",
   "orientation": "landscape",
   "icons": [
     {
-      "src": "/wd-192.png",
+      "src": "/Wiz/wd-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/wd-512.png",
+      "src": "/Wiz/wd-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
