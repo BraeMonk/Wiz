@@ -306,22 +306,53 @@ const WizardDungeonCrawler = () => {
       }
     }
 
-    // --- Terrain height map (basic bumps/levels) ---
+    // --- Terrain height map (accessible platforms) ---
     const heights = [];
     for (let y = 0; y < size; y++) {
       const rowHeights = [];
       for (let x = 0; x < size; x++) {
         if (map[y][x] === 0) {
+          // Only small dips, no floating platforms
           const r = Math.random();
           let h = 0;
-          if (r < 0.05) h = 1;       // slightly raised tile
-          else if (r > 0.95) h = -1; // slightly lower tile
+          if (r > 0.97) h = -0.5; // small depression
           rowHeights.push(h);
         } else {
           rowHeights.push(0);
         }
       }
       heights.push(rowHeights);
+    }
+
+    // Add accessible raised platform areas (3x3 blocks you can jump onto)
+    const numPlatforms = Math.min(3, Math.floor(level / 2)); // fewer platforms, scale with level
+    for (let p = 0; p < numPlatforms; p++) {
+      const platSize = 3 + Math.floor(Math.random() * 2); // 3-4 tiles
+      const platX = Math.floor(Math.random() * (size - platSize - 4)) + 2;
+      const platY = Math.floor(Math.random() * (size - platSize - 4)) + 2;
+      const platHeight = 0.8; // jumpable height (max jump is ~7, can clear ~0.8 step)
+
+      // Only create platform if the area is clear
+      let canPlace = true;
+      for (let dy = 0; dy < platSize; dy++) {
+        for (let dx = 0; dx < platSize; dx++) {
+          const checkX = platX + dx;
+          const checkY = platY + dy;
+          if (map[checkY][checkX] !== 0 || Math.hypot(checkX - 5, checkY - 5) < 7) {
+            canPlace = false;
+            break;
+          }
+        }
+        if (!canPlace) break;
+      }
+
+      if (canPlace) {
+        for (let dy = 0; dy < platSize; dy++) {
+          for (let dx = 0; dx < platSize; dx++) {
+            heights[platY + dy][platX + dx] = platHeight;
+          }
+        }
+      }
     }
 
     // Flatten spawn area
