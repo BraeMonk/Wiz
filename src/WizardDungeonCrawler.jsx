@@ -47,6 +47,7 @@ const WizardDungeonCrawler = () => {
   const [enemies, setEnemies] = useState([]);
   const [items, setItems] = useState([]);
   const [projectiles, setProjectiles] = useState([]);
+  const particlesRef = useRef([]);
 
   // Rendering
   const canvasRef = useRef(null);
@@ -80,13 +81,16 @@ const WizardDungeonCrawler = () => {
   const TURN_SPEED = 2;
   const PIXEL_STEP = 4; // quantization step for "pixel" look
 
-  // Wall types
+  // Wall types (more cave-like, plus special shapes)
   const WALL_TYPES = {
     0: null, // empty
-    1: { color: '#4a5568', name: 'Stone' },
-    2: { color: '#8b4513', name: 'Wood' },
-    3: { color: '#2d5016', name: 'Moss' },
-    4: { color: '#8b0000', name: 'Blood' }
+    1: { color: '#3a3248', name: 'Stone' },        // cold stone
+    2: { color: '#5b3b2a', name: 'Strata' },       // layered rock
+    3: { color: '#244026', name: 'Moss' },         // damp moss
+    4: { color: '#5a1010', name: 'Vein' },         // blood / ore veins
+    5: { color: '#40304a', name: 'Stalactite' },   // ceiling spikes
+    6: { color: '#3b2f24', name: 'Stalagmite' },   // floor spikes
+    7: { color: '#4b3a30', name: 'Boulder' }       // chunky blocks
   };
 
   // Enemy types (4 monsters)
@@ -162,6 +166,22 @@ const WizardDungeonCrawler = () => {
     };
   }, []);
 
+  // Ambient dust particles
+  useEffect(() => {
+    const count = 60;
+    const particles = [];
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random(),                  // 0..1 screen space
+        y: Math.random(),
+        z: Math.random(),                  // 0 near, 1 far
+        vx: (Math.random() - 0.5) * 0.06,  // slow drift
+        vy: (Math.random() - 0.5) * 0.06
+      });
+    }
+    particlesRef.current = particles;
+  }, []);
+
   // Generate dungeon
   const generateDungeon = useCallback((level) => {
     const size = DUNGEON_SIZE;
@@ -174,7 +194,20 @@ const WizardDungeonCrawler = () => {
         if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
           row.push(1);
         } else {
-          row.push(Math.random() < 0.2 ? Math.floor(Math.random() * 4) + 1 : 0);
+          if (Math.random() < 0.2) {
+            const r = Math.random();
+            let tile;
+            if (r < 0.5) tile = 1;             // stone
+            else if (r < 0.7) tile = 2;        // strata
+            else if (r < 0.82) tile = 3;       // moss
+            else if (r < 0.9) tile = 4;        // vein
+            else if (r < 0.95) tile = 5;       // stalactite
+            else if (r < 0.975) tile = 6;      // stalagmite
+            else tile = 7;                     // boulder
+            row.push(tile);
+          } else {
+            row.push(0);
+          }
         }
       }
       map.push(row);
@@ -530,28 +563,49 @@ const WizardDungeonCrawler = () => {
       if (hit) {
         const sliceWidth = width / RESOLUTION;
         const wallHeightRaw = hit.distance > 0.1 ? height / hit.distance : height * 2;
-        const wallHeight = Math.max(
+        const baseWallHeight = Math.max(
           PIXEL_STEP,
           Math.floor(wallHeightRaw / PIXEL_STEP) * PIXEL_STEP
         );
-        const x = i * sliceWidth;
-        const yRaw = (height - wallHeight) / 2;
-        const y = Math.floor(yRaw / PIXEL_STEP) * PIXEL_STEP;
 
-        const wallType = WALL_TYPES[hit.tile];
+        const x = i * sliceWidth;
+        const yRaw = (height - baseWallHeight) / 2;
+        let sliceY = Math.floor(yRaw / PIXEL_STEP) * PIXEL_STEP;
+        let sliceHeight = baseWallHeight;
+
+        const tileId = hit.tile;
+
+        // --- shape tweaks per tile (stalactites/stalagmites/boulders) ---
+        if (tileId === 5) {
+          const raw = Math.sin(i * 12.9898 + currentLevel * 78.233) * 43758.5453;
+          const noise = raw - Math.floor(raw);
+          const offset = Math.floor((noise * baseWallHeight * 0.3) / PIXEL_STEP) * PIXEL_STEP;
+          sliceHeight = Math.max(PIXEL_STEP, sliceHeight - offset);
+        } else if (tileId === 6) {
+          const raw = Math.sin(i * 7.123 + currentLevel * 19.321) * 43758.5453;
+          const noise = raw - Math.floor(raw);
+          const offset = Math.floor((noise * baseWallHeight * 0.3) / PIXEL_STEP) * PIXEL_STEP;
+          sliceY += offset;
+          sliceHeight = Math.max(PIXEL_STEP, sliceHeight - offset);
+        } else if (tileId === 7) {
+          const offset = Math.floor((baseWallHeight * 0.15) / PIXEL_STEP) * PIXEL_STEP;
+          sliceY += offset;
+          sliceHeight = Math.max(PIXEL_STEP, sliceHeight - offset);
+        }
+        // ---------------------------------------------------------------
+
+        const wallType = WALL_TYPES[tileId];
         if (wallType) {
           let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
-          brightness = Math.max(0.25, Math.min(1.0, brightness));
 
-          // Slightly darker in deeper cave levels
-          const depthFactor = 0.85 + (1 - Math.max(0, Math.min(1, (currentLevel - 1) / 10))) * 0.15;
+          const depthFactor =
+            0.85 + (1 - Math.max(0, Math.min(1, (currentLevel - 1) / 10))) * 0.15;
           brightness *= depthFactor;
 
-          // Side shading
           if (hit.side === 1) brightness *= 0.75;
 
-          // Simple procedural dither: alternate slices/rows
-          const dither = ((i + Math.floor(y / PIXEL_STEP)) % 2 === 0) ? 0.95 : 1.05;
+          const dither =
+            (i + Math.floor(sliceY / PIXEL_STEP)) % 2 === 0 ? 0.95 : 1.05;
           brightness *= dither;
 
           const color = wallType.color;
@@ -566,10 +620,20 @@ const WizardDungeonCrawler = () => {
           ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
           ctx.fillRect(
             Math.floor(x),
-            y,
+            sliceY,
             Math.ceil(sliceWidth) + 1,
-            wallHeight
+            sliceHeight
           );
+
+          if (tileId === 7) {
+            ctx.strokeStyle = `rgba(0,0,0,0.35)`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(Math.floor(x) + sliceWidth * 0.3, sliceY + sliceHeight * 0.2);
+            ctx.lineTo(Math.floor(x) + sliceWidth * 0.7, sliceY + sliceHeight * 0.5);
+            ctx.lineTo(Math.floor(x) + sliceWidth * 0.4, sliceY + sliceHeight * 0.8);
+            ctx.stroke();
+          }
         }
 
         zBuffer[i] = hit.distance;
@@ -673,6 +737,22 @@ const WizardDungeonCrawler = () => {
         }
       }
     });
+
+    // Dust particles overlay
+    if (particlesRef.current.length) {
+      ctx.save();
+      particlesRef.current.forEach(p => {
+        const screenX = p.x * width;
+        const screenY = p.y * height;
+        const size = (1 - p.z) * 3 + 1; // nearer = slightly bigger
+        const alpha = 0.12 + (1 - p.z) * 0.18;
+        ctx.fillStyle = `rgba(245, 235, 220, ${alpha.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
 
     // Crosshair
     ctx.strokeStyle = '#ffffff';
@@ -818,6 +898,20 @@ const WizardDungeonCrawler = () => {
       const now = Date.now();
       const deltaTime = (now - lastTime.current) / 1000;
       lastTime.current = now;
+
+      // Update floating dust particles
+      const dust = particlesRef.current;
+      for (let i = 0; i < dust.length; i++) {
+        const p = dust[i];
+        p.x += p.vx * deltaTime;
+        p.y += p.vy * deltaTime;
+
+        // Wrap around screen
+        if (p.x < 0) p.x += 1;
+        if (p.x > 1) p.x -= 1;
+        if (p.y < 0) p.y += 1;
+        if (p.y > 1) p.y -= 1;
+      }
 
       // Update gamepad axes
       if (gamepadConnected) {
@@ -1584,7 +1678,7 @@ const WizardDungeonCrawler = () => {
       </div>
 
       {/* Bottom - Spells */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none">
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
         <div className="flex gap-2 md:gap-3">
           {equippedSpells.map((spell, index) => {
             const Icon = spell.icon;
@@ -1593,8 +1687,10 @@ const WizardDungeonCrawler = () => {
               spell.cooldown <= 0 && player.mana >= spell.manaCost;
 
             return (
-              <div
+              <button
                 key={index}
+                type="button"
+                onClick={() => setSelectedSpell(index)}
                 className={`bg-black bg-opacity-70 p-2 md:p-3 rounded-lg border-2 transition-all ${
                   isSelected
                     ? 'border-yellow-400 scale-110'
@@ -1627,7 +1723,7 @@ const WizardDungeonCrawler = () => {
                     </div>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
