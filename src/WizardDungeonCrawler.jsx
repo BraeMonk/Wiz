@@ -846,7 +846,7 @@ const WizardDungeonCrawler = () => {
           return {
             ...prev,
             level: prev.level + 1,
-            xp: prev.xp - prev.xpToNext,
+            xp: prev.xpToNext,
             xpToNext: Math.floor(prev.xpToNext * 1.5),
             maxHealth: prev.maxHealth + 20,
             health: prev.maxHealth + 20,
@@ -940,18 +940,16 @@ const WizardDungeonCrawler = () => {
     </div>
   );
 
-  // Pointer lock + casting + keyboard input
+  // Keyboard + Mouse input
   useEffect(() => {
     const handleKeyDown = e => {
       const key = e.key.toLowerCase();
       keysPressed.current[key] = true;
 
-      // Spell selection
       if (e.key >= '1' && e.key <= '3') {
         setSelectedSpell(parseInt(e.key) - 1);
       }
 
-      // Pause
       if (e.key === 'Escape' || e.key === 'Esc') {
         if (gameState === 'playing') {
           setGameState('paused');
@@ -968,10 +966,10 @@ const WizardDungeonCrawler = () => {
 
     const handleMouseMove = e => {
       if (gameState !== 'playing' || isMobile) return;
+      if (document.pointerLockElement !== canvasRef.current) return;
 
       const sensitivity = 0.002;
       const deltaX = e.movementX || 0;
-      if (!deltaX) return;
 
       setPlayer(prev => ({
         ...prev,
@@ -979,26 +977,28 @@ const WizardDungeonCrawler = () => {
       }));
     };
 
-    const handleClick = () => {
-      // Pointer lock (desktop only)
+    const handleClick = (e) => {
+      if (gameState !== 'playing') return;
+
+      // Desktop: request pointer lock first click, then cast
       if (!isMobile) {
         const canvas = canvasRef.current;
         if (canvas && document.pointerLockElement !== canvas) {
-          if (typeof canvas.requestPointerLock === 'function') {
-            canvas.requestPointerLock();
-          }
+          canvas.requestPointerLock().catch(err => {
+            console.log('Pointer lock failed:', err);
+          });
+          return;
         }
       }
 
-      if (gameState !== 'playing') return;
-
+      // Cast spell
       const spell = equippedSpells[selectedSpell];
-      if (!spell) return;
+      if (!spell || spell.cooldown > 0 || player.mana < spell.manaCost) return;
 
-      setPlayer(prev => {
-        if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
-        return { ...prev, mana: prev.mana - spell.manaCost };
-      });
+      setPlayer(prev => ({
+        ...prev,
+        mana: prev.mana - spell.manaCost
+      }));
 
       setEquippedSpells(prev =>
         prev.map((s, i) =>
@@ -1033,7 +1033,7 @@ const WizardDungeonCrawler = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
     };
-  }, [gameState, equippedSpells, selectedSpell, player, isMobile]);
+  }, [gameState, equippedSpells, selectedSpell, player.mana, isMobile]);
 
   // Touch controls (mobile)
   useEffect(() => {
@@ -1043,12 +1043,10 @@ const WizardDungeonCrawler = () => {
       for (const touch of e.changedTouches) {
         const half = window.innerWidth / 2;
         if (touch.clientX < half && leftTouchId.current === null) {
-          // left stick (move)
           leftTouchId.current = touch.identifier;
           leftStart.current = { x: touch.clientX, y: touch.clientY };
           mobileMoveRef.current = { x: 0, y: 0 };
         } else if (touch.clientX >= half && rightTouchId.current === null) {
-          // right stick (look)
           rightTouchId.current = touch.identifier;
           rightStart.current = { x: touch.clientX, y: touch.clientY };
           mobileLookRef.current = { x: 0, y: 0 };
@@ -1078,6 +1076,38 @@ const WizardDungeonCrawler = () => {
         } else if (touch.identifier === rightTouchId.current) {
           rightTouchId.current = null;
           mobileLookRef.current = { x: 0, y: 0 };
+          
+          // TAP TO CAST on right side
+          if (gameState === 'playing') {
+            const spell = equippedSpells[selectedSpell];
+            if (spell && spell.cooldown <= 0 && player.mana >= spell.manaCost) {
+              setPlayer(prev => ({
+                ...prev,
+                mana: prev.mana - spell.manaCost
+              }));
+
+              setEquippedSpells(prev =>
+                prev.map((s, i) =>
+                  i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
+                )
+              );
+
+              setProjectiles(prev => [
+                ...prev,
+                {
+                  id: Math.random(),
+                  x: player.x,
+                  y: player.y,
+                  angle: player.angle,
+                  speed: 8,
+                  damage: spell.damage,
+                  color: spell.color,
+                  lifetime: 3,
+                  dead: false
+                }
+              ]);
+            }
+          }
         }
       }
     };
@@ -1096,7 +1126,7 @@ const WizardDungeonCrawler = () => {
       el.removeEventListener('touchend', handleTouchEnd);
       el.removeEventListener('touchcancel', handleTouchCancel);
     };
-  }, [isMobile]);
+  }, [isMobile, gameState, equippedSpells, selectedSpell, player.mana, player.x, player.y, player.angle]);
 
   // ---------- SCREENS ----------
 
@@ -1121,7 +1151,7 @@ const WizardDungeonCrawler = () => {
           <div className="mt-8 text-purple-200 text-sm space-y-1">
             <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
             <p>1/2/3 Spells · ESC Pause</p>
-            <p>Mobile: Left Thumb Move · Right Thumb Look · Tap Cast</p>
+            <p>Mobile: Left Thumb Move · Right Thumb Look · Tap Right to Cast</p>
             <p>Controller: Left Stick Move · Right Stick Look · A/X Cast</p>
           </div>
         </div>
@@ -1317,7 +1347,7 @@ const WizardDungeonCrawler = () => {
           <div className="pointer-events-none absolute bottom-24 left-4 w-24 h-24 rounded-full border border-purple-400/50 bg-purple-500/10" />
           <div className="pointer-events-none absolute bottom-24 right-4 w-24 h-24 rounded-full border border-indigo-400/50 bg-indigo-500/10" />
           <div className="pointer-events-none absolute bottom-4 left-4 right-4 text-center text-[10px] text-purple-100">
-            Left thumb: move · Right thumb: look · Tap: cast
+            Left thumb: move · Right thumb: look · Tap right side: cast
           </div>
         </>
       )}
