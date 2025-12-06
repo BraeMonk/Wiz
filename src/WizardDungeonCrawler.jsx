@@ -805,17 +805,17 @@ const WizardDungeonCrawler = () => {
     </div>
   );
 
-  // Input handlers
+  // Input handlers + pointer lock
   useEffect(() => {
     const handleKeyDown = e => {
       const key = e.key.toLowerCase();
       keysPressed.current[key] = true;
-
+  
       // Spell selection
       if (e.key >= '1' && e.key <= '3') {
         setSelectedSpell(parseInt(e.key) - 1);
       }
-
+  
       // Pause
       if (e.key === 'Escape' || e.key === 'Esc') {
         if (gameState === 'playing') {
@@ -825,30 +825,42 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-
+  
     const handleKeyUp = e => {
       const key = e.key.toLowerCase();
       keysPressed.current[key] = false;
     };
-
+  
+    // Use movementX and ignore screen edges (pointer lock)
     const handleMouseMove = e => {
       if (gameState !== 'playing') return;
-      mouseX.current = e.clientX;
-
+  
       const sensitivity = 0.002;
+      const deltaX = e.movementX || 0;
+      if (!deltaX) return;
+  
       setPlayer(prev => ({
         ...prev,
-        angle: prev.angle + e.movementX * sensitivity
+        angle: prev.angle + deltaX * sensitivity
       }));
     };
-
-    const handleClick = () => {
+  
+    const handleClick = e => {
+      const canvas = canvasRef.current;
+  
+      // Request pointer lock on the canvas first
+      if (canvas && document.pointerLockElement !== canvas) {
+        if (typeof canvas.requestPointerLock === 'function') {
+          canvas.requestPointerLock();
+        }
+      }
+  
+      // If not in game, don’t fire
       if (gameState !== 'playing') return;
-
+  
       const spell = equippedSpells[selectedSpell];
-      if (!spell || spell.cooldown > 0 || player.mana < spell.manaCost)
-        return;
-
+      if (!spell || spell.cooldown > 0 || player.mana < spell.manaCost) return;
+  
       // Cast spell
       setPlayer(prev => ({ ...prev, mana: prev.mana - spell.manaCost }));
       setEquippedSpells(prev =>
@@ -856,7 +868,7 @@ const WizardDungeonCrawler = () => {
           i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
         )
       );
-
+  
       setProjectiles(prev => [
         ...prev,
         {
@@ -872,16 +884,17 @@ const WizardDungeonCrawler = () => {
         }
       ]);
     };
-
+  
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('mousemove', handleMouseMove);
+    // listen on document so pointer-locked movement works
+    document.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('click', handleClick);
-
+  
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
     };
   }, [gameState, equippedSpells, selectedSpell, player]);
