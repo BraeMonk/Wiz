@@ -783,9 +783,9 @@ const WizardDungeonCrawler = () => {
 
     const baseHorizon = height / 2;
     const horizon =
-      baseHorizon +
-      pitch * (height * 0.4) -
-      jumpState.height * 40;
+      baseHorizon
+      - pitch * (height * 0.4)      // pitch: up = more ceiling, down = more floor
+      + jumpState.height * 40;      // jump: camera rises, world drops visually
 
     // Clear / fog
     ctx.fillStyle = env.fog;
@@ -1273,25 +1273,51 @@ const WizardDungeonCrawler = () => {
           }
         }
 
-        // Collision
+        // Collision + simple 3D step/platform logic
         let newX = prev.x + moveX;
         let newY = prev.y + moveY;
-
+        
+        // Current tile base height (floor under player)
+        const currentTileX = Math.floor(prev.x);
+        const currentTileY = Math.floor(prev.y);
+        const currentBaseHeight =
+          heightMap[currentTileY]?.[currentTileX] ?? 0;
+        
         const checkTile = (x, y) => {
           const tileX = Math.floor(x);
           const tileY = Math.floor(y);
+        
           if (
             tileX < 0 ||
             tileX >= DUNGEON_SIZE ||
             tileY < 0 ||
             tileY >= DUNGEON_SIZE
-          )
-            return true;
-          return dungeon[tileY][tileX] > 0;
+          ) {
+            return true; // outside bounds = solid
+          }
+        
+          // Solid wall?
+          if (dungeon[tileY][tileX] > 0) return true;
+        
+          // --- 3D height step check ---
+          const targetBaseHeight =
+            heightMap[tileY]?.[tileX] ?? 0;
+          const step = targetBaseHeight - currentBaseHeight;
+          const jumpHeight = jumpRef.current.height;
+        
+          // If the floor is significantly higher than where we stand,
+          // we need to be in the air (jumping) high enough to clear it.
+          if (step > 0.6 && jumpHeight < step - 0.1) {
+            return true; // too high, treat as blocked ledge
+          }
+        
+          // Drops are allowed (you just fall visually)
+          return false;
         };
-
+        
         if (checkTile(newX, prev.y)) newX = prev.x;
         if (checkTile(prev.x, newY)) newY = prev.y;
+
 
         // Mana regen
         const newMana = Math.min(prev.maxMana, prev.mana + 10 * deltaTime);
@@ -1299,13 +1325,13 @@ const WizardDungeonCrawler = () => {
         return { ...prev, x: newX, y: newY, angle: newAngle, mana: newMana };
       });
 
-      // Gamepad vertical look
+      // Gamepad vertical look (up on stick = look up)
       {
         const { ry } = gamepadState;
         const deadZone = 0.2;
         if (Math.abs(ry) > deadZone) {
           const PITCH_SPEED = 1.2;
-          const deltaPitch = -ry * PITCH_SPEED * deltaTime;
+          const deltaPitch = ry * PITCH_SPEED * deltaTime;
           setPitch(prev => {
             let next = prev + deltaPitch;
             if (next > 0.6) next = 0.6;
@@ -1677,9 +1703,9 @@ const WizardDungeonCrawler = () => {
         angle: prev.angle + deltaX * sensitivityX
       }));
 
-      // Vertical look
+      // Vertical look (normal: up = look up, down = look down)
       setPitch(prev => {
-        let next = prev - deltaY * sensitivityY;
+        let next = prev + deltaY * sensitivityY;
         if (next > 0.6) next = 0.6;
         if (next < -0.6) next = -0.6;
         return next;
