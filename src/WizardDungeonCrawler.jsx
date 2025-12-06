@@ -42,6 +42,7 @@ const WizardDungeonCrawler = () => {
   ]);
 
   const [selectedSpell, setSelectedSpell] = useState(0);
+  const equippedSpellsRef = useRef(equippedSpells);
 
   // Dungeon & entities
   const [dungeon, setDungeon] = useState([]);
@@ -199,6 +200,11 @@ const WizardDungeonCrawler = () => {
     pitchRef.current = pitch;
   }, [pitch]);
 
+  // Keep it in sync
+  useEffect(() => {
+    equippedSpellsRef.current = equippedSpells;
+  }, [equippedSpells]);
+  
   // Detect mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -1238,29 +1244,30 @@ const WizardDungeonCrawler = () => {
       gamepadStateRef.current = { lx, ly, rx, ry, fire, rb, lb, rbPressed, lbPressed };
     };
 
+    // Then in castSpellFromLoop, use the ref:
     const castSpellFromLoop = () => {
-      if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
-      const spell = equippedSpells[selectedSpell];
+      if (selectedSpell < 0 || selectedSpell >= equippedSpellsRef.current.length) return;
+      const spell = equippedSpellsRef.current[selectedSpell];
       if (!spell) return;
-
+    
       let didCast = false;
-
+    
       setPlayer(prev => {
         if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
         didCast = true;
         return { ...prev, mana: prev.mana - spell.manaCost };
       });
-
+    
       if (!didCast) return;
-
+    
       setEquippedSpells(prev =>
         prev.map((s, i) =>
           i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
         )
       );
-
+    
       const p = playerRef.current;
-
+    
       setProjectiles(prev => [
         ...prev,
         {
