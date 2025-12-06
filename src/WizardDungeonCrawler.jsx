@@ -45,6 +45,7 @@ const WizardDungeonCrawler = () => {
 
   // Dungeon & entities
   const [dungeon, setDungeon] = useState([]);
+  const [heightMap, setHeightMap] = useState([]); // terrain heights
   const [enemies, setEnemies] = useState([]);
   const [items, setItems] = useState([]);
   const [projectiles, setProjectiles] = useState([]);
@@ -70,8 +71,26 @@ const WizardDungeonCrawler = () => {
   const mobileLookRef = useRef({ x: 0, y: 0 });
 
   // Gamepad state
-  const gamepadStateRef = useRef({ lx: 0, ly: 0, rx: 0, fire: false });
+  const gamepadStateRef = useRef({ lx: 0, ly: 0, rx: 0, ry: 0, fire: false });
   const [gamepadConnected, setGamepadConnected] = useState(false);
+
+  // Vertical look and jump
+  const [pitch, setPitch] = useState(0); // look up/down
+  const pitchRef = useRef(0);
+
+  const [jumpState, setJumpState] = useState({
+    height: 0,
+    velocity: 0,
+    grounded: true
+  });
+  const jumpRef = useRef({
+    height: 0,
+    velocity: 0,
+    grounded: true
+  });
+
+  // Live player ref so spells always use current position/angle
+  const playerRef = useRef(player);
 
   // Constants
   const DUNGEON_SIZE = 30;
@@ -119,13 +138,13 @@ const WizardDungeonCrawler = () => {
   const lerpColor = (hexA, hexB, t) => {
     const a = hexToRgb(hexA);
     const b = hexToRgb(hexB);
-  
+
     const r = Math.round(lerp(a.r, b.r, t));
     const g = Math.round(lerp(a.g, b.g, t));
     const bVal = Math.round(lerp(a.b, b.b, t));
-  
+
     const toHex = (v) => v.toString(16).padStart(2, '0');
-  
+
     return `#${toHex(r)}${toHex(g)}${toHex(bVal)}`;
   };
 
@@ -133,13 +152,13 @@ const WizardDungeonCrawler = () => {
   const getEnvironmentTheme = (level) => {
     // t = 0 early levels (cold stone dungeon), t = 1 deep earth cave
     const t = Math.max(0, Math.min(1, (level - 1) / 8));
-  
+
     // Ceiling / floor / fog
     const ceiling = lerpColor('#151826', '#050608', t);        // blue-purple → almost black
     const floorTop = lerpColor('#2b2838', '#3a2818', t);       // arcane stone → warm earth
     const floorBottom = lerpColor('#14101e', '#1a0c08', t);    // dark violet → deep brown
     const fog = lerpColor('#05040b', '#030203', t);            // soft arcane haze → heavy dark fog
-  
+
     // Wall palette progression:
     //  - early: cooler, bluish stone
     //  - mid: warmer torch-lit stone
@@ -153,11 +172,10 @@ const WizardDungeonCrawler = () => {
       6: lerpColor('#3b2f24', '#4b2b1a', t),  // stalagmite: warmer rock
       7: lerpColor('#4b3a30', '#3a2a20', t)   // boulder: heavier, darker
     };
-  
-    // Optional extra accents if you ever want them (e.g. torch/mushroom lights)
+
     const accentTorch = lerpColor('#ffb347', '#ff7b1a', t);     // warm fire
     const accentFungi = lerpColor('#6bd6ff', '#9cffc5', t);     // blue → green bio-glow
-  
+
     return {
       ceiling,
       floorTop,
@@ -168,6 +186,19 @@ const WizardDungeonCrawler = () => {
       accentFungi
     };
   };
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
+
+  useEffect(() => {
+    pitchRef.current = pitch;
+  }, [pitch]);
+
+  useEffect(() => {
+    jumpRef.current = jumpState;
+  }, [jumpState]);
 
   // Detect mobile
   useEffect(() => {
@@ -213,7 +244,7 @@ const WizardDungeonCrawler = () => {
     particlesRef.current = particles;
   }, []);
 
-  // Generate dungeon
+  // Generate dungeon + terrain
   const generateDungeon = useCallback((level) => {
     const size = DUNGEON_SIZE;
     const map = [];
@@ -272,7 +303,39 @@ const WizardDungeonCrawler = () => {
       }
     }
 
-    // Generate enemies (4 monster types)
+    // --- Terrain height map (basic bumps/levels) ---
+    const heights = [];
+    for (let y = 0; y < size; y++) {
+      const rowHeights = [];
+      for (let x = 0; x < size; x++) {
+        if (map[y][x] === 0) {
+          const r = Math.random();
+          let h = 0;
+          if (r < 0.05) h = 1;       // slightly raised tile
+          else if (r > 0.95) h = -1; // slightly lower tile
+          rowHeights.push(h);
+        } else {
+          rowHeights.push(0);
+        }
+      }
+      heights.push(rowHeights);
+    }
+
+    // Flatten spawn area
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const x = 5 + dx;
+        const y = 5 + dy;
+        if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
+          heights[y][x] = 0;
+        }
+      }
+    }
+
+    setHeightMap(heights);
+    // --- end terrain ---
+
+    // Generate enemies
     const newEnemies = [];
     const enemyCount = 10 + level * 3;
     const enemyTypesList = Object.keys(ENEMY_TYPES);
@@ -345,6 +408,8 @@ const WizardDungeonCrawler = () => {
       setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
       setProjectiles([]);
       setDungeon(newMap);
+      setPitch(0);
+      setJumpState({ height: 0, velocity: 0, grounded: true });
     }
   }, [gameState, currentLevel, generateDungeon]);
 
@@ -366,7 +431,7 @@ const WizardDungeonCrawler = () => {
         tileY < 0 ||
         tileY >= DUNGEON_SIZE
       ) {
-        return { distance: RENDER_DISTANCE, tile: 1 };
+        return { distance: RENDER_DISTANCE, tile: 1, tileX, tileY };
       }
 
       const tile = map[tileY][tileX];
@@ -376,7 +441,7 @@ const WizardDungeonCrawler = () => {
         const hitY = checkY - tileY;
         const side =
           Math.abs(hitX - 0.5) > Math.abs(hitY - 0.5) ? 1 : 0;
-        return { distance: correctedDistance, tile, side };
+        return { distance: correctedDistance, tile, side, tileX, tileY };
       }
 
       distance += step;
@@ -560,22 +625,22 @@ const WizardDungeonCrawler = () => {
   const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
     ctx.save();
     ctx.globalAlpha = brightness;
-  
+
     const baseColor = projectile.color || '#ffffff';
-  
+
     switch (projectile.spellType) {
       case 'fire': {
         // Teardrop flame
         ctx.translate(x, y);
         ctx.scale(1, 1.3); // a bit taller
         const r = size * 0.6;
-  
+
         // Outer glow
         ctx.beginPath();
         ctx.fillStyle = 'rgba(255, 140, 0, 0.25)';
         ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2);
         ctx.fill();
-  
+
         // Main flame body
         ctx.beginPath();
         ctx.fillStyle = baseColor;
@@ -583,7 +648,7 @@ const WizardDungeonCrawler = () => {
         ctx.bezierCurveTo(r, -r * 0.4, r * 0.6, r * 0.7, 0, r);
         ctx.bezierCurveTo(-r * 0.6, r * 0.7, -r, -r * 0.4, 0, -r);
         ctx.fill();
-  
+
         // Hot core
         ctx.beginPath();
         ctx.fillStyle = '#ffe9a3';
@@ -601,21 +666,21 @@ const WizardDungeonCrawler = () => {
           -r * 0.6
         );
         ctx.fill();
-  
+
         break;
       }
-  
+
       case 'ice': {
         // Shard diamond + spikes
         ctx.translate(x, y);
         const r = size * 0.7;
-  
+
         // Soft icy glow
         ctx.beginPath();
         ctx.fillStyle = 'rgba(180, 220, 255, 0.25)';
         ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
         ctx.fill();
-  
+
         // Main diamond shard
         ctx.beginPath();
         ctx.fillStyle = baseColor;
@@ -625,7 +690,7 @@ const WizardDungeonCrawler = () => {
         ctx.lineTo(-r * 0.75, 0);
         ctx.closePath();
         ctx.fill();
-  
+
         // Inner highlight
         ctx.beginPath();
         ctx.fillStyle = '#e6f4ff';
@@ -635,7 +700,7 @@ const WizardDungeonCrawler = () => {
         ctx.lineTo(-r * 0.4, 0);
         ctx.closePath();
         ctx.fill();
-  
+
         // Side shards
         ctx.strokeStyle = '#c2e4ff';
         ctx.lineWidth = 1.5;
@@ -645,16 +710,16 @@ const WizardDungeonCrawler = () => {
         ctx.moveTo(r * 0.9, r * 0.2);
         ctx.lineTo(r * 1.2, r * 0.5);
         ctx.stroke();
-  
+
         break;
       }
-  
+
       case 'lightning': {
         // Jagged bolt
         ctx.translate(x, y);
         const len = size * 2.0;
         const half = len / 2;
-  
+
         // Outer glow
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, len);
         grad.addColorStop(0, 'rgba(255, 255, 180, 0.6)');
@@ -663,20 +728,20 @@ const WizardDungeonCrawler = () => {
         ctx.beginPath();
         ctx.arc(0, 0, len, 0, Math.PI * 2);
         ctx.fill();
-  
+
         // Core bolt
         ctx.strokeStyle = baseColor;
         ctx.lineWidth = 3;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
-  
+
         ctx.beginPath();
         ctx.moveTo(-size * 0.3, -half);
         ctx.lineTo(size * 0.1, -half * 0.3);
         ctx.lineTo(-size * 0.15, half * 0.1);
         ctx.lineTo(size * 0.25, half * 0.8);
         ctx.stroke();
-  
+
         // Secondary highlight
         ctx.strokeStyle = '#fffff0';
         ctx.lineWidth = 1.5;
@@ -685,19 +750,19 @@ const WizardDungeonCrawler = () => {
         ctx.lineTo(size * 0.05, -half * 0.4);
         ctx.lineTo(-size * 0.05, half * 0.1);
         ctx.stroke();
-  
+
         break;
       }
-  
+
       default: {
-        // Fallback: simple orb (what you had before)
+        // Fallback: simple orb
         ctx.fillStyle = baseColor;
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
       }
     }
-  
+
     ctx.restore();
   };
 
@@ -711,20 +776,33 @@ const WizardDungeonCrawler = () => {
 
     const env = getEnvironmentTheme(currentLevel);
 
+    const playerTileX = Math.floor(player.x);
+    const playerTileY = Math.floor(player.y);
+    const playerHeight =
+      heightMap[playerTileY]?.[playerTileX] ?? 0;
+
+    const baseHorizon = height / 2;
+    const horizon =
+      baseHorizon +
+      pitch * (height * 0.4) -
+      jumpState.height * 40;
+
     // Clear / fog
     ctx.fillStyle = env.fog;
     ctx.fillRect(0, 0, width, height);
 
-    // Ceiling
+    // Ceiling (above horizon)
     ctx.fillStyle = env.ceiling;
-    ctx.fillRect(0, 0, width, height / 2);
+    const ceilingHeight = Math.max(0, Math.min(height, horizon));
+    ctx.fillRect(0, 0, width, ceilingHeight);
 
-    // Floor
-    const gradient = ctx.createLinearGradient(0, height / 2, 0, height);
+    // Floor (below horizon)
+    const floorStart = Math.max(0, Math.min(height, horizon));
+    const gradient = ctx.createLinearGradient(0, floorStart, 0, height);
     gradient.addColorStop(0, env.floorTop);
     gradient.addColorStop(1, env.floorBottom);
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, height / 2, width, height / 2);
+    ctx.fillRect(0, floorStart, width, height - floorStart);
 
     // Cast rays for walls (pixel-quantized)
     const rayAngleStep = (FOV * Math.PI / 180) / RESOLUTION;
@@ -745,13 +823,20 @@ const WizardDungeonCrawler = () => {
         );
 
         const x = i * sliceWidth;
-        const yRaw = (height - baseWallHeight) / 2;
+
+        // Terrain-aware wall vertical position
+        const tileHeight = heightMap[hit.tileY]?.[hit.tileX] ?? 0;
+        const relativeHeight = tileHeight - playerHeight;
+        const terrainOffset = relativeHeight * 20;
+
+        const yRaw =
+          horizon - baseWallHeight / 2 - terrainOffset;
         let sliceY = Math.floor(yRaw / PIXEL_STEP) * PIXEL_STEP;
         let sliceHeight = baseWallHeight;
 
         const tileId = hit.tile;
 
-        // --- shape tweaks per tile (stalactites/stalagmites/boulders) ---
+        // shape tweaks per tile (stalactites/stalagmites/boulders)
         if (tileId === 5) {
           const raw = Math.sin(i * 12.9898 + currentLevel * 78.233) * 43758.5453;
           const noise = raw - Math.floor(raw);
@@ -768,51 +853,46 @@ const WizardDungeonCrawler = () => {
           sliceY += offset;
           sliceHeight = Math.max(PIXEL_STEP, sliceHeight - offset);
         }
-        // ---------------------------------------------------------------
 
         const wallType = WALL_TYPES[tileId];
-          if (wallType) {
-            let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
-          
-            // Slightly darker as you go deeper
-            const depthFactor =
-              0.9 - Math.max(0, Math.min(0.4, (currentLevel - 1) * 0.03));
-            brightness *= depthFactor;
-          
-            // Side shading
-            if (hit.side === 1) brightness *= 0.75;
-          
-            // Tiny dither so it doesn’t look flat
-            const dither =
-              (i + Math.floor(sliceY / PIXEL_STEP)) % 2 === 0 ? 0.95 : 1.05;
-            brightness *= dither;
-          
-            // Use the level-dependent palette first, fall back to base color
-            const baseHex = env.wallPalette[tileId] || wallType.color;
-            const { r, g, b } = hexToRgb(baseHex);
-          
-            const rr = Math.max(0, Math.min(255, r * brightness));
-            const gg = Math.max(0, Math.min(255, g * brightness));
-            const bb = Math.max(0, Math.min(255, b * brightness));
-          
-            ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
-            ctx.fillRect(
-              Math.floor(x),
-              sliceY,
-              Math.ceil(sliceWidth) + 1,
-              sliceHeight
-            );
-          
-            if (tileId === 7) {
-              ctx.strokeStyle = `rgba(0,0,0,0.35)`;
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(Math.floor(x) + sliceWidth * 0.3, sliceY + sliceHeight * 0.2);
-              ctx.lineTo(Math.floor(x) + sliceWidth * 0.7, sliceY + sliceHeight * 0.5);
-              ctx.lineTo(Math.floor(x) + sliceWidth * 0.4, sliceY + sliceHeight * 0.8);
-              ctx.stroke();
-            }
+        if (wallType) {
+          let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
+
+          const depthFactor =
+            0.9 - Math.max(0, Math.min(0.4, (currentLevel - 1) * 0.03));
+          brightness *= depthFactor;
+
+          if (hit.side === 1) brightness *= 0.75;
+
+          const dither =
+            (i + Math.floor(sliceY / PIXEL_STEP)) % 2 === 0 ? 0.95 : 1.05;
+          brightness *= dither;
+
+          const baseHex = env.wallPalette[tileId] || wallType.color;
+          const { r, g, b } = hexToRgb(baseHex);
+
+          const rr = Math.max(0, Math.min(255, r * brightness));
+          const gg = Math.max(0, Math.min(255, g * brightness));
+          const bb = Math.max(0, Math.min(255, b * brightness));
+
+          ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
+          ctx.fillRect(
+            Math.floor(x),
+            sliceY,
+            Math.ceil(sliceWidth) + 1,
+            sliceHeight
+          );
+
+          if (tileId === 7) {
+            ctx.strokeStyle = `rgba(0,0,0,0.35)`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(Math.floor(x) + sliceWidth * 0.3, sliceY + sliceHeight * 0.2);
+            ctx.lineTo(Math.floor(x) + sliceWidth * 0.7, sliceY + sliceHeight * 0.5);
+            ctx.lineTo(Math.floor(x) + sliceWidth * 0.4, sliceY + sliceHeight * 0.8);
+            ctx.stroke();
           }
+        }
 
         zBuffer[i] = hit.distance;
       }
@@ -858,9 +938,18 @@ const WizardDungeonCrawler = () => {
       );
 
       const x = Math.floor((screenX - spriteWidth / 2) / PIXEL_STEP) * PIXEL_STEP;
-      const y = Math.floor((height - spriteHeight) / 2 / PIXEL_STEP) * PIXEL_STEP;
 
-      // Check z-buffer
+      const spriteTileX = Math.floor(sprite.x);
+      const spriteTileY = Math.floor(sprite.y);
+      const spriteTileHeight =
+        heightMap[spriteTileY]?.[spriteTileX] ?? 0;
+      const spriteRelHeight = spriteTileHeight - playerHeight;
+      const spriteTerrainOffset = spriteRelHeight * 20;
+
+      const yRawSprite =
+        horizon - spriteHeight / 2 - spriteTerrainOffset;
+      const y = Math.floor((yRawSprite) / PIXEL_STEP) * PIXEL_STEP;
+
       const screenSlice = Math.floor(screenX / (width / RESOLUTION));
       if (
         screenSlice >= 0 &&
@@ -902,8 +991,8 @@ const WizardDungeonCrawler = () => {
         } else if (sprite.spriteType === 'projectile') {
           const centerX = screenX;
           const centerY = y + spriteHeight / 2;
-          const size = spriteWidth * 0.5; // tweak until it feels right
-        
+          const size = spriteWidth * 0.5;
+
           drawProjectileSprite(ctx, sprite, centerX, centerY, size, brightness);
         }
       }
@@ -915,7 +1004,7 @@ const WizardDungeonCrawler = () => {
       particlesRef.current.forEach(p => {
         const screenX = p.x * width;
         const screenY = p.y * height;
-        const size = (1 - p.z) * 3 + 1; // nearer = slightly bigger
+        const size = (1 - p.z) * 3 + 1;
         const alpha = 0.12 + (1 - p.z) * 0.18;
         ctx.fillStyle = `rgba(245, 235, 220, ${alpha.toFixed(3)})`;
         ctx.beginPath();
@@ -929,7 +1018,7 @@ const WizardDungeonCrawler = () => {
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     const centerX = width / 2;
-    const centerY = height / 2;
+    const centerY = horizon;
     const crossSize = 15;
     ctx.beginPath();
     ctx.moveTo(centerX - crossSize, centerY);
@@ -1006,7 +1095,19 @@ const WizardDungeonCrawler = () => {
     );
     ctx.lineTo(dirX, dirY);
     ctx.stroke();
-  }, [player, dungeon, enemies, items, projectiles, dimensions, castRay, currentLevel]);
+  }, [
+    player,
+    dungeon,
+    enemies,
+    items,
+    projectiles,
+    dimensions,
+    castRay,
+    currentLevel,
+    heightMap,
+    pitch,
+    jumpState
+  ]);
 
   // Game loop
   useEffect(() => {
@@ -1017,14 +1118,15 @@ const WizardDungeonCrawler = () => {
       const pads = navigator.getGamepads();
       const gp = pads[0];
       if (!gp) {
-        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, fire: false };
+        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, ry: 0, fire: false };
         return;
       }
       const lx = gp.axes[0] || 0;
       const ly = gp.axes[1] || 0;
       const rx = gp.axes[2] || 0;
+      const ry = gp.axes[3] || 0;
       const fire = !!(gp.buttons[0] && gp.buttons[0].pressed);
-      gamepadStateRef.current = { lx, ly, rx, fire };
+      gamepadStateRef.current = { lx, ly, rx, ry, fire };
     };
 
     const castSpellFromLoop = () => {
@@ -1048,13 +1150,15 @@ const WizardDungeonCrawler = () => {
         )
       );
 
+      const p = playerRef.current;
+
       setProjectiles(prev => [
         ...prev,
         {
           id: Math.random(),
-          x: player.x,
-          y: player.y,
-          angle: player.angle,
+          x: p.x,
+          y: p.y,
+          angle: p.angle,
           speed: 8,
           damage: spell.damage,
           color: spell.color,
@@ -1089,7 +1193,7 @@ const WizardDungeonCrawler = () => {
       if (gamepadConnected) {
         updateGamepadState();
       } else {
-        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, fire: false };
+        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, ry: 0, fire: false };
       }
 
       const gamepadState = gamepadStateRef.current;
@@ -1128,7 +1232,7 @@ const WizardDungeonCrawler = () => {
 
         // Gamepad movement
         const deadZone = 0.2;
-        const { lx, ly, rx } = gamepadState;
+        const { lx, ly, rx, ry } = gamepadState;
         if (Math.abs(ly) > deadZone) {
           const forward = -ly * MOVE_SPEED * deltaTime;
           moveX += Math.cos(newAngle) * forward;
@@ -1193,6 +1297,43 @@ const WizardDungeonCrawler = () => {
         const newMana = Math.min(prev.maxMana, prev.mana + 10 * deltaTime);
 
         return { ...prev, x: newX, y: newY, angle: newAngle, mana: newMana };
+      });
+
+      // Gamepad vertical look
+      {
+        const { ry } = gamepadState;
+        const deadZone = 0.2;
+        if (Math.abs(ry) > deadZone) {
+          const PITCH_SPEED = 1.2;
+          const deltaPitch = -ry * PITCH_SPEED * deltaTime;
+          setPitch(prev => {
+            let next = prev + deltaPitch;
+            if (next > 0.6) next = 0.6;
+            if (next < -0.6) next = -0.6;
+            return next;
+          });
+        }
+      }
+
+      // Jump physics
+      setJumpState(prev => {
+        let { height, velocity, grounded } = prev;
+
+        if (!grounded || velocity !== 0) {
+          const GRAVITY = 9.8;
+          velocity -= GRAVITY * deltaTime;
+          height += velocity * deltaTime;
+
+          if (height <= 0) {
+            height = 0;
+            velocity = 0;
+            grounded = true;
+          } else {
+            grounded = false;
+          }
+        }
+
+        return { height, velocity, grounded };
       });
 
       // Gamepad fire
@@ -1441,6 +1582,9 @@ const WizardDungeonCrawler = () => {
       kills: 0
     });
 
+    setPitch(0);
+    setJumpState({ height: 0, velocity: 0, grounded: true });
+
     mobileMoveRef.current = { x: 0, y: 0 };
     mobileLookRef.current = { x: 0, y: 0 };
     leftTouchId.current = null;
@@ -1450,6 +1594,8 @@ const WizardDungeonCrawler = () => {
   const nextLevel = () => {
     setCurrentLevel(prev => prev + 1);
     setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
+    setPitch(0);
+    setJumpState({ height: 0, velocity: 0, grounded: true });
     mobileMoveRef.current = { x: 0, y: 0 };
     mobileLookRef.current = { x: 0, y: 0 };
     leftTouchId.current = null;
@@ -1491,6 +1637,17 @@ const WizardDungeonCrawler = () => {
         setSelectedSpell(parseInt(e.key) - 1);
       }
 
+      if (e.code === 'Space') {
+        setJumpState(prev => {
+          if (!prev.grounded) return prev;
+          return {
+            ...prev,
+            velocity: 5,
+            grounded: false
+          };
+        });
+      }
+
       if (e.key === 'Escape' || e.key === 'Esc') {
         if (gameState === 'playing') {
           setGameState('paused');
@@ -1509,13 +1666,24 @@ const WizardDungeonCrawler = () => {
       if (gameState !== 'playing' || isMobile) return;
       if (document.pointerLockElement !== canvasRef.current) return;
 
-      const sensitivity = 0.002;
+      const sensitivityX = 0.002;
+      const sensitivityY = 0.002;
       const deltaX = e.movementX || 0;
+      const deltaY = e.movementY || 0;
 
+      // Horizontal look
       setPlayer(prev => ({
         ...prev,
-        angle: prev.angle + deltaX * sensitivity
+        angle: prev.angle + deltaX * sensitivityX
       }));
+
+      // Vertical look
+      setPitch(prev => {
+        let next = prev - deltaY * sensitivityY;
+        if (next > 0.6) next = 0.6;
+        if (next < -0.6) next = -0.6;
+        return next;
+      });
     };
 
     const handleClick = () => {
@@ -1554,13 +1722,15 @@ const WizardDungeonCrawler = () => {
         )
       );
 
+      const p = playerRef.current;
+
       setProjectiles(prev => [
         ...prev,
         {
           id: Math.random(),
-          x: player.x,
-          y: player.y,
-          angle: player.angle,
+          x: p.x,
+          y: p.y,
+          angle: p.angle,
           speed: 8,
           damage: spell.damage,
           color: spell.color,
@@ -1586,9 +1756,8 @@ const WizardDungeonCrawler = () => {
 
   // Touch controls (mobile)
   useEffect(() => {
-    // 🔑 Only attach touch controls when on mobile AND actually playing
     if (!isMobile || gameState !== 'playing') return;
-  
+
     const handleTouchStart = (e) => {
       for (const touch of e.changedTouches) {
         const half = window.innerWidth / 2;
@@ -1603,7 +1772,7 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-  
+
     const handleTouchMove = (e) => {
       e.preventDefault();
       for (const touch of e.changedTouches) {
@@ -1617,7 +1786,7 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-  
+
     const handleTouchEnd = (e) => {
       for (const touch of e.changedTouches) {
         if (touch.identifier === leftTouchId.current) {
@@ -1626,7 +1795,7 @@ const WizardDungeonCrawler = () => {
         } else if (touch.identifier === rightTouchId.current) {
           rightTouchId.current = null;
           mobileLookRef.current = { x: 0, y: 0 };
-  
+
           // TAP TO CAST on right side
           if (gameState === 'playing') {
             if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
@@ -1636,20 +1805,22 @@ const WizardDungeonCrawler = () => {
                 ...prev,
                 mana: prev.mana - spell.manaCost
               }));
-  
+
               setEquippedSpells(prev =>
                 prev.map((s, i) =>
                   i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
                 )
               );
-  
+
+              const p = playerRef.current;
+
               setProjectiles(prev => [
                 ...prev,
                 {
                   id: Math.random(),
-                  x: player.x,
-                  y: player.y,
-                  angle: player.angle,
+                  x: p.x,
+                  y: p.y,
+                  angle: p.angle,
                   speed: 8,
                   damage: spell.damage,
                   color: spell.color,
@@ -1663,23 +1834,22 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-  
+
     const handleTouchCancel = handleTouchEnd;
-  
+
     const el = canvasRef.current || window;
     el.addEventListener('touchstart', handleTouchStart, { passive: false });
     el.addEventListener('touchmove', handleTouchMove, { passive: false });
     el.addEventListener('touchend', handleTouchEnd, { passive: false });
     el.addEventListener('touchcancel', handleTouchCancel, { passive: false });
-  
+
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
       el.removeEventListener('touchcancel', handleTouchCancel);
     };
-  }, [isMobile, gameState]); // 👈 only these two
-
+  }, [isMobile, gameState, equippedSpells, selectedSpell, player.mana]);
 
   // ---------- SCREENS ----------
 
@@ -1702,7 +1872,7 @@ const WizardDungeonCrawler = () => {
             Begin Your Journey
           </button>
           <div className="mt-8 text-purple-200 text-sm space-y-1">
-            <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
+            <p>Desktop: WASD Move · Mouse Look · Click Cast · Space Jump</p>
             <p>1/2/3 Spells · ESC Pause</p>
             <p>Mobile: Left Thumb Move · Right Thumb Look · Tap Right to Cast</p>
             <p>Controller: Left Stick Move · Right Stick Look · A/X Cast</p>
