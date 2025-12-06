@@ -9,15 +9,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-/* 🚫 TEMP: disable service worker for Wiz – it’s breaking the build on GH Pages
-
-// Register service worker
+// ✅ Register service worker scoped to /Wiz/
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Using a relative path keeps the scope under /Wiz/
     navigator.serviceWorker
-      .register('/service-worker.js')
+      .register('./service-worker.js')
       .catch(err => console.error('SW registration failed', err));
   });
 }
-
-*/
