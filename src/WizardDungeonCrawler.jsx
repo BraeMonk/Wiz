@@ -903,8 +903,8 @@ const WizardDungeonCrawler = () => {
     }
 
     // ---- ELEVATION EDGES (VISIBLE STEP WALLS) ----
-    // These are little vertical walls where the floor height changes between tiles.
-    // They make raised / lowered platforms visually obvious.
+    // Vertical faces drawn wherever the floor height changes,
+    // so raised/lowered tiles look like real 3D steps/cliffs.
     
     const stepBase = hexToRgb(env.floorTop); // base color for step edges
     
@@ -919,9 +919,8 @@ const WizardDungeonCrawler = () => {
       const sliceWidth = width / RESOLUTION;
       const sliceX = i * sliceWidth;
     
-      // March forward along the ray, but only looking at FLOOR (no walls)
       while (dist < RENDER_DISTANCE) {
-        dist += 0.3; // coarser than wall raycast for performance
+        dist += 0.3; // coarse march for performance
     
         const worldX = player.x + rayDirX * dist;
         const worldY = player.y + rayDirY * dist;
@@ -929,7 +928,6 @@ const WizardDungeonCrawler = () => {
         const tileX = Math.floor(worldX);
         const tileY = Math.floor(worldY);
     
-        // Out-of-bounds: stop
         if (
           tileX < 0 ||
           tileX >= DUNGEON_SIZE ||
@@ -939,7 +937,7 @@ const WizardDungeonCrawler = () => {
           break;
         }
     
-        // If there's a wall here, don't draw step edges behind it
+        // If we hit a wall, stop drawing step edges behind it
         if (dungeon[tileY][tileX] > 0) {
           break;
         }
@@ -949,36 +947,40 @@ const WizardDungeonCrawler = () => {
         if (tileHeight !== lastHeight) {
           const step = tileHeight - lastHeight;
     
-          // Ignore tiny noise, only show "real" steps
+          // Ignore micro-noise
           if (Math.abs(step) > 0.2) {
-            // Use distance corrected for fisheye, same as walls
+            // Distance corrected for fisheye, same as walls
             const correctedDist = dist * Math.cos(rayAngle - player.angle);
     
-            // Don't draw if behind an existing wall
             if (correctedDist > 0.05 && correctedDist < zBuffer[i]) {
-              // How tall this vertical face is on screen
-              const edgeHeightPixels = Math.max(
-                PIXEL_STEP,
-                Math.floor(
-                  (Math.abs(step) * TILE_HEIGHT_UNIT) / PIXEL_STEP
-                ) * PIXEL_STEP
-              );
+              // Project BOTH floor levels to screen Y and draw between them
+              const h0 = lastHeight - playerHeight;
+              const h1 = tileHeight - playerHeight;
     
-              // Which height level is closer to the camera (front-facing side)
-              const frontHeight = step > 0 ? lastHeight : tileHeight;
+              const y0 = horizon - h0 * TILE_HEIGHT_UNIT;
+              const y1 = horizon - h1 * TILE_HEIGHT_UNIT;
     
-              // Center of the face in screen Y
-              const centerY =
-                horizon - (frontHeight - playerHeight) * TILE_HEIGHT_UNIT;
+              let yTop = Math.min(y0, y1);
+              let yBottom = Math.max(y0, y1);
     
-              const yTop = Math.floor(
-                (centerY - edgeHeightPixels / 2) / PIXEL_STEP
-              ) * PIXEL_STEP;
-              const yHeight = edgeHeightPixels;
+              // Snap to pixel grid & ensure non-zero thickness
+              yTop = Math.floor(yTop / PIXEL_STEP) * PIXEL_STEP;
+              yBottom = Math.floor(yBottom / PIXEL_STEP) * PIXEL_STEP;
+              let yHeight = yBottom - yTop;
+    
+              if (yHeight < PIXEL_STEP) {
+                yHeight = PIXEL_STEP;
+              }
+    
+              // Optional: make steps feel a bit taller / chunkier
+              // by padding them slightly
+              const extra = PIXEL_STEP * 1.5;
+              yTop -= extra;
+              yHeight += extra * 2;
     
               // Shade by distance
               let brightness = 1.0 - correctedDist / RENDER_DISTANCE;
-              brightness = Math.max(0.25, Math.min(0.9, brightness));
+              brightness = Math.max(0.3, Math.min(0.95, brightness));
     
               const rr = Math.max(
                 0,
@@ -986,11 +988,11 @@ const WizardDungeonCrawler = () => {
               );
               const gg = Math.max(
                 0,
-                Math.min(255, stepBase.g * brightness * 0.9)
+                Math.min(255, stepBase.g * brightness * 0.95)
               );
               const bb = Math.max(
                 0,
-                Math.min(255, stepBase.b * brightness * 0.8)
+                Math.min(255, stepBase.b * brightness * 0.85)
               );
     
               ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
@@ -1004,7 +1006,7 @@ const WizardDungeonCrawler = () => {
             }
           }
     
-          // Update last floor height
+          // Update floor height for next segment
           lastHeight = tileHeight;
         }
       }
