@@ -984,9 +984,14 @@ const WizardDungeonCrawler = () => {
       if (!isMobile) {
         const canvas = canvasRef.current;
         if (canvas && document.pointerLockElement !== canvas) {
-          canvas.requestPointerLock().catch(err => {
-            console.log('Pointer lock failed:', err);
-          });
+          if (canvas.requestPointerLock) {
+            const lockPromise = canvas.requestPointerLock();
+            if (lockPromise && lockPromise.catch) {
+              lockPromise.catch(err => {
+                console.log('Pointer lock failed:', err);
+              });
+            }
+          }
           return;
         }
       }
