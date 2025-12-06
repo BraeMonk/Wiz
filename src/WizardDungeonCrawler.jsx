@@ -52,6 +52,11 @@ const WizardDungeonCrawler = () => {
 
   const levelStartTimeRef = useRef(Date.now());
 
+  const [gold, setGold] = useState(0); // Separate persistent gold
+  const [showShop, setShowShop] = useState(false);
+
+  const [purchasedSpells, setPurchasedSpells] = useState(['fire', 'ice', 'lightning']);
+  
   // Rendering
   const canvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -72,7 +77,7 @@ const WizardDungeonCrawler = () => {
   const mobileLookRef = useRef({ x: 0, y: 0 });
 
   // Gamepad state
-  const gamepadStateRef = useRef({ lx: 0, ly: 0, rx: 0, ry: 0, fire: false });
+  const gamepadStateRef = useRef({ lx: 0, ly: 0, rx: 0, ry: 0, fire: false, rb: false, lb: false, rbPressed: false, lbPressed: false });
   const [gamepadConnected, setGamepadConnected] = useState(false);
 
   // Vertical look and jump
@@ -111,6 +116,14 @@ const WizardDungeonCrawler = () => {
     golem: { health: 80, damage: 20, speed: 0.8, xp: 40, color: '#b08b57', gold: 15 }
   };
 
+  const ALL_SPELLS = {
+    fire: { key: 'fire', name: 'Fireball', damage: 25, manaCost: 15, cooldown: 0, maxCooldown: 1.0, color: '#ff4400', icon: Flame, price: 0 },
+    ice: { key: 'ice', name: 'Ice Shard', damage: 15, manaCost: 10, cooldown: 0, maxCooldown: 0.5, color: '#00aaff', icon: Droplet, price: 0 },
+    lightning: { key: 'lightning', name: 'Lightning', damage: 40, manaCost: 25, cooldown: 0, maxCooldown: 2.0, color: '#ffff00', icon: Zap, price: 0 },
+    meteor: { key: 'meteor', name: 'Meteor', damage: 60, manaCost: 40, cooldown: 0, maxCooldown: 3.0, color: '#ff6600', icon: Flame, price: 150 },
+    frost: { key: 'frost', name: 'Frost Nova', damage: 35, manaCost: 20, cooldown: 0, maxCooldown: 1.5, color: '#88ddff', icon: Droplet, price: 100 },
+    chain: { key: 'chain', name: 'Chain Lightning', damage: 50, manaCost: 30, cooldown: 0, maxCooldown: 2.5, color: '#ffff88', icon: Zap, price: 200 }
+  };
   // --------- COLOR HELPERS FOR ENV + PIXEL SHADING ----------
 
   const hexToRgb = (hex) => {
@@ -1206,7 +1219,7 @@ const WizardDungeonCrawler = () => {
       const pads = navigator.getGamepads();
       const gp = pads[0];
       if (!gp) {
-        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, ry: 0, fire: false };
+        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, ry: 0, fire: false, rb: false, lb: false, rbPressed: false, lbPressed: false };
         return;
       }
       const lx = gp.axes[0] || 0;
@@ -1214,7 +1227,15 @@ const WizardDungeonCrawler = () => {
       const rx = gp.axes[2] || 0;
       const ry = gp.axes[3] || 0;
       const fire = !!(gp.buttons[0] && gp.buttons[0].pressed);
-      gamepadStateRef.current = { lx, ly, rx, ry, fire };
+      const rb = !!(gp.buttons[5] && gp.buttons[5].pressed); // Right bumper
+      const lb = !!(gp.buttons[4] && gp.buttons[4].pressed); // Left bumper
+      
+      // Track if these are NEW presses (not held)
+      const prevState = gamepadStateRef.current;
+      const rbPressed = rb && !prevState.rb;
+      const lbPressed = lb && !prevState.lb;
+      
+      gamepadStateRef.current = { lx, ly, rx, ry, fire, rb, lb, rbPressed, lbPressed };
     };
 
     const castSpellFromLoop = () => {
@@ -1403,9 +1424,14 @@ const WizardDungeonCrawler = () => {
         }
       }
 
-      // Gamepad fire
-      if (gamepadState.fire) {
+      // Gamepad right bumper to cast
+      if (gamepadState.rbPressed) {
         castSpellFromLoop();
+      }
+      
+      // Gamepad left bumper to cycle spells
+      if (gamepadState.lbPressed) {
+        setSelectedSpell(prev => (prev + 1) % equippedSpells.length);
       }
 
       // Update spell cooldowns
@@ -1663,8 +1689,11 @@ const WizardDungeonCrawler = () => {
   };
 
   const nextLevel = () => {
-    levelStartTimeRef.current = Date.now();   // <--- add this
+    setShowShop(true); // Show shop instead of immediately starting next level
+  };
   
+  const continueToNextLevel = () => {
+    levelStartTimeRef.current = Date.now();
     setCurrentLevel(prev => prev + 1);
     setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
     setPitch(0);
@@ -1672,6 +1701,7 @@ const WizardDungeonCrawler = () => {
     mobileLookRef.current = { x: 0, y: 0 };
     leftTouchId.current = null;
     rightTouchId.current = null;
+    setShowShop(false);
     setGameState('playing');
   };
 
@@ -1914,6 +1944,88 @@ const WizardDungeonCrawler = () => {
 
   // ---------- SCREENS ----------
 
+  if (showShop) {
+    return (
+      <div className="w-full h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black flex items-center justify-center overflow-y-auto">
+        <div className="text-center px-4 py-8 max-w-4xl">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+            Spell Shop
+          </h1>
+          <p className="text-xl text-yellow-400 mb-6">Gold: 💰 {player.gold}</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {Object.values(ALL_SPELLS).map(spell => {
+              const Icon = spell.icon;
+              const owned = purchasedSpells.includes(spell.key);
+              const equipped = equippedSpells.some(s => s.key === spell.key);
+              const canAfford = player.gold >= spell.price;
+              
+              return (
+                <div key={spell.key} className={`bg-black bg-opacity-60 p-4 rounded-lg border-2 ${equipped ? 'border-yellow-400' : owned ? 'border-green-600' : 'border-gray-600'}`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <Icon size={32} style={{ color: spell.color }} />
+                    <div className="text-left flex-1">
+                      <h3 className="text-white font-bold">{spell.name}</h3>
+                      <p className="text-gray-300 text-sm">Damage: {spell.damage} | Mana: {spell.manaCost}</p>
+                    </div>
+                  </div>
+                  
+                  {!owned && (
+                    <button
+                      onClick={() => {
+                        if (canAfford) {
+                          setPlayer(prev => ({ ...prev, gold: prev.gold - spell.price }));
+                          setPurchasedSpells(prev => [...prev, spell.key]);
+                        }
+                      }}
+                      disabled={!canAfford}
+                      className={`w-full py-2 rounded ${canAfford ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600'} text-white font-bold`}
+                    >
+                      Buy for 💰 {spell.price}
+                    </button>
+                  )}
+                  
+                  {owned && !equipped && (
+                    <button
+                      onClick={() => {
+                        if (equippedSpells.length < 3) {
+                          setEquippedSpells(prev => [...prev, { ...spell }]);
+                        }
+                      }}
+                      disabled={equippedSpells.length >= 3}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded"
+                    >
+                      {equippedSpells.length >= 3 ? 'Slots Full' : 'Equip'}
+                    </button>
+                  )}
+                  
+                  {equipped && (
+                    <button
+                      onClick={() => {
+                        setEquippedSpells(prev => prev.filter(s => s.key !== spell.key));
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded"
+                    >
+                      Unequip
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          <button
+            onClick={continueToNextLevel}
+            disabled={equippedSpells.length === 0}
+            className={`${equippedSpells.length === 0 ? 'bg-gray-600' : 'bg-purple-600 hover:bg-purple-700'} text-white font-bold py-4 px-8 rounded-lg text-xl`}
+          >
+            {equippedSpells.length === 0 ? 'Equip at least 1 spell!' : `Continue to Level ${currentLevel + 1}`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (gameState === 'menu') {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center">
@@ -1936,7 +2048,7 @@ const WizardDungeonCrawler = () => {
             <p>Desktop: WASD Move · Mouse Look · Click Cast · Space Jump</p>
             <p>1/2/3 Spells · ESC Pause</p>
             <p>Mobile: Left Thumb Move · Right Thumb Look · Tap Right to Cast</p>
-            <p>Controller: Left Stick Move · Right Stick Look · A/X Cast</p>
+            <p>Controller: Left Stick Move · Right Stick Look · RB Cast · LB Cycle Spells</p>
           </div>
         </div>
       </div>
