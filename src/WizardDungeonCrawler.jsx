@@ -529,6 +529,7 @@ const WizardDungeonCrawler = () => {
     };
 
     const castSpellFromLoop = () => {
+      if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
       const spell = equippedSpells[selectedSpell];
       if (!spell) return;
 
@@ -997,8 +998,8 @@ const WizardDungeonCrawler = () => {
       }
 
       // Cast spell
+      if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
       const spell = equippedSpells[selectedSpell];
-      if (!spell || spell.cooldown > 0 || player.mana < spell.manaCost) return;
 
       setPlayer(prev => ({
         ...prev,
@@ -1084,6 +1085,7 @@ const WizardDungeonCrawler = () => {
           
           // TAP TO CAST on right side
           if (gameState === 'playing') {
+            if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
             const spell = equippedSpells[selectedSpell];
             if (spell && spell.cooldown <= 0 && player.mana >= spell.manaCost) {
               setPlayer(prev => ({
