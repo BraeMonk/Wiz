@@ -36,10 +36,11 @@ const WizardDungeonCrawler = () => {
 
   // Spells
   const [equippedSpells, setEquippedSpells] = useState([
-    { name: 'Fireball', damage: 25, manaCost: 15, cooldown: 0, maxCooldown: 1.0, color: '#ff4400', icon: Flame },
-    { name: 'Ice Shard', damage: 15, manaCost: 10, cooldown: 0, maxCooldown: 0.5, color: '#00aaff', icon: Droplet },
-    { name: 'Lightning', damage: 40, manaCost: 25, cooldown: 0, maxCooldown: 2.0, color: '#ffff00', icon: Zap }
+    { key: 'fire', name: 'Fireball', damage: 25, manaCost: 15, cooldown: 0, maxCooldown: 1.0, color: '#ff4400', icon: Flame },
+    { key: 'ice', name: 'Ice Shard', damage: 15, manaCost: 10, cooldown: 0, maxCooldown: 0.5, color: '#00aaff', icon: Droplet },
+    { key: 'lightning', name: 'Lightning', damage: 40, manaCost: 25, cooldown: 0, maxCooldown: 2.0, color: '#ffff00', icon: Zap }
   ]);
+
   const [selectedSpell, setSelectedSpell] = useState(0);
 
   // Dungeon & entities
@@ -525,6 +526,151 @@ const WizardDungeonCrawler = () => {
     ctx.restore();
   };
 
+  // --------- PROJECTILE SPRITES (fire / ice / lightning) ----------
+  const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
+    ctx.save();
+    ctx.globalAlpha = brightness;
+  
+    const baseColor = projectile.color || '#ffffff';
+  
+    switch (projectile.spellType) {
+      case 'fire': {
+        // Teardrop flame
+        ctx.translate(x, y);
+        ctx.scale(1, 1.3); // a bit taller
+        const r = size * 0.6;
+  
+        // Outer glow
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255, 140, 0, 0.25)';
+        ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+  
+        // Main flame body
+        ctx.beginPath();
+        ctx.fillStyle = baseColor;
+        ctx.moveTo(0, -r);
+        ctx.bezierCurveTo(r, -r * 0.4, r * 0.6, r * 0.7, 0, r);
+        ctx.bezierCurveTo(-r * 0.6, r * 0.7, -r, -r * 0.4, 0, -r);
+        ctx.fill();
+  
+        // Hot core
+        ctx.beginPath();
+        ctx.fillStyle = '#ffe9a3';
+        ctx.moveTo(0, -r * 0.6);
+        ctx.bezierCurveTo(
+          r * 0.4, -r * 0.2,
+          r * 0.2, r * 0.4,
+          0,
+          r * 0.6
+        );
+        ctx.bezierCurveTo(
+          -r * 0.2, r * 0.4,
+          -r * 0.4, -r * 0.2,
+          0,
+          -r * 0.6
+        );
+        ctx.fill();
+  
+        break;
+      }
+  
+      case 'ice': {
+        // Shard diamond + spikes
+        ctx.translate(x, y);
+        const r = size * 0.7;
+  
+        // Soft icy glow
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(180, 220, 255, 0.25)';
+        ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+  
+        // Main diamond shard
+        ctx.beginPath();
+        ctx.fillStyle = baseColor;
+        ctx.moveTo(0, -r);
+        ctx.lineTo(r * 0.75, 0);
+        ctx.lineTo(0, r);
+        ctx.lineTo(-r * 0.75, 0);
+        ctx.closePath();
+        ctx.fill();
+  
+        // Inner highlight
+        ctx.beginPath();
+        ctx.fillStyle = '#e6f4ff';
+        ctx.moveTo(0, -r * 0.6);
+        ctx.lineTo(r * 0.4, 0);
+        ctx.lineTo(0, r * 0.6);
+        ctx.lineTo(-r * 0.4, 0);
+        ctx.closePath();
+        ctx.fill();
+  
+        // Side shards
+        ctx.strokeStyle = '#c2e4ff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.9, -r * 0.2);
+        ctx.lineTo(-r * 1.2, -r * 0.5);
+        ctx.moveTo(r * 0.9, r * 0.2);
+        ctx.lineTo(r * 1.2, r * 0.5);
+        ctx.stroke();
+  
+        break;
+      }
+  
+      case 'lightning': {
+        // Jagged bolt
+        ctx.translate(x, y);
+        const len = size * 2.0;
+        const half = len / 2;
+  
+        // Outer glow
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, len);
+        grad.addColorStop(0, 'rgba(255, 255, 180, 0.6)');
+        grad.addColorStop(1, 'rgba(255, 255, 180, 0.0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, len, 0, Math.PI * 2);
+        ctx.fill();
+  
+        // Core bolt
+        ctx.strokeStyle = baseColor;
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+  
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.3, -half);
+        ctx.lineTo(size * 0.1, -half * 0.3);
+        ctx.lineTo(-size * 0.15, half * 0.1);
+        ctx.lineTo(size * 0.25, half * 0.8);
+        ctx.stroke();
+  
+        // Secondary highlight
+        ctx.strokeStyle = '#fffff0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.15, -half * 0.8);
+        ctx.lineTo(size * 0.05, -half * 0.4);
+        ctx.lineTo(-size * 0.05, half * 0.1);
+        ctx.stroke();
+  
+        break;
+      }
+  
+      default: {
+        // Fallback: simple orb (what you had before)
+        ctx.fillStyle = baseColor;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  
+    ctx.restore();
+  };
+
   // Render frame
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -722,18 +868,11 @@ const WizardDungeonCrawler = () => {
           ctx.fill();
           ctx.globalAlpha = 1;
         } else if (sprite.spriteType === 'projectile') {
-          ctx.globalAlpha = 0.95;
-          ctx.fillStyle = sprite.color;
-          ctx.beginPath();
-          ctx.arc(
-            screenX,
-            y + spriteHeight / 2,
-            spriteWidth,
-            0,
-            Math.PI * 2
-          );
-          ctx.fill();
-          ctx.globalAlpha = 1;
+          const centerX = screenX;
+          const centerY = y + spriteHeight / 2;
+          const size = spriteWidth * 0.5; // tweak until it feels right
+        
+          drawProjectileSprite(ctx, sprite, centerX, centerY, size, brightness);
         }
       }
     });
@@ -888,7 +1027,8 @@ const WizardDungeonCrawler = () => {
           damage: spell.damage,
           color: spell.color,
           lifetime: 3,
-          dead: false
+          dead: false,
+          spellType: spell.key
         }
       ]);
     };
@@ -1268,11 +1408,20 @@ const WizardDungeonCrawler = () => {
       gold: 0,
       kills: 0
     });
+
+    mobileMoveRef.current = { x: 0, y: 0 };
+    mobileLookRef.current = { x: 0, y: 0 };
+    leftTouchId.current = null;
+    rightTouchId.current = null;
   };
 
   const nextLevel = () => {
     setCurrentLevel(prev => prev + 1);
     setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
+    mobileMoveRef.current = { x: 0, y: 0 };
+    mobileLookRef.current = { x: 0, y: 0 };
+    leftTouchId.current = null;
+    rightTouchId.current = null;
     setGameState('playing');
   };
 
@@ -1384,7 +1533,8 @@ const WizardDungeonCrawler = () => {
           damage: spell.damage,
           color: spell.color,
           lifetime: 3,
-          dead: false
+          dead: false,
+          spellType: spell.key
         }
       ]);
     };
@@ -1404,8 +1554,9 @@ const WizardDungeonCrawler = () => {
 
   // Touch controls (mobile)
   useEffect(() => {
-    if (!isMobile) return;
-
+    // 🔑 Only attach touch controls when on mobile AND actually playing
+    if (!isMobile || gameState !== 'playing') return;
+  
     const handleTouchStart = (e) => {
       for (const touch of e.changedTouches) {
         const half = window.innerWidth / 2;
@@ -1420,7 +1571,7 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-
+  
     const handleTouchMove = (e) => {
       e.preventDefault();
       for (const touch of e.changedTouches) {
@@ -1434,7 +1585,7 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-
+  
     const handleTouchEnd = (e) => {
       for (const touch of e.changedTouches) {
         if (touch.identifier === leftTouchId.current) {
@@ -1443,7 +1594,7 @@ const WizardDungeonCrawler = () => {
         } else if (touch.identifier === rightTouchId.current) {
           rightTouchId.current = null;
           mobileLookRef.current = { x: 0, y: 0 };
-
+  
           // TAP TO CAST on right side
           if (gameState === 'playing') {
             if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
@@ -1453,13 +1604,13 @@ const WizardDungeonCrawler = () => {
                 ...prev,
                 mana: prev.mana - spell.manaCost
               }));
-
+  
               setEquippedSpells(prev =>
                 prev.map((s, i) =>
                   i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
                 )
               );
-
+  
               setProjectiles(prev => [
                 ...prev,
                 {
@@ -1471,7 +1622,8 @@ const WizardDungeonCrawler = () => {
                   damage: spell.damage,
                   color: spell.color,
                   lifetime: 3,
-                  dead: false
+                  dead: false,
+                  spellType: spell.key
                 }
               ]);
             }
@@ -1479,22 +1631,23 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-
+  
     const handleTouchCancel = handleTouchEnd;
-
+  
     const el = canvasRef.current || window;
     el.addEventListener('touchstart', handleTouchStart, { passive: false });
     el.addEventListener('touchmove', handleTouchMove, { passive: false });
     el.addEventListener('touchend', handleTouchEnd, { passive: false });
     el.addEventListener('touchcancel', handleTouchCancel, { passive: false });
-
+  
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
       el.removeEventListener('touchcancel', handleTouchCancel);
     };
-  }, [isMobile, gameState, equippedSpells, selectedSpell, player.mana, player.x, player.y, player.angle]);
+  }, [isMobile, gameState]); // 👈 only these two
+
 
   // ---------- SCREENS ----------
 
