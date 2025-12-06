@@ -78,6 +78,7 @@ const WizardDungeonCrawler = () => {
   const RESOLUTION = 320;
   const MOVE_SPEED = 3;
   const TURN_SPEED = 2;
+  const PIXEL_STEP = 4; // quantization step for "pixel" look
 
   // Wall types
   const WALL_TYPES = {
@@ -88,12 +89,49 @@ const WizardDungeonCrawler = () => {
     4: { color: '#8b0000', name: 'Blood' }
   };
 
-  // Enemy types
+  // Enemy types (4 monsters)
   const ENEMY_TYPES = {
-    skeleton: { health: 30, damage: 10, speed: 1.5, xp: 15, color: '#cccccc', gold: 5 },
-    demon: { health: 50, damage: 15, speed: 1.0, xp: 25, color: '#ff0000', gold: 10 },
-    ghost: { health: 20, damage: 8, speed: 2.0, xp: 20, color: '#aaaaff', gold: 8 },
-    golem: { health: 80, damage: 20, speed: 0.8, xp: 40, color: '#6b4423', gold: 15 }
+    skeleton: { health: 30, damage: 10, speed: 1.5, xp: 15, color: '#e5e5e5', gold: 5 },
+    demon: { health: 50, damage: 15, speed: 1.0, xp: 25, color: '#ff3b3b', gold: 10 },
+    ghost: { health: 20, damage: 8, speed: 2.0, xp: 20, color: '#b8c6ff', gold: 8 },
+    golem: { health: 80, damage: 20, speed: 0.8, xp: 40, color: '#b08b57', gold: 15 }
+  };
+
+  // --------- COLOR HELPERS FOR ENV + PIXEL SHADING ----------
+
+  const hexToRgb = (hex) => {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return { r, g, b };
+  };
+
+  const rgbToCss = ({ r, g, b }) => `rgb(${r}, ${g}, ${b})`;
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  const lerpColor = (hexA, hexB, t) => {
+    const a = hexToRgb(hexA);
+    const b = hexToRgb(hexB);
+    return rgbToCss({
+      r: Math.round(lerp(a.r, b.r, t)),
+      g: Math.round(lerp(a.g, b.g, t)),
+      b: Math.round(lerp(a.b, b.b, t))
+    });
+  };
+
+  // Dungeon → cave theme based on depth
+  const getEnvironmentColors = (level) => {
+    // t = 0 early levels (cold stone dungeon), t = 1 deep levels (earthy cave)
+    const t = Math.max(0, Math.min(1, (level - 1) / 8));
+
+    const ceiling = lerpColor('#1a1024', '#050608', t);         // purple → almost black
+    const floorTop = lerpColor('#2b1a33', '#2b2015', t);        // arcane stone → earth
+    const floorBottom = lerpColor('#130b1c', '#120b08', t);     // deep purple → dark brown
+    const fog = lerpColor('#05030a', '#040305', t);             // subtle fog
+
+    return { ceiling, floorTop, floorBottom, fog };
   };
 
   // Detect mobile
@@ -170,7 +208,7 @@ const WizardDungeonCrawler = () => {
       }
     }
 
-    // Generate enemies
+    // Generate enemies (4 monster types)
     const newEnemies = [];
     const enemyCount = 10 + level * 3;
     const enemyTypesList = Object.keys(ENEMY_TYPES);
@@ -283,6 +321,177 @@ const WizardDungeonCrawler = () => {
     return null;
   }, []);
 
+  // --------- MONSTER SPRITE DRAWING (dark fantasy pixel look) ----------
+
+  const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness) => {
+    ctx.save();
+    ctx.globalAlpha = brightness;
+
+    const baseColor = hexToRgb(sprite.color.startsWith('#') ? sprite.color : '#ffffff');
+    const darkColor = {
+      r: Math.round(baseColor.r * 0.4),
+      g: Math.round(baseColor.g * 0.4),
+      b: Math.round(baseColor.b * 0.4)
+    };
+
+    const fillBase = rgbToCss(baseColor);
+    const fillDark = rgbToCss(darkColor);
+
+    const px = Math.max(2, Math.floor(w / 6));
+    const py = Math.max(2, Math.floor(h / 6));
+
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+
+    switch (sprite.type) {
+      case 'skeleton': {
+        // Skull
+        const headW = px * 3;
+        const headH = py * 2;
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(cx - headW / 2, y, headW, headH);
+        // Eye sockets
+        ctx.fillStyle = fillDark;
+        ctx.fillRect(cx - px, y + py / 2, px / 2, py / 2);
+        ctx.fillRect(cx + px / 2, y + py / 2, px / 2, py / 2);
+        // Jaw
+        ctx.fillRect(cx - headW / 3, y + headH - py / 2, (headW * 2) / 3, py / 2);
+
+        // Spine
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(cx - px / 4, y + headH, px / 2, h / 2);
+
+        // Ribs
+        for (let i = 0; i < 3; i++) {
+          const ry = y + headH + py * (1 + i);
+          ctx.fillRect(cx - px * 1.5, ry, px, py / 4);
+          ctx.fillRect(cx + px * 0.5, ry, px, py / 4);
+        }
+
+        // Legs
+        const legY = y + h - py * 1.5;
+        ctx.fillRect(cx - px, legY, px / 2, py * 1.5);
+        ctx.fillRect(cx + px / 2, legY, px / 2, py * 1.5);
+
+        break;
+      }
+      case 'demon': {
+        // Torso
+        ctx.fillStyle = fillBase;
+        const bodyW = px * 3;
+        const bodyH = h * 0.55;
+        const bodyX = cx - bodyW / 2;
+        const bodyY = cy - bodyH / 3;
+        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
+
+        // Horns
+        ctx.fillRect(bodyX - px / 2, bodyY - py, px, py);
+        ctx.fillRect(bodyX + bodyW - px / 2, bodyY - py, px, py);
+
+        // Eyes
+        ctx.fillStyle = 'rgb(255,230,120)';
+        ctx.fillRect(bodyX + px / 2, bodyY + py / 2, px / 2, py / 2);
+        ctx.fillRect(bodyX + bodyW - px, bodyY + py / 2, px / 2, py / 2);
+
+        // Mouth
+        ctx.fillStyle = fillDark;
+        ctx.fillRect(bodyX + px / 2, bodyY + py * 1.6, bodyW - px, py / 2);
+
+        // Arms
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(bodyX - px, bodyY + py, px, py * 2);
+        ctx.fillRect(bodyX + bodyW, bodyY + py, px, py * 2);
+
+        // Legs
+        const legY = bodyY + bodyH;
+        ctx.fillRect(cx - px, legY, px, py * 2);
+        ctx.fillRect(cx + px / 2, legY, px, py * 2);
+
+        break;
+      }
+      case 'ghost': {
+        // Floating sheet body with wavy bottom
+        ctx.fillStyle = fillBase;
+        const bodyW = px * 3;
+        const bodyH = h * 0.7;
+        const bodyX = cx - bodyW / 2;
+        const bodyY = y + py;
+
+        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
+
+        // Wave bottom
+        ctx.fillStyle = fillDark;
+        for (let i = 0; i < 3; i++) {
+          const wx = bodyX + (i * bodyW) / 3;
+          const wy = bodyY + bodyH - py / 2;
+          ctx.fillRect(wx, wy, bodyW / 4, py / 2);
+        }
+
+        // Eyes
+        ctx.fillStyle = 'rgb(40,40,80)';
+        ctx.fillRect(bodyX + px / 2, bodyY + py / 2, px / 2, py / 2);
+        ctx.fillRect(bodyX + bodyW - px, bodyY + py / 2, px / 2, py / 2);
+
+        // Halo-ish glow outline
+        ctx.strokeStyle = 'rgba(200,220,255,0.7)';
+        ctx.strokeRect(bodyX - 1, bodyY - 1, bodyW + 2, bodyH + 2);
+
+        break;
+      }
+      case 'golem': {
+        // Chunky rock torso
+        ctx.fillStyle = fillBase;
+        const bodyW = px * 4;
+        const bodyH = h * 0.55;
+        const bodyX = cx - bodyW / 2;
+        const bodyY = cy - bodyH / 3;
+
+        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
+
+        // Random stone "chips"
+        ctx.fillStyle = fillDark;
+        ctx.fillRect(bodyX + px / 2, bodyY + py / 2, px, py / 2);
+        ctx.fillRect(bodyX + bodyW - px * 1.5, bodyY + py, px, py / 2);
+        ctx.fillRect(bodyX + px, bodyY + bodyH - py, px, py / 2);
+
+        // Head block
+        ctx.fillStyle = fillBase;
+        const headW = px * 2.2;
+        const headH = py * 1.6;
+        const headX = cx - headW / 2;
+        const headY = bodyY - headH;
+        ctx.fillRect(headX, headY, headW, headH);
+
+        // Eyes (dim)
+        ctx.fillStyle = 'rgb(230,200,140)';
+        ctx.fillRect(headX + px / 2, headY + py / 2, px / 2, py / 2);
+        ctx.fillRect(headX + headW - px, headY + py / 2, px / 2, py / 2);
+
+        // Arms
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(bodyX - px, bodyY + py, px, bodyH - py);
+        ctx.fillRect(bodyX + bodyW, bodyY + py, px, bodyH - py);
+
+        // Legs
+        const legY = bodyY + bodyH;
+        ctx.fillRect(cx - px * 1.2, legY, px, py * 2);
+        ctx.fillRect(cx + px * 0.2, legY, px, py * 2);
+
+        break;
+      }
+      default: {
+        // Fallback rectangle
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(x, y, w, h);
+      }
+    }
+
+    ctx.restore();
+  };
+
   // Render frame
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -291,22 +500,24 @@ const WizardDungeonCrawler = () => {
     const ctx = canvas.getContext('2d');
     const { width, height } = dimensions;
 
-    // Clear
-    ctx.fillStyle = '#0a0a1a';
+    const env = getEnvironmentColors(currentLevel);
+
+    // Clear / fog
+    ctx.fillStyle = env.fog;
     ctx.fillRect(0, 0, width, height);
 
     // Ceiling
-    ctx.fillStyle = '#1a1a2e';
+    ctx.fillStyle = env.ceiling;
     ctx.fillRect(0, 0, width, height / 2);
 
     // Floor
     const gradient = ctx.createLinearGradient(0, height / 2, 0, height);
-    gradient.addColorStop(0, '#2a2a3e');
-    gradient.addColorStop(1, '#1a1a2e');
+    gradient.addColorStop(0, env.floorTop);
+    gradient.addColorStop(1, env.floorBottom);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, height / 2, width, height / 2);
 
-    // Cast rays for walls
+    // Cast rays for walls (pixel-quantized)
     const rayAngleStep = (FOV * Math.PI / 180) / RESOLUTION;
     const startAngle = player.angle - (FOV * Math.PI / 180) / 2;
 
@@ -318,23 +529,47 @@ const WizardDungeonCrawler = () => {
 
       if (hit) {
         const sliceWidth = width / RESOLUTION;
-        const wallHeight = hit.distance > 0.1 ? height / hit.distance : height * 2;
+        const wallHeightRaw = hit.distance > 0.1 ? height / hit.distance : height * 2;
+        const wallHeight = Math.max(
+          PIXEL_STEP,
+          Math.floor(wallHeightRaw / PIXEL_STEP) * PIXEL_STEP
+        );
         const x = i * sliceWidth;
-        const y = (height - wallHeight) / 2;
+        const yRaw = (height - wallHeight) / 2;
+        const y = Math.floor(yRaw / PIXEL_STEP) * PIXEL_STEP;
 
         const wallType = WALL_TYPES[hit.tile];
         if (wallType) {
           let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
-          brightness = Math.max(0.2, Math.min(1.0, brightness));
-          if (hit.side === 1) brightness *= 0.7;
+          brightness = Math.max(0.25, Math.min(1.0, brightness));
+
+          // Slightly darker in deeper cave levels
+          const depthFactor = 0.85 + (1 - Math.max(0, Math.min(1, (currentLevel - 1) / 10))) * 0.15;
+          brightness *= depthFactor;
+
+          // Side shading
+          if (hit.side === 1) brightness *= 0.75;
+
+          // Simple procedural dither: alternate slices/rows
+          const dither = ((i + Math.floor(y / PIXEL_STEP)) % 2 === 0) ? 0.95 : 1.05;
+          brightness *= dither;
 
           const color = wallType.color;
           const r = parseInt(color.slice(1, 3), 16);
           const g = parseInt(color.slice(3, 5), 16);
           const b = parseInt(color.slice(5, 7), 16);
 
-          ctx.fillStyle = `rgb(${r * brightness}, ${g * brightness}, ${b * brightness})`;
-          ctx.fillRect(x, y, sliceWidth + 1, wallHeight);
+          const rr = Math.max(0, Math.min(255, r * brightness));
+          const gg = Math.max(0, Math.min(255, g * brightness));
+          const bb = Math.max(0, Math.min(255, b * brightness));
+
+          ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
+          ctx.fillRect(
+            Math.floor(x),
+            y,
+            Math.ceil(sliceWidth) + 1,
+            wallHeight
+          );
         }
 
         zBuffer[i] = hit.distance;
@@ -369,11 +604,19 @@ const WizardDungeonCrawler = () => {
       if (Math.abs(angleToSprite) > halfFov) return;
 
       const screenX = (angleToSprite / (FOV * Math.PI / 180) + 0.5) * width;
-      const spriteHeight = height / distance;
-      const spriteWidth = spriteHeight * (sprite.spriteType === 'projectile' ? 0.3 : 0.8);
+      const spriteHeightRaw = height / distance;
+      const spriteHeight = Math.max(
+        PIXEL_STEP,
+        Math.floor(spriteHeightRaw / PIXEL_STEP) * PIXEL_STEP
+      );
+      const spriteWidthRaw = spriteHeight * (sprite.spriteType === 'projectile' ? 0.3 : 0.8);
+      const spriteWidth = Math.max(
+        PIXEL_STEP,
+        Math.floor(spriteWidthRaw / PIXEL_STEP) * PIXEL_STEP
+      );
 
-      const x = screenX - spriteWidth / 2;
-      const y = (height - spriteHeight) / 2;
+      const x = Math.floor((screenX - spriteWidth / 2) / PIXEL_STEP) * PIXEL_STEP;
+      const y = Math.floor((height - spriteHeight) / 2 / PIXEL_STEP) * PIXEL_STEP;
 
       // Check z-buffer
       const screenSlice = Math.floor(screenX / (width / RESOLUTION));
@@ -383,23 +626,27 @@ const WizardDungeonCrawler = () => {
         distance < zBuffer[screenSlice]
       ) {
         let brightness = 1.0 - (distance / RENDER_DISTANCE) * 0.5;
+        brightness = Math.max(0.2, Math.min(1.0, brightness));
 
         if (sprite.spriteType === 'enemy') {
-          ctx.fillStyle = sprite.color;
-          ctx.globalAlpha = brightness;
-          ctx.fillRect(x, y, spriteWidth, spriteHeight);
+          drawMonsterSprite(ctx, sprite, x, y, spriteWidth, spriteHeight, brightness);
 
-          // Health bar
+          // Health bar (pixel bar)
           const healthPercent = sprite.health / sprite.maxHealth;
-          ctx.fillStyle = '#ff0000';
-          ctx.fillRect(x, y - 10, spriteWidth, 5);
-          ctx.fillStyle = '#00ff00';
-          ctx.fillRect(x, y - 10, spriteWidth * healthPercent, 5);
+          const barWidth = spriteWidth;
+          const barHeight = Math.max(2, Math.floor(PIXEL_STEP / 2));
+          const barX = x;
+          const barY = y - PIXEL_STEP;
 
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = '#3f0b0b';
+          ctx.fillRect(barX, barY, barWidth, barHeight);
+          ctx.fillStyle = '#00ff00';
+          ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
           ctx.globalAlpha = 1;
         } else if (sprite.spriteType === 'item') {
+          ctx.globalAlpha = brightness * 0.9;
           ctx.fillStyle = sprite.color;
-          ctx.globalAlpha = brightness * 0.8;
           ctx.beginPath();
           ctx.arc(
             screenX,
@@ -411,8 +658,8 @@ const WizardDungeonCrawler = () => {
           ctx.fill();
           ctx.globalAlpha = 1;
         } else if (sprite.spriteType === 'projectile') {
+          ctx.globalAlpha = 0.95;
           ctx.fillStyle = sprite.color;
-          ctx.globalAlpha = 0.9;
           ctx.beginPath();
           ctx.arc(
             screenX,
@@ -446,17 +693,17 @@ const WizardDungeonCrawler = () => {
     const minimapX = width - minimapSize - 20;
     const minimapY = 20;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
 
     // Draw walls on minimap
-    dungeon.forEach((row, y) => {
-      row.forEach((tile, x) => {
+    dungeon.forEach((row, yIdx) => {
+      row.forEach((tile, xIdx) => {
         if (tile > 0) {
-          ctx.fillStyle = '#555555';
+          ctx.fillStyle = '#444455';
           ctx.fillRect(
-            minimapX + x * minimapScale,
-            minimapY + y * minimapScale,
+            minimapX + xIdx * minimapScale,
+            minimapY + yIdx * minimapScale,
             minimapScale,
             minimapScale
           );
@@ -466,7 +713,7 @@ const WizardDungeonCrawler = () => {
 
     // Draw enemies on minimap
     enemies.forEach(enemy => {
-      ctx.fillStyle = '#ff0000';
+      ctx.fillStyle = '#ff5555';
       ctx.beginPath();
       ctx.arc(
         minimapX + enemy.x * minimapScale,
@@ -479,7 +726,7 @@ const WizardDungeonCrawler = () => {
     });
 
     // Draw player on minimap
-    ctx.fillStyle = '#00ff00';
+    ctx.fillStyle = '#5bff8a';
     ctx.beginPath();
     ctx.arc(
       minimapX + player.x * minimapScale,
@@ -499,7 +746,7 @@ const WizardDungeonCrawler = () => {
       minimapY +
       player.y * minimapScale +
       Math.sin(player.angle) * 10;
-    ctx.strokeStyle = '#00ff00';
+    ctx.strokeStyle = '#5bff8a';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(
@@ -508,7 +755,7 @@ const WizardDungeonCrawler = () => {
     );
     ctx.lineTo(dirX, dirY);
     ctx.stroke();
-  }, [player, dungeon, enemies, items, projectiles, dimensions, castRay]);
+  }, [player, dungeon, enemies, items, projectiles, dimensions, castRay, currentLevel]);
 
   // Game loop
   useEffect(() => {
@@ -534,10 +781,15 @@ const WizardDungeonCrawler = () => {
       const spell = equippedSpells[selectedSpell];
       if (!spell) return;
 
+      let didCast = false;
+
       setPlayer(prev => {
         if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
+        didCast = true;
         return { ...prev, mana: prev.mana - spell.manaCost };
       });
+
+      if (!didCast) return;
 
       setEquippedSpells(prev =>
         prev.map((s, i) =>
@@ -677,7 +929,7 @@ const WizardDungeonCrawler = () => {
         return { ...prev, x: newX, y: newY, angle: newAngle, mana: newMana };
       });
 
-      // Gamepad fire (do it outside setPlayer so we don't spam)
+      // Gamepad fire
       if (gamepadState.fire) {
         castSpellFromLoop();
       }
@@ -877,7 +1129,19 @@ const WizardDungeonCrawler = () => {
 
     animationId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationId);
-  }, [gameState, dungeon, enemies.length, render, player.health, equippedSpells, selectedSpell, gamepadConnected, isMobile, player.x, player.y]);
+  }, [
+    gameState,
+    dungeon,
+    enemies.length,
+    render,
+    player.health,
+    equippedSpells,
+    selectedSpell,
+    gamepadConnected,
+    isMobile,
+    player.x,
+    player.y
+  ]);
 
   // Resize handler
   useEffect(() => {
@@ -979,7 +1243,7 @@ const WizardDungeonCrawler = () => {
       }));
     };
 
-    const handleClick = (e) => {
+    const handleClick = () => {
       if (gameState !== 'playing') return;
 
       // Desktop: request pointer lock first click, then cast
@@ -1001,6 +1265,8 @@ const WizardDungeonCrawler = () => {
       // Cast spell
       if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
       const spell = equippedSpells[selectedSpell];
+
+      if (spell.cooldown > 0 || player.mana < spell.manaCost) return;
 
       setPlayer(prev => ({
         ...prev,
@@ -1083,7 +1349,7 @@ const WizardDungeonCrawler = () => {
         } else if (touch.identifier === rightTouchId.current) {
           rightTouchId.current = null;
           mobileLookRef.current = { x: 0, y: 0 };
-          
+
           // TAP TO CAST on right side
           if (gameState === 'playing') {
             if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
@@ -1175,9 +1441,15 @@ const WizardDungeonCrawler = () => {
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
             You Have Fallen
           </h1>
-          <p className="text-lg md:text-xl text-red-200 mb-2">Level Reached: {currentLevel}</p>
-          <p className="text-lg md:text-xl text-red-200 mb-2">Enemies Slain: {player.kills}</p>
-          <p className="text-lg md:text-xl text-red-200 mb-8">Gold Collected: {player.gold}</p>
+          <p className="text-lg md:text-xl text-red-200 mb-2">
+            Level Reached: {currentLevel}
+          </p>
+          <p className="text-lg md:text-xl text-red-200 mb-2">
+            Enemies Slain: {player.kills}
+          </p>
+          <p className="text-lg md:text-xl text-red-200 mb-8">
+            Gold Collected: {player.gold}
+          </p>
           <button
             onClick={startGame}
             className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all"
@@ -1196,9 +1468,11 @@ const WizardDungeonCrawler = () => {
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
             Level Complete!
           </h1>
-          <p className="text-xl text-yellow-100 mb-2">Dungeon {currentLevel} Cleared</p>
+          <p className="text-xl text-yellow-100 mb-2">
+            Dungeon {currentLevel} Cleared
+          </p>
           <p className="text-lg md:text-xl text-yellow-200 mb-2">
-            Enemies Defeated: {10 + currentLevel * 3}
+            Enemies Defeated: {player.kills}
           </p>
           <p className="text-lg md:text-xl text-yellow-200 mb-8">
             Level: {player.level} | Gold: {player.gold}
@@ -1296,7 +1570,9 @@ const WizardDungeonCrawler = () => {
           <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg">
             <div className="text-white text-xs md:text-sm text-right space-y-1">
               <p>Enemies: {enemies.length}</p>
-              <p className="text-gray-400 text-[10px] md:text-xs mt-1">ESC to pause</p>
+              <p className="text-gray-400 text-[10px] md:text-xs mt-1">
+                ESC to pause
+              </p>
               {gamepadConnected && (
                 <p className="text-green-400 text-[10px] md:text-xs">
                   🎮 Gamepad connected
@@ -1326,8 +1602,16 @@ const WizardDungeonCrawler = () => {
                 } ${!isReady ? 'opacity-50' : ''}`}
               >
                 <div className="flex flex-col items-center">
-                  <Icon size={24} className="md:hidden" style={{ color: spell.color }} />
-                  <Icon size={32} className="hidden md:block" style={{ color: spell.color }} />
+                  <Icon
+                    size={24}
+                    className="md:hidden"
+                    style={{ color: spell.color }}
+                  />
+                  <Icon
+                    size={32}
+                    className="hidden md:block"
+                    style={{ color: spell.color }}
+                  />
                   <div className="text-white text-[10px] md:text-xs mt-1">
                     {spell.name}
                   </div>
