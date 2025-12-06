@@ -42,7 +42,7 @@ const WizardDungeonCrawler = () => {
   ]);
   const [selectedSpell, setSelectedSpell] = useState(0);
 
-  // Dungeon
+  // Dungeon & entities
   const [dungeon, setDungeon] = useState([]);
   const [enemies, setEnemies] = useState([]);
   const [items, setItems] = useState([]);
@@ -54,8 +54,22 @@ const WizardDungeonCrawler = () => {
 
   // Input
   const keysPressed = useRef({});
-  const mouseX = useRef(0);
   const lastTime = useRef(Date.now());
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Touch controls (mobile)
+  const leftTouchId = useRef(null);
+  const rightTouchId = useRef(null);
+  const leftStart = useRef({ x: 0, y: 0 });
+  const rightStart = useRef({ x: 0, y: 0 });
+  const mobileMoveRef = useRef({ x: 0, y: 0 });
+  const mobileLookRef = useRef({ x: 0, y: 0 });
+
+  // Gamepad state
+  const gamepadStateRef = useRef({ lx: 0, ly: 0, rx: 0, fire: false });
+  const [gamepadConnected, setGamepadConnected] = useState(false);
 
   // Constants
   const DUNGEON_SIZE = 30;
@@ -81,6 +95,34 @@ const WizardDungeonCrawler = () => {
     ghost: { health: 20, damage: 8, speed: 2.0, xp: 20, color: '#aaaaff', gold: 8 },
     golem: { health: 80, damage: 20, speed: 0.8, xp: 40, color: '#6b4423', gold: 15 }
   };
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const ua = navigator.userAgent || '';
+      const mobile =
+        /Mobi|Android|iPhone|iPad|iPod/i.test(ua) ||
+        window.innerWidth < 900;
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Gamepad connect / disconnect
+  useEffect(() => {
+    const handleConnect = () => setGamepadConnected(true);
+    const handleDisconnect = () => setGamepadConnected(false);
+
+    window.addEventListener('gamepadconnected', handleConnect);
+    window.addEventListener('gamepaddisconnected', handleDisconnect);
+
+    return () => {
+      window.removeEventListener('gamepadconnected', handleConnect);
+      window.removeEventListener('gamepaddisconnected', handleDisconnect);
+    };
+  }, []);
 
   // Generate dungeon
   const generateDungeon = useCallback((level) => {
@@ -194,7 +236,7 @@ const WizardDungeonCrawler = () => {
     return map;
   }, []);
 
-  // Initialize game when entering playing state
+  // Initialize game on play
   useEffect(() => {
     if (gameState === 'playing') {
       generateDungeon(currentLevel);
@@ -469,8 +511,53 @@ const WizardDungeonCrawler = () => {
 
   // Game loop
   useEffect(() => {
-    // ⛔ don’t start the loop until dungeon is generated
-    if (gameState !== 'playing' || !dungeon.length) return;
+    if (gameState !== 'playing') return;
+
+    const updateGamepadState = () => {
+      if (!navigator.getGamepads) return;
+      const pads = navigator.getGamepads();
+      const gp = pads[0];
+      if (!gp) {
+        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, fire: false };
+        return;
+      }
+      const lx = gp.axes[0] || 0;
+      const ly = gp.axes[1] || 0;
+      const rx = gp.axes[2] || 0;
+      const fire = !!(gp.buttons[0] && gp.buttons[0].pressed);
+      gamepadStateRef.current = { lx, ly, rx, fire };
+    };
+
+    const castSpellFromLoop = () => {
+      const spell = equippedSpells[selectedSpell];
+      if (!spell) return;
+
+      setPlayer(prev => {
+        if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
+        return { ...prev, mana: prev.mana - spell.manaCost };
+      });
+
+      setEquippedSpells(prev =>
+        prev.map((s, i) =>
+          i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
+        )
+      );
+
+      setProjectiles(prev => [
+        ...prev,
+        {
+          id: Math.random(),
+          x: player.x,
+          y: player.y,
+          angle: player.angle,
+          speed: 8,
+          damage: spell.damage,
+          color: spell.color,
+          lifetime: 3,
+          dead: false
+        }
+      ]);
+    };
 
     let animationId;
     const gameLoop = () => {
@@ -478,13 +565,22 @@ const WizardDungeonCrawler = () => {
       const deltaTime = (now - lastTime.current) / 1000;
       lastTime.current = now;
 
+      // Update gamepad axes
+      if (gamepadConnected) {
+        updateGamepadState();
+      } else {
+        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, fire: false };
+      }
+
+      const gamepadState = gamepadStateRef.current;
+
       // Player movement
       setPlayer(prev => {
         let newAngle = prev.angle;
         let moveX = 0;
         let moveY = 0;
 
-        // Rotation
+        // Keyboard rotation
         if (keysPressed.current['arrowleft'] || keysPressed.current['q']) {
           newAngle -= TURN_SPEED * deltaTime;
         }
@@ -492,7 +588,7 @@ const WizardDungeonCrawler = () => {
           newAngle += TURN_SPEED * deltaTime;
         }
 
-        // Movement
+        // Keyboard movement
         if (keysPressed.current['w'] || keysPressed.current['arrowup']) {
           moveX += Math.cos(newAngle) * MOVE_SPEED * deltaTime;
           moveY += Math.sin(newAngle) * MOVE_SPEED * deltaTime;
@@ -510,30 +606,64 @@ const WizardDungeonCrawler = () => {
           moveY += Math.sin(newAngle + Math.PI / 2) * MOVE_SPEED * deltaTime;
         }
 
+        // Gamepad movement
+        const deadZone = 0.2;
+        const { lx, ly, rx } = gamepadState;
+        if (Math.abs(ly) > deadZone) {
+          const forward = -ly * MOVE_SPEED * deltaTime;
+          moveX += Math.cos(newAngle) * forward;
+          moveY += Math.sin(newAngle) * forward;
+        }
+        if (Math.abs(lx) > deadZone) {
+          const strafe = lx * MOVE_SPEED * deltaTime;
+          moveX += Math.cos(newAngle + Math.PI / 2) * strafe;
+          moveY += Math.sin(newAngle + Math.PI / 2) * strafe;
+        }
+        if (Math.abs(rx) > deadZone) {
+          newAngle += rx * TURN_SPEED * deltaTime;
+        }
+
+        // Mobile touch movement/look
+        if (isMobile) {
+          const mv = mobileMoveRef.current;
+          const look = mobileLookRef.current;
+          const maxDistance = 80; // pixels
+          const moveNormX = Math.max(-1, Math.min(1, mv.x / maxDistance));
+          const moveNormY = Math.max(-1, Math.min(1, mv.y / maxDistance));
+          const lookNormX = Math.max(-1, Math.min(1, look.x / maxDistance));
+
+          if (Math.abs(moveNormY) > 0.05) {
+            const forward = -moveNormY * MOVE_SPEED * deltaTime;
+            moveX += Math.cos(newAngle) * forward;
+            moveY += Math.sin(newAngle) * forward;
+          }
+          if (Math.abs(moveNormX) > 0.05) {
+            const strafe = moveNormX * MOVE_SPEED * deltaTime;
+            moveX += Math.cos(newAngle + Math.PI / 2) * strafe;
+            moveY += Math.sin(newAngle + Math.PI / 2) * strafe;
+          }
+
+          if (Math.abs(lookNormX) > 0.05) {
+            const touchTurnSpeed = TURN_SPEED * 1.5;
+            newAngle += lookNormX * touchTurnSpeed * deltaTime;
+          }
+        }
+
         // Collision
         let newX = prev.x + moveX;
         let newY = prev.y + moveY;
 
         const checkTile = (x, y) => {
-          // If dungeon isn't ready, don't block movement on it
-          if (!dungeon.length) return false;
-
           const tileX = Math.floor(x);
           const tileY = Math.floor(y);
-
           if (
             tileX < 0 ||
             tileX >= DUNGEON_SIZE ||
             tileY < 0 ||
             tileY >= DUNGEON_SIZE
-          ) {
+          )
             return true;
-          }
-
-          const row = dungeon[tileY];
-          if (!row) return true;
-
-          return row[tileX] > 0;
+          return dungeon[tileY][tileX] > 0;
         };
 
         if (checkTile(newX, prev.y)) newX = prev.x;
@@ -544,6 +674,11 @@ const WizardDungeonCrawler = () => {
 
         return { ...prev, x: newX, y: newY, angle: newAngle, mana: newMana };
       });
+
+      // Gamepad fire (do it outside setPlayer so we don't spam)
+      if (gamepadState.fire) {
+        castSpellFromLoop();
+      }
 
       // Update spell cooldowns
       setEquippedSpells(prev =>
@@ -584,7 +719,7 @@ const WizardDungeonCrawler = () => {
           .filter(p => !p.dead)
       );
 
-      // Check projectile-enemy collisions
+      // Projectile-enemy collisions
       setProjectiles(prev => {
         const remaining = [];
         prev.forEach(proj => {
@@ -705,7 +840,7 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      // Check level up
+      // Level up
       setPlayer(prev => {
         if (prev.xp >= prev.xpToNext) {
           return {
@@ -722,13 +857,13 @@ const WizardDungeonCrawler = () => {
         return prev;
       });
 
-      // Check death
+      // Death
       if (player.health <= 0) {
         setGameState('dead');
         return;
       }
 
-      // Check victory (all enemies dead)
+      // Victory
       if (enemies.length === 0 && gameState === 'playing') {
         setGameState('victory');
         return;
@@ -740,7 +875,7 @@ const WizardDungeonCrawler = () => {
 
     animationId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationId);
-  }, [gameState, dungeon, enemies.length, render, player.health]);
+  }, [gameState, dungeon, enemies.length, render, player.health, equippedSpells, selectedSpell, gamepadConnected, isMobile, player.x, player.y]);
 
   // Resize handler
   useEffect(() => {
@@ -805,17 +940,17 @@ const WizardDungeonCrawler = () => {
     </div>
   );
 
-  // Input handlers + pointer lock
+  // Pointer lock + casting + keyboard input
   useEffect(() => {
     const handleKeyDown = e => {
       const key = e.key.toLowerCase();
       keysPressed.current[key] = true;
-  
+
       // Spell selection
       if (e.key >= '1' && e.key <= '3') {
         setSelectedSpell(parseInt(e.key) - 1);
       }
-  
+
       // Pause
       if (e.key === 'Escape' || e.key === 'Esc') {
         if (gameState === 'playing') {
@@ -825,50 +960,52 @@ const WizardDungeonCrawler = () => {
         }
       }
     };
-  
+
     const handleKeyUp = e => {
       const key = e.key.toLowerCase();
       keysPressed.current[key] = false;
     };
-  
-    // Use movementX and ignore screen edges (pointer lock)
+
     const handleMouseMove = e => {
-      if (gameState !== 'playing') return;
-  
+      if (gameState !== 'playing' || isMobile) return;
+
       const sensitivity = 0.002;
       const deltaX = e.movementX || 0;
       if (!deltaX) return;
-  
+
       setPlayer(prev => ({
         ...prev,
         angle: prev.angle + deltaX * sensitivity
       }));
     };
-  
-    const handleClick = e => {
-      const canvas = canvasRef.current;
-  
-      // Request pointer lock on the canvas first
-      if (canvas && document.pointerLockElement !== canvas) {
-        if (typeof canvas.requestPointerLock === 'function') {
-          canvas.requestPointerLock();
+
+    const handleClick = () => {
+      // Pointer lock (desktop only)
+      if (!isMobile) {
+        const canvas = canvasRef.current;
+        if (canvas && document.pointerLockElement !== canvas) {
+          if (typeof canvas.requestPointerLock === 'function') {
+            canvas.requestPointerLock();
+          }
         }
       }
-  
-      // If not in game, don’t fire
+
       if (gameState !== 'playing') return;
-  
+
       const spell = equippedSpells[selectedSpell];
-      if (!spell || spell.cooldown > 0 || player.mana < spell.manaCost) return;
-  
-      // Cast spell
-      setPlayer(prev => ({ ...prev, mana: prev.mana - spell.manaCost }));
+      if (!spell) return;
+
+      setPlayer(prev => {
+        if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
+        return { ...prev, mana: prev.mana - spell.manaCost };
+      });
+
       setEquippedSpells(prev =>
         prev.map((s, i) =>
           i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
         )
       );
-  
+
       setProjectiles(prev => [
         ...prev,
         {
@@ -884,42 +1021,108 @@ const WizardDungeonCrawler = () => {
         }
       ]);
     };
-  
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    // listen on document so pointer-locked movement works
     document.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('click', handleClick);
-  
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
     };
-  }, [gameState, equippedSpells, selectedSpell, player]);
+  }, [gameState, equippedSpells, selectedSpell, player, isMobile]);
+
+  // Touch controls (mobile)
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleTouchStart = (e) => {
+      for (const touch of e.changedTouches) {
+        const half = window.innerWidth / 2;
+        if (touch.clientX < half && leftTouchId.current === null) {
+          // left stick (move)
+          leftTouchId.current = touch.identifier;
+          leftStart.current = { x: touch.clientX, y: touch.clientY };
+          mobileMoveRef.current = { x: 0, y: 0 };
+        } else if (touch.clientX >= half && rightTouchId.current === null) {
+          // right stick (look)
+          rightTouchId.current = touch.identifier;
+          rightStart.current = { x: touch.clientX, y: touch.clientY };
+          mobileLookRef.current = { x: 0, y: 0 };
+        }
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      e.preventDefault();
+      for (const touch of e.changedTouches) {
+        if (touch.identifier === leftTouchId.current) {
+          const dx = touch.clientX - leftStart.current.x;
+          const dy = touch.clientY - leftStart.current.y;
+          mobileMoveRef.current = { x: dx, y: dy };
+        } else if (touch.identifier === rightTouchId.current) {
+          const dx = touch.clientX - rightStart.current.x;
+          mobileLookRef.current = { x: dx, y: 0 };
+        }
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      for (const touch of e.changedTouches) {
+        if (touch.identifier === leftTouchId.current) {
+          leftTouchId.current = null;
+          mobileMoveRef.current = { x: 0, y: 0 };
+        } else if (touch.identifier === rightTouchId.current) {
+          rightTouchId.current = null;
+          mobileLookRef.current = { x: 0, y: 0 };
+        }
+      }
+    };
+
+    const handleTouchCancel = handleTouchEnd;
+
+    const el = canvasRef.current || window;
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd, { passive: false });
+    el.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+      el.removeEventListener('touchcancel', handleTouchCancel);
+    };
+  }, [isMobile]);
 
   // ---------- SCREENS ----------
 
   if (gameState === 'menu') {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-6xl font-bold text-white mb-4 drop-shadow-lg">
+        <div className="text-center px-4">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
             <Wand2 className="inline-block mb-2" size={64} />
             <br />
             WIZARD&apos;S DESCENT
           </h1>
-          <p className="text-xl text-purple-200 mb-8">A Procedural Dungeon Crawler</p>
+          <p className="text-lg md:text-xl text-purple-200 mb-8">
+            A Procedural Dungeon Crawler
+          </p>
           <button
             onClick={startGame}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all transform hover:scale-105"
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all transform hover:scale-105"
           >
             Begin Your Journey
           </button>
-          <div className="mt-8 text-purple-200 text-sm">
-            <p>WASD - Move | Mouse - Look | Click - Cast Spell</p>
-            <p>1/2/3 - Select Spell | ESC - Pause</p>
+          <div className="mt-8 text-purple-200 text-sm space-y-1">
+            <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
+            <p>1/2/3 Spells · ESC Pause</p>
+            <p>Mobile: Left Thumb Move · Right Thumb Look · Tap Cast</p>
+            <p>Controller: Left Stick Move · Right Stick Look · A/X Cast</p>
           </div>
         </div>
       </div>
@@ -929,15 +1132,17 @@ const WizardDungeonCrawler = () => {
   if (gameState === 'dead') {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-red-900 via-red-800 to-black flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center px-4">
           <Skull className="mx-auto mb-4 text-red-400" size={80} />
-          <h1 className="text-5xl font-bold text-white mb-4">You Have Fallen</h1>
-          <p className="text-xl text-red-200 mb-2">Level Reached: {currentLevel}</p>
-          <p className="text-xl text-red-200 mb-2">Enemies Slain: {player.kills}</p>
-          <p className="text-xl text-red-200 mb-8">Gold Collected: {player.gold}</p>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
+            You Have Fallen
+          </h1>
+          <p className="text-lg md:text-xl text-red-200 mb-2">Level Reached: {currentLevel}</p>
+          <p className="text-lg md:text-xl text-red-200 mb-2">Enemies Slain: {player.kills}</p>
+          <p className="text-lg md:text-xl text-red-200 mb-8">Gold Collected: {player.gold}</p>
           <button
             onClick={startGame}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all"
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all"
           >
             Try Again
           </button>
@@ -949,18 +1154,20 @@ const WizardDungeonCrawler = () => {
   if (gameState === 'victory') {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-yellow-600 via-yellow-700 to-orange-800 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-white mb-4">Level Complete!</h1>
-          <p className="text-2xl text-yellow-100 mb-2">Dungeon {currentLevel} Cleared</p>
-          <p className="text-xl text-yellow-200 mb-2">
+        <div className="text-center px-4">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
+            Level Complete!
+          </h1>
+          <p className="text-xl text-yellow-100 mb-2">Dungeon {currentLevel} Cleared</p>
+          <p className="text-lg md:text-xl text-yellow-200 mb-2">
             Enemies Defeated: {10 + currentLevel * 3}
           </p>
-          <p className="text-xl text-yellow-200 mb-8">
+          <p className="text-lg md:text-xl text-yellow-200 mb-8">
             Level: {player.level} | Gold: {player.gold}
           </p>
           <button
             onClick={nextLevel}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all"
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all"
           >
             Descend Deeper (Level {currentLevel + 1})
           </button>
@@ -972,8 +1179,10 @@ const WizardDungeonCrawler = () => {
   if (gameState === 'paused') {
     return (
       <div className="w-full h-screen bg-black bg-opacity-80 flex items-center justify-center">
-        <div className="text-center bg-gray-800 p-8 rounded-lg">
-          <h1 className="text-4xl font-bold text-white mb-4">Paused</h1>
+        <div className="text-center bg-gray-800 p-6 md:p-8 rounded-lg mx-4">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Paused
+          </h1>
           <button
             onClick={() => setGameState('playing')}
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg mb-4 w-full"
@@ -994,7 +1203,7 @@ const WizardDungeonCrawler = () => {
   // ---------- MAIN GAME VIEW ----------
 
   return (
-    <div className="w-full h-screen bg-black overflow-hidden relative">
+    <div className="w-full h-screen bg-black overflow-hidden relative touch-none">
       <canvas
         ref={canvasRef}
         width={dimensions.width}
@@ -1003,11 +1212,11 @@ const WizardDungeonCrawler = () => {
       />
 
       {/* HUD Overlay */}
-      <div className="absolute top-0 left-0 right-0 p-4 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 p-2 md:p-4 pointer-events-none">
         <div className="flex justify-between items-start">
           {/* Left side - Stats */}
-          <div className="bg-black bg-opacity-60 p-4 rounded-lg w-64">
-            <div className="text-white text-sm mb-2 flex justify-between">
+          <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg w-52 md:w-64">
+            <div className="text-white text-xs md:text-sm mb-2 flex justify-between">
               <span>Level {player.level}</span>
               <span>Dungeon {currentLevel}</span>
             </div>
@@ -1040,16 +1249,21 @@ const WizardDungeonCrawler = () => {
                 />
               </div>
             </div>
-            <div className="mt-2 text-yellow-400 text-sm">
+            <div className="mt-2 text-yellow-400 text-xs md:text-sm">
               💰 {player.gold} Gold | 💀 {player.kills} Kills
             </div>
           </div>
 
           {/* Right side - Info */}
-          <div className="bg-black bg-opacity-60 p-4 rounded-lg">
-            <div className="text-white text-sm text-right">
+          <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg">
+            <div className="text-white text-xs md:text-sm text-right space-y-1">
               <p>Enemies: {enemies.length}</p>
-              <p className="text-gray-400 text-xs mt-1">ESC to pause</p>
+              <p className="text-gray-400 text-[10px] md:text-xs mt-1">ESC to pause</p>
+              {gamepadConnected && (
+                <p className="text-green-400 text-[10px] md:text-xs">
+                  🎮 Gamepad connected
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -1057,7 +1271,7 @@ const WizardDungeonCrawler = () => {
 
       {/* Bottom - Spells */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none">
-        <div className="flex gap-3">
+        <div className="flex gap-2 md:gap-3">
           {equippedSpells.map((spell, index) => {
             const Icon = spell.icon;
             const isSelected = index === selectedSpell;
@@ -1067,23 +1281,26 @@ const WizardDungeonCrawler = () => {
             return (
               <div
                 key={index}
-                className={`bg-black bg-opacity-70 p-3 rounded-lg border-2 transition-all ${
+                className={`bg-black bg-opacity-70 p-2 md:p-3 rounded-lg border-2 transition-all ${
                   isSelected
                     ? 'border-yellow-400 scale-110'
                     : 'border-gray-600'
                 } ${!isReady ? 'opacity-50' : ''}`}
               >
                 <div className="flex flex-col items-center">
-                  <Icon size={32} style={{ color: spell.color }} />
-                  <div className="text-white text-xs mt-1">{spell.name}</div>
-                  <div className="text-gray-400 text-xs">
+                  <Icon size={24} className="md:hidden" style={{ color: spell.color }} />
+                  <Icon size={32} className="hidden md:block" style={{ color: spell.color }} />
+                  <div className="text-white text-[10px] md:text-xs mt-1">
+                    {spell.name}
+                  </div>
+                  <div className="text-gray-400 text-[10px] md:text-xs">
                     {spell.manaCost} mana
                   </div>
-                  <div className="text-white text-xs font-bold">
+                  <div className="text-white text-[10px] md:text-xs font-bold">
                     {index + 1}
                   </div>
                   {spell.cooldown > 0 && (
-                    <div className="text-red-400 text-xs">
+                    <div className="text-red-400 text-[10px] md:text-xs">
                       {spell.cooldown.toFixed(1)}s
                     </div>
                   )}
@@ -1093,6 +1310,17 @@ const WizardDungeonCrawler = () => {
           })}
         </div>
       </div>
+
+      {/* Mobile touch hints */}
+      {isMobile && (
+        <>
+          <div className="pointer-events-none absolute bottom-24 left-4 w-24 h-24 rounded-full border border-purple-400/50 bg-purple-500/10" />
+          <div className="pointer-events-none absolute bottom-24 right-4 w-24 h-24 rounded-full border border-indigo-400/50 bg-indigo-500/10" />
+          <div className="pointer-events-none absolute bottom-4 left-4 right-4 text-center text-[10px] text-purple-100">
+            Left thumb: move · Right thumb: look · Tap: cast
+          </div>
+        </>
+      )}
     </div>
   );
 };
