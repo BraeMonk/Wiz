@@ -51,6 +51,8 @@ const WizardDungeonCrawler = () => {
   const [projectiles, setProjectiles] = useState([]);
   const particlesRef = useRef([]);
 
+  const levelStartTimeRef = useRef(Date.now());
+
   // Rendering
   const canvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -100,6 +102,7 @@ const WizardDungeonCrawler = () => {
   const MOVE_SPEED = 3;
   const TURN_SPEED = 2;
   const PIXEL_STEP = 4; // quantization step for "pixel" look
+  const TILE_HEIGHT_UNIT = 40; // scale for how tall a heightMap step feels on screen
 
   // Wall types (more cave-like, plus special shapes)
   const WALL_TYPES = {
@@ -780,12 +783,13 @@ const WizardDungeonCrawler = () => {
     const playerTileY = Math.floor(player.y);
     const playerHeight =
       heightMap[playerTileY]?.[playerTileX] ?? 0;
-
+    
     const baseHorizon = height / 2;
     const horizon =
       baseHorizon
-      - pitch * (height * 0.4)      // pitch: up = more ceiling, down = more floor
-      + jumpState.height * 40;      // jump: camera rises, world drops visually
+      - pitch * (height * 0.4)              // look up/down
+      - playerHeight * TILE_HEIGHT_UNIT     // higher tile = camera higher
+      + jumpState.height * TILE_HEIGHT_UNIT; // jump = vertical boost
 
     // Clear / fog
     ctx.fillStyle = env.fog;
@@ -827,7 +831,7 @@ const WizardDungeonCrawler = () => {
         // Terrain-aware wall vertical position
         const tileHeight = heightMap[hit.tileY]?.[hit.tileX] ?? 0;
         const relativeHeight = tileHeight - playerHeight;
-        const terrainOffset = relativeHeight * 20;
+        const terrainOffset = relativeHeight * TILE_HEIGHT_UNIT;
 
         const yRaw =
           horizon - baseWallHeight / 2 - terrainOffset;
@@ -944,7 +948,7 @@ const WizardDungeonCrawler = () => {
       const spriteTileHeight =
         heightMap[spriteTileY]?.[spriteTileX] ?? 0;
       const spriteRelHeight = spriteTileHeight - playerHeight;
-      const spriteTerrainOffset = spriteRelHeight * 20;
+      const spriteTerrainOffset = spriteRelHeight * TILE_HEIGHT_UNIT;
 
       const yRawSprite =
         horizon - spriteHeight / 2 - spriteTerrainOffset;
@@ -1299,19 +1303,25 @@ const WizardDungeonCrawler = () => {
           // Solid wall?
           if (dungeon[tileY][tileX] > 0) return true;
         
-          // --- 3D height step check ---
+          // How much higher the target floor is than where we're standing
           const targetBaseHeight =
             heightMap[tileY]?.[tileX] ?? 0;
           const step = targetBaseHeight - currentBaseHeight;
           const jumpHeight = jumpRef.current.height;
-        
-          // If the floor is significantly higher than where we stand,
-          // we need to be in the air (jumping) high enough to clear it.
-          if (step > 0.6 && jumpHeight < step - 0.1) {
-            return true; // too high, treat as blocked ledge
+          
+          // Small bumps (<= 0.4) are always walkable.
+          // Medium steps (0.4–1.5) require a jump high enough.
+          // Huge cliffs (> 1.5) are treated as walls.
+          if (step > 1.5) {
+            return true; // too high, like a cliff
           }
-        
-          // Drops are allowed (you just fall visually)
+          
+          if (step > 0.4 && jumpHeight < step - 0.2) {
+            // you haven't jumped high enough to get up here
+            return true;
+          }
+          
+          // Drops (negative step) are allowed – you'll just fall visually
           return false;
         };
         
@@ -1550,8 +1560,12 @@ const WizardDungeonCrawler = () => {
         return;
       }
 
-      // Victory
-      if (enemies.length === 0 && gameState === 'playing') {
+      // Victory (only after the level has actually started and had time to spawn)
+      if (
+        gameState === 'playing' &&
+        enemies.length === 0 &&
+        Date.now() - levelStartTimeRef.current > 500 // wait ~0.5s
+      ) {
         setGameState('victory');
         return;
       }
@@ -1589,8 +1603,9 @@ const WizardDungeonCrawler = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Start game
   const startGame = () => {
+    levelStartTimeRef.current = Date.now();   // <--- add this
+  
     setGameState('playing');
     setCurrentLevel(1);
     setPlayer({
@@ -1607,10 +1622,10 @@ const WizardDungeonCrawler = () => {
       gold: 0,
       kills: 0
     });
-
+  
     setPitch(0);
     setJumpState({ height: 0, velocity: 0, grounded: true });
-
+  
     mobileMoveRef.current = { x: 0, y: 0 };
     mobileLookRef.current = { x: 0, y: 0 };
     leftTouchId.current = null;
@@ -1618,6 +1633,8 @@ const WizardDungeonCrawler = () => {
   };
 
   const nextLevel = () => {
+    levelStartTimeRef.current = Date.now();   // <--- add this
+  
     setCurrentLevel(prev => prev + 1);
     setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
     setPitch(0);
@@ -1668,7 +1685,7 @@ const WizardDungeonCrawler = () => {
           if (!prev.grounded) return prev;
           return {
             ...prev,
-            velocity: 5,
+            velocity: 7,
             grounded: false
           };
         });
