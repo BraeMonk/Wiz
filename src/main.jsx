@@ -9,12 +9,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// ✅ Register service worker scoped to /Wiz/
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Using a relative path keeps the scope under /Wiz/
-    navigator.serviceWorker
-      .register('./service-worker.js')
-      .catch(err => console.error('SW registration failed', err));
-  });
-}
+// ❌ TEMPORARILY DISABLE SW
+// if ('serviceWorker' in navigator) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker
+//       .register('./service-worker.js')
+//       .catch(err => console.error('SW registration failed', err));
+//   });
+// }
