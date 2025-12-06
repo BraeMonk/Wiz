@@ -625,26 +625,30 @@ const WizardDungeonCrawler = () => {
   };
 
   // --------- PROJECTILE SPRITES (fire / ice / lightning) ----------
+  // --------- PROJECTILE SPRITES (fire / ice / lightning) ----------
   const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
     ctx.save();
-    ctx.globalAlpha = brightness;
-
+    
     const baseColor = projectile.color || '#ffffff';
 
     switch (projectile.spellType) {
       case 'fire': {
-        // Teardrop flame
         ctx.translate(x, y);
-        ctx.scale(1, 1.3); // a bit taller
-        const r = size * 0.6;
-
-        // Outer glow
+        
+        // **THICK OUTER GLOW**
+        const outerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 3);
+        outerGlow.addColorStop(0, 'rgba(255, 100, 0, 0.4)');
+        outerGlow.addColorStop(0.5, 'rgba(255, 80, 0, 0.2)');
+        outerGlow.addColorStop(1, 'rgba(255, 60, 0, 0)');
+        ctx.fillStyle = outerGlow;
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(255, 140, 0, 0.25)';
-        ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2);
+        ctx.arc(0, 0, size * 3, 0, Math.PI * 2);
         ctx.fill();
-
-        // Main flame body
+        
+        // Bigger flame
+        ctx.scale(1.2, 1.5);
+        const r = size * 0.8;
+        
         ctx.beginPath();
         ctx.fillStyle = baseColor;
         ctx.moveTo(0, -r);
@@ -654,121 +658,122 @@ const WizardDungeonCrawler = () => {
 
         // Hot core
         ctx.beginPath();
-        ctx.fillStyle = '#ffe9a3';
-        ctx.moveTo(0, -r * 0.6);
-        ctx.bezierCurveTo(
-          r * 0.4, -r * 0.2,
-          r * 0.2, r * 0.4,
-          0,
-          r * 0.6
-        );
-        ctx.bezierCurveTo(
-          -r * 0.2, r * 0.4,
-          -r * 0.4, -r * 0.2,
-          0,
-          -r * 0.6
-        );
+        ctx.fillStyle = '#fff5d0';
+        ctx.moveTo(0, -r * 0.5);
+        ctx.bezierCurveTo(r * 0.5, -r * 0.2, r * 0.3, r * 0.5, 0, r * 0.7);
+        ctx.bezierCurveTo(-r * 0.3, r * 0.5, -r * 0.5, -r * 0.2, 0, -r * 0.5);
         ctx.fill();
 
         break;
       }
 
       case 'ice': {
-        // Shard diamond + spikes
         ctx.translate(x, y);
-        const r = size * 0.7;
+        const r = size * 0.9;
 
-        // Soft icy glow
+        // **THICK ICY GLOW**
+        const iceGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3);
+        iceGlow.addColorStop(0, 'rgba(120, 200, 255, 0.5)');
+        iceGlow.addColorStop(0.5, 'rgba(100, 180, 255, 0.25)');
+        iceGlow.addColorStop(1, 'rgba(80, 160, 255, 0)');
+        ctx.fillStyle = iceGlow;
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(180, 220, 255, 0.25)';
-        ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, r * 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main diamond shard
+        // Thicker shard
         ctx.beginPath();
         ctx.fillStyle = baseColor;
-        ctx.moveTo(0, -r);
-        ctx.lineTo(r * 0.75, 0);
-        ctx.lineTo(0, r);
-        ctx.lineTo(-r * 0.75, 0);
+        ctx.moveTo(0, -r * 1.2);
+        ctx.lineTo(r, 0);
+        ctx.lineTo(0, r * 1.2);
+        ctx.lineTo(-r, 0);
         ctx.closePath();
         ctx.fill();
 
-        // Inner highlight
+        // Bright core
         ctx.beginPath();
-        ctx.fillStyle = '#e6f4ff';
-        ctx.moveTo(0, -r * 0.6);
-        ctx.lineTo(r * 0.4, 0);
-        ctx.lineTo(0, r * 0.6);
-        ctx.lineTo(-r * 0.4, 0);
+        ctx.fillStyle = '#f0f8ff';
+        ctx.moveTo(0, -r * 0.7);
+        ctx.lineTo(r * 0.5, 0);
+        ctx.lineTo(0, r * 0.7);
+        ctx.lineTo(-r * 0.5, 0);
         ctx.closePath();
         ctx.fill();
 
-        // Side shards
+        // Chunky side shards
         ctx.strokeStyle = '#c2e4ff';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(-r * 0.9, -r * 0.2);
-        ctx.lineTo(-r * 1.2, -r * 0.5);
-        ctx.moveTo(r * 0.9, r * 0.2);
-        ctx.lineTo(r * 1.2, r * 0.5);
+        ctx.moveTo(-r * 1.1, -r * 0.3);
+        ctx.lineTo(-r * 1.5, -r * 0.7);
+        ctx.moveTo(r * 1.1, r * 0.3);
+        ctx.lineTo(r * 1.5, r * 0.7);
         ctx.stroke();
 
         break;
       }
 
       case 'lightning': {
-        // Jagged bolt
         ctx.translate(x, y);
-        const len = size * 2.0;
-        const half = len / 2;
+        const len = size * 2.5;
 
-        // Outer glow
-        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, len);
-        grad.addColorStop(0, 'rgba(255, 255, 180, 0.6)');
-        grad.addColorStop(1, 'rgba(255, 255, 180, 0.0)');
-        ctx.fillStyle = grad;
+        // **HUGE ELECTRIC GLOW**
+        const lightningGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, len * 1.5);
+        lightningGlow.addColorStop(0, 'rgba(255, 255, 150, 0.7)');
+        lightningGlow.addColorStop(0.5, 'rgba(255, 255, 120, 0.4)');
+        lightningGlow.addColorStop(1, 'rgba(255, 255, 100, 0)');
+        ctx.fillStyle = lightningGlow;
         ctx.beginPath();
-        ctx.arc(0, 0, len, 0, Math.PI * 2);
+        ctx.arc(0, 0, len * 1.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Core bolt
+        // Thicker bolt
         ctx.strokeStyle = baseColor;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 5;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
 
         ctx.beginPath();
-        ctx.moveTo(-size * 0.3, -half);
-        ctx.lineTo(size * 0.1, -half * 0.3);
-        ctx.lineTo(-size * 0.15, half * 0.1);
-        ctx.lineTo(size * 0.25, half * 0.8);
+        ctx.moveTo(-size * 0.4, -len * 0.5);
+        ctx.lineTo(size * 0.2, -len * 0.2);
+        ctx.lineTo(-size * 0.2, len * 0.1);
+        ctx.lineTo(size * 0.4, len * 0.5);
         ctx.stroke();
 
-        // Secondary highlight
-        ctx.strokeStyle = '#fffff0';
-        ctx.lineWidth = 1.5;
+        // Bright inner
+        ctx.strokeStyle = '#ffffd0';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(-size * 0.15, -half * 0.8);
-        ctx.lineTo(size * 0.05, -half * 0.4);
-        ctx.lineTo(-size * 0.05, half * 0.1);
+        ctx.moveTo(-size * 0.3, -len * 0.4);
+        ctx.lineTo(size * 0.1, -len * 0.15);
+        ctx.lineTo(-size * 0.1, len * 0.15);
+        ctx.lineTo(size * 0.3, len * 0.4);
         ctx.stroke();
 
         break;
       }
 
       default: {
-        // Fallback: simple orb
+        // Chunky fallback
+        const orbGlow = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
+        orbGlow.addColorStop(0, baseColor);
+        orbGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = orbGlow;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
         ctx.fillStyle = baseColor;
         ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.arc(x, y, size * 1.2, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
     ctx.restore();
   };
-
+  
   // Render frame
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -795,18 +800,32 @@ const WizardDungeonCrawler = () => {
     ctx.fillStyle = env.fog;
     ctx.fillRect(0, 0, width, height);
 
-    // Ceiling (above horizon)
-    ctx.fillStyle = env.ceiling;
+    // Ceiling with subtle gradient (above horizon)
     const ceilingHeight = Math.max(0, Math.min(height, horizon));
+    const ceilingGrad = ctx.createLinearGradient(0, 0, 0, ceilingHeight);
+    ceilingGrad.addColorStop(0, env.ceiling);
+    ceilingGrad.addColorStop(1, lerpColor(env.ceiling, env.floorTop, 0.25));
+    ctx.fillStyle = ceilingGrad;
     ctx.fillRect(0, 0, width, ceilingHeight);
 
-    // Floor (below horizon)
+    // Floor with depth gradient (below horizon)
     const floorStart = Math.max(0, Math.min(height, horizon));
-    const gradient = ctx.createLinearGradient(0, floorStart, 0, height);
-    gradient.addColorStop(0, env.floorTop);
-    gradient.addColorStop(1, env.floorBottom);
-    ctx.fillStyle = gradient;
+    const floorGrad = ctx.createLinearGradient(0, floorStart, 0, height);
+    floorGrad.addColorStop(0, env.floorTop);
+    floorGrad.addColorStop(0.6, lerpColor(env.floorTop, env.floorBottom, 0.7));
+    floorGrad.addColorStop(1, env.floorBottom);
+    ctx.fillStyle = floorGrad;
     ctx.fillRect(0, floorStart, width, height - floorStart);
+
+    // Atmospheric glow at horizon line
+    const horizonGlow = ctx.createRadialGradient(
+      width / 2, horizon, 0,
+      width / 2, horizon, width * 0.5
+    );
+    horizonGlow.addColorStop(0, 'rgba(80, 60, 100, 0.12)');
+    horizonGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = horizonGlow;
+    ctx.fillRect(0, 0, width, height);
 
     // Cast rays for walls (pixel-quantized)
     const rayAngleStep = (FOV * Math.PI / 180) / RESOLUTION;
@@ -887,6 +906,37 @@ const WizardDungeonCrawler = () => {
             sliceHeight
           );
 
+          // Edge highlight for depth perception
+          if (hit.side === 0 && brightness > 0.4) {
+            const highlightAlpha = (brightness - 0.4) * 0.15;
+            ctx.fillStyle = `rgba(255, 255, 255, ${highlightAlpha})`;
+            ctx.fillRect(Math.floor(x), sliceY, 2, sliceHeight);
+          }
+
+          // Subtle shadow on darker side
+          if (hit.side === 1 && brightness < 0.7) {
+            const shadowAlpha = (0.7 - brightness) * 0.1;
+            ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+            ctx.fillRect(
+              Math.floor(x) + Math.ceil(sliceWidth) - 2,
+              sliceY,
+              2,
+              sliceHeight
+            );
+          }
+
+          // **TEXTURE DETAIL** - Add scanlines for depth
+          if (baseWallHeight > PIXEL_STEP * 3) {
+            ctx.strokeStyle = `rgba(0, 0, 0, ${brightness * 0.08})`;
+            ctx.lineWidth = 1;
+            for (let scan = 0; scan < sliceHeight; scan += PIXEL_STEP * 2) {
+              ctx.beginPath();
+              ctx.moveTo(Math.floor(x), sliceY + scan);
+              ctx.lineTo(Math.floor(x) + Math.ceil(sliceWidth), sliceY + scan);
+              ctx.stroke();
+            }
+          }
+          
           if (tileId === 7) {
             ctx.strokeStyle = `rgba(0,0,0,0.35)`;
             ctx.lineWidth = 1;
@@ -960,49 +1010,74 @@ const WizardDungeonCrawler = () => {
               const y0 = horizon - h0 * TILE_HEIGHT_UNIT;
               const y1 = horizon - h1 * TILE_HEIGHT_UNIT;
     
+              // **THICK 3D STEP WALLS**
+              const stepThickness = PIXEL_STEP * 2; // make steps visually chunkier
+              
               let yTop = Math.min(y0, y1);
               let yBottom = Math.max(y0, y1);
-    
-              // Snap to pixel grid & ensure non-zero thickness
+
               yTop = Math.floor(yTop / PIXEL_STEP) * PIXEL_STEP;
               yBottom = Math.floor(yBottom / PIXEL_STEP) * PIXEL_STEP;
               let yHeight = yBottom - yTop;
-    
-              if (yHeight < PIXEL_STEP) {
-                yHeight = PIXEL_STEP;
+
+              if (yHeight < stepThickness) {
+                yHeight = stepThickness;
               }
-    
-              // Optional: make steps feel a bit taller / chunkier
-              // by padding them slightly
-              const extra = PIXEL_STEP * 1.5;
-              yTop -= extra;
-              yHeight += extra * 2;
-    
-              // Shade by distance
+
+              // Extra padding to make steps feel substantial
+              const extraDepth = PIXEL_STEP * 2;
+              yTop -= extraDepth;
+              yHeight += extraDepth * 2;
+
+              // Base step color (darker than floor)
               let brightness = 1.0 - correctedDist / RENDER_DISTANCE;
-              brightness = Math.max(0.3, Math.min(0.95, brightness));
-    
-              const rr = Math.max(
-                0,
-                Math.min(255, stepBase.r * brightness)
-              );
-              const gg = Math.max(
-                0,
-                Math.min(255, stepBase.g * brightness * 0.95)
-              );
-              const bb = Math.max(
-                0,
-                Math.min(255, stepBase.b * brightness * 0.85)
-              );
-    
+              brightness = Math.max(0.2, Math.min(0.85, brightness));
+
+              const rr = Math.max(0, Math.min(255, stepBase.r * brightness * 0.8));
+              const gg = Math.max(0, Math.min(255, stepBase.g * brightness * 0.75));
+              const bb = Math.max(0, Math.min(255, stepBase.b * brightness * 0.7));
+
+              // Base fill
               ctx.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
-    
               ctx.fillRect(
                 Math.floor(sliceX),
                 yTop,
                 Math.ceil(sliceWidth) + 1,
                 yHeight
               );
+
+              // **TOP EDGE HIGHLIGHT** - makes platforms pop
+              const topEdgeBright = Math.min(255, rr * 1.4);
+              ctx.fillStyle = `rgb(${topEdgeBright}, ${Math.min(255, gg * 1.3)}, ${Math.min(255, bb * 1.2)})`;
+              ctx.fillRect(
+                Math.floor(sliceX),
+                yTop,
+                Math.ceil(sliceWidth) + 1,
+                PIXEL_STEP
+              );
+
+              // **BOTTOM SHADOW** - adds depth
+              ctx.fillStyle = `rgba(0, 0, 0, 0.3)`;
+              ctx.fillRect(
+                Math.floor(sliceX),
+                yTop + yHeight - PIXEL_STEP,
+                Math.ceil(sliceWidth) + 1,
+                PIXEL_STEP
+              );
+
+              // **VERTICAL STRIPE DETAIL** - stone blocks
+              if (yHeight > PIXEL_STEP * 4) {
+                ctx.strokeStyle = `rgba(0, 0, 0, ${brightness * 0.12})`;
+                ctx.lineWidth = 1;
+                const stripeCount = Math.floor(yHeight / (PIXEL_STEP * 3));
+                for (let s = 1; s < stripeCount; s++) {
+                  const stripeY = yTop + (yHeight * s) / stripeCount;
+                  ctx.beginPath();
+                  ctx.moveTo(Math.floor(sliceX), stripeY);
+                  ctx.lineTo(Math.floor(sliceX) + Math.ceil(sliceWidth), stripeY);
+                  ctx.stroke();
+                }
+              }
             }
           }
     
@@ -1011,6 +1086,31 @@ const WizardDungeonCrawler = () => {
         }
       }
     }
+
+    // **AMBIENT OCCLUSION** - darken corners and tight spaces
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    
+    for (let i = 0; i < RESOLUTION; i += 4) {
+      const rayAngle = startAngle + i * rayAngleStep;
+      const hit = castRay(player, rayAngle, dungeon);
+      
+      if (hit && hit.distance < 3) {
+        const sliceWidth = width / RESOLUTION;
+        const x = i * sliceWidth;
+        const occlusion = 1 - (hit.distance / 3);
+        const shadowAlpha = occlusion * 0.15;
+        
+        ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+        ctx.fillRect(
+          Math.floor(x),
+          0,
+          Math.ceil(sliceWidth * 4) + 1,
+          height
+        );
+      }
+    }
+    ctx.restore();
 
     // Draw sprites (enemies, items, projectiles)
     const allSprites = [
@@ -1089,6 +1189,27 @@ const WizardDungeonCrawler = () => {
           ctx.fillStyle = '#00ff00';
           ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
           ctx.globalAlpha = 1;
+          // **MONSTER SHADOW ON GROUND**
+          const shadowY = y + spriteHeight + PIXEL_STEP;
+          const shadowWidth = spriteWidth * 0.8;
+          const shadowHeight = PIXEL_STEP * 2;
+          
+          const shadowGrad = ctx.createRadialGradient(
+            screenX, shadowY, 0,
+            screenX, shadowY, shadowWidth / 2
+          );
+          shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+          shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          
+          ctx.fillStyle = shadowGrad;
+          ctx.beginPath();
+          ctx.ellipse(
+            screenX, shadowY,
+            shadowWidth / 2, shadowHeight / 2,
+            0, 0, Math.PI * 2
+          );
+          ctx.fill();
+          
         } else if (sprite.spriteType === 'item') {
           ctx.globalAlpha = brightness * 0.9;
           ctx.fillStyle = sprite.color;
@@ -1107,12 +1228,30 @@ const WizardDungeonCrawler = () => {
           const centerY = y + spriteHeight / 2;
           const size = spriteWidth * 0.5;
 
+          // Motion blur trail effect
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (let t = 1; t <= 4; t++) {
+            const trailDist = t * 0.2;
+            const trailX = centerX - Math.cos(sprite.angle) * trailDist * width * 0.015;
+            const trailY = centerY - Math.sin(sprite.angle) * trailDist * height * 0.015;
+            const trailSize = size * (1 - t * 0.15);
+            const trailAlpha = brightness * (1 - t * 0.2) * 0.4;
+            
+            ctx.globalAlpha = trailAlpha;
+            ctx.fillStyle = sprite.color;
+            ctx.beginPath();
+            ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+
           drawProjectileSprite(ctx, sprite, centerX, centerY, size, brightness);
         }
       }
     });
 
-    // Dust particles overlay
+    // Enhanced dust particles with glow
     if (particlesRef.current.length) {
       ctx.save();
       particlesRef.current.forEach(p => {
@@ -1120,26 +1259,66 @@ const WizardDungeonCrawler = () => {
         const screenY = p.y * height;
         const size = (1 - p.z) * 3 + 1;
         const alpha = 0.12 + (1 - p.z) * 0.18;
-        ctx.fillStyle = `rgba(245, 235, 220, ${alpha.toFixed(3)})`;
+        
+        // Soft glow
+        const glowGrad = ctx.createRadialGradient(
+          screenX, screenY, 0,
+          screenX, screenY, size * 2
+        );
+        glowGrad.addColorStop(0, `rgba(245, 235, 220, ${alpha})`);
+        glowGrad.addColorStop(1, 'rgba(245, 235, 220, 0)');
+        ctx.fillStyle = glowGrad;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, size * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Core particle
+        ctx.fillStyle = `rgba(255, 245, 235, ${alpha * 1.5})`;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, size * 0.6, 0, Math.PI * 2);
         ctx.fill();
       });
       ctx.restore();
     }
 
-    // Crosshair
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    // Enhanced dynamic crosshair
     const centerX = width / 2;
     const centerY = horizon;
     const crossSize = 15;
+    const selectedSpellColor = equippedSpells[selectedSpell]?.color || '#ffffff';
+    
+    // Outer glow
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(centerX - crossSize, centerY);
     ctx.lineTo(centerX + crossSize, centerY);
     ctx.moveTo(centerX, centerY - crossSize);
     ctx.lineTo(centerX, centerY + crossSize);
     ctx.stroke();
+    
+    // Main crosshair with spell color hint
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(centerX - crossSize, centerY);
+    ctx.lineTo(centerX - 4, centerY);
+    ctx.moveTo(centerX + 4, centerY);
+    ctx.lineTo(centerX + crossSize, centerY);
+    ctx.moveTo(centerX, centerY - crossSize);
+    ctx.lineTo(centerX, centerY - 4);
+    ctx.moveTo(centerX, centerY + 4);
+    ctx.lineTo(centerX, centerY + crossSize);
+    ctx.stroke();
+    
+    // Center dot with spell color
+    const dotGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 4);
+    dotGrad.addColorStop(0, selectedSpellColor);
+    dotGrad.addColorStop(1, 'rgba(255, 255, 255, 0.3)');
+    ctx.fillStyle = dotGrad;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+    ctx.fill();
 
     // Minimap
     const minimapSize = 150;
@@ -1147,8 +1326,14 @@ const WizardDungeonCrawler = () => {
     const minimapX = width - minimapSize - 20;
     const minimapY = 20;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    // Minimap background with border
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
     ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
+    
+    // Border glow
+    ctx.strokeStyle = 'rgba(100, 80, 150, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
 
     // Draw walls on minimap
     dungeon.forEach((row, yIdx) => {
