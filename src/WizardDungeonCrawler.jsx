@@ -900,8 +900,7 @@ const WizardDungeonCrawler = () => {
     return null;
   }, []);
 
-  // Draw monster sprite
-  // NEW 2.5D ENEMY SPRITE RENDERER
+  // More grounded / semi-realistic 2.5D monster billboard
   const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
@@ -909,59 +908,143 @@ const WizardDungeonCrawler = () => {
     const baseRgb = hexToRgb(baseColor);
   
     const dark = {
-      r: Math.round(baseRgb.r * 0.4),
-      g: Math.round(baseRgb.g * 0.4),
-      b: Math.round(baseRgb.b * 0.4)
+      r: Math.round(baseRgb.r * 0.35),
+      g: Math.round(baseRgb.g * 0.35),
+      b: Math.round(baseRgb.b * 0.35)
+    };
+    const mid = {
+      r: Math.round(baseRgb.r * 0.8),
+      g: Math.round(baseRgb.g * 0.8),
+      b: Math.round(baseRgb.b * 0.8)
     };
     const light = {
-      r: Math.min(255, Math.round(baseRgb.r * 1.3)),
-      g: Math.min(255, Math.round(baseRgb.g * 1.3)),
-      b: Math.min(255, Math.round(baseRgb.b * 1.3))
+      r: Math.min(255, Math.round(baseRgb.r * 1.15)),
+      g: Math.min(255, Math.round(baseRgb.g * 1.15)),
+      b: Math.min(255, Math.round(baseRgb.b * 1.15))
     };
   
-    const bodyWidth = w * (sprite.isBoss ? 0.55 : 0.45);
-    const bodyHeight = h * (sprite.isBoss ? 0.75 : 0.65);
+    const state = sprite.state || 'idle';
   
-    // Idle bob + sway to feel alive
-    const bob = Math.sin(time * 2 + sprite.id * 7) * (h * 0.04);
-    const sway = Math.sin(time * 1.5 + sprite.id * 5) * (w * 0.05);
+    // Animation tuned down a bit for realism
+    const baseSpeed =
+      state === 'idle' ? 1.0 : state === 'chasing' ? 2.0 : 3.0;
+    const bobAmp =
+      state === 'idle' ? 0.02 : state === 'chasing' ? 0.035 : 0.05;
+    const swayAmp =
+      state === 'idle' ? 0.02 : state === 'chasing' ? 0.04 : 0.06;
+    const pulseAmp =
+      state === 'idle' ? 0.04 : state === 'chasing' ? 0.08 : 0.12;
+  
+    const phase = time * baseSpeed + sprite.id * 2.13;
+  
+    // Taller proportions
+    const bodyWidth = w * (sprite.isBoss ? 0.5 : 0.4);
+    const bodyHeight = h * (sprite.isBoss ? 0.9 : 0.8);
+  
+    const bob = Math.sin(phase) * (h * bobAmp);
+    const sway = Math.sin(phase * 0.8) * (w * swayAmp);
+    const scalePulse = 1 + Math.sin(phase * 2) * pulseAmp * brightness;
   
     const cx = x + w / 2 + sway;
     const cy = y + h / 2 + bob;
   
-    const bodyTop = cy - bodyHeight * 0.5;
-    const bodyBottom = cy + bodyHeight * 0.5;
+    const bodyTop = cy - bodyHeight * 0.5 * scalePulse;
+    const bodyBottom = cy + bodyHeight * 0.5 * scalePulse;
   
-    // Body gradient to fake volume
+    // Extra warmth when attacking, but less neon
+    const stateHeat =
+      state === 'attacking' ? 0.45 : state === 'chasing' ? 0.2 : 0;
+    const heatFactor = stateHeat * (0.5 + 0.5 * brightness);
+    const hotColor = {
+      r: Math.min(255, baseRgb.r + 150 * heatFactor),
+      g: Math.max(0, baseRgb.g - 60 * heatFactor),
+      b: Math.max(0, baseRgb.b - 110 * heatFactor)
+    };
+  
     const bodyGrad = ctx.createLinearGradient(cx, bodyTop, cx, bodyBottom);
     bodyGrad.addColorStop(0, rgbToCss(light));
-    bodyGrad.addColorStop(0.4, rgbToCss(baseRgb));
+    bodyGrad.addColorStop(0.35, rgbToCss(mid));
     bodyGrad.addColorStop(1, rgbToCss(dark));
   
     ctx.globalAlpha = brightness;
     ctx.fillStyle = bodyGrad;
   
-    // Main body as rounded billboard
+    // Torso
+    const torsoHeight = bodyHeight * 0.55;
+    const torsoTop = bodyTop + bodyHeight * 0.1;
+    const torsoBottom = torsoTop + torsoHeight;
+  
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - bodyWidth * 0.5,
+      torsoTop,
+      bodyWidth,
+      torsoHeight,
+      bodyWidth * 0.18
+    );
+    ctx.fill();
+  
+    // Legs as simple vertical forms for grounded look
+    const legHeight = bodyHeight * 0.35;
+    const legWidth = bodyWidth * 0.35;
+  
+    const legsTop = torsoBottom - legHeight * 0.15;
+    const legsBottom = legsTop + legHeight;
+  
+    ctx.fillStyle = rgbToCss(dark);
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - legWidth * 0.9,
+      legsTop,
+      legWidth,
+      legHeight,
+      legWidth * 0.25
+    );
+    ctx.roundRect(
+      cx + legWidth * 0.1,
+      legsTop,
+      legWidth,
+      legHeight,
+      legWidth * 0.25
+    );
+    ctx.fill();
+  
+    // Subtle shadow under feet
+    const shadowWidth = bodyWidth * 0.9;
+    const shadowHeight = h * 0.04;
+    const shadowY = legsBottom + shadowHeight * 0.4;
+  
+    const shadowGrad = ctx.createRadialGradient(
+      cx,
+      shadowY,
+      0,
+      cx,
+      shadowY,
+      shadowWidth / 2
+    );
+    shadowGrad.addColorStop(0, `rgba(0, 0, 0, ${0.35 * brightness})`);
+    shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = shadowGrad;
     ctx.beginPath();
     ctx.ellipse(
       cx,
-      cy,
-      bodyWidth * 0.9,
-      bodyHeight * 0.9,
+      shadowY,
+      shadowWidth / 2,
+      shadowHeight / 2,
       0,
       0,
       Math.PI * 2
     );
     ctx.fill();
   
-    // Head
-    const headRadius = Math.min(bodyWidth * 0.55, h * 0.18);
-    const headY = bodyTop - headRadius * 0.3;
+    // Head: smaller, less chibi
+    const headRadius = Math.min(bodyWidth * 0.4, h * 0.14) * scalePulse;
+    const headY = bodyTop + headRadius * 1.0;
   
     const headGrad = ctx.createRadialGradient(
       cx - headRadius * 0.3,
-      headY - headRadius * 0.3,
-      headRadius * 0.2,
+      headY - headRadius * 0.4,
+      headRadius * 0.15,
       cx,
       headY,
       headRadius
@@ -974,66 +1057,79 @@ const WizardDungeonCrawler = () => {
     ctx.arc(cx, headY, headRadius, 0, Math.PI * 2);
     ctx.fill();
   
-    // Boss crown
+    // Boss crown, toned down
     if (sprite.isBoss) {
-      const crownWidth = headRadius * 1.6;
-      const crownHeight = headRadius * 0.7;
+      const crownWidth = headRadius * 1.3;
+      const crownHeight = headRadius * 0.55;
       const crownY = headY - headRadius * 1.1;
   
-      ctx.fillStyle = '#ffd700';
+      ctx.fillStyle = '#e6c666';
       ctx.beginPath();
       ctx.moveTo(cx - crownWidth / 2, crownY + crownHeight);
       ctx.lineTo(cx - crownWidth / 3, crownY);
-      ctx.lineTo(cx, crownY + crownHeight * 0.2);
+      ctx.lineTo(cx, crownY + crownHeight * 0.1);
       ctx.lineTo(cx + crownWidth / 3, crownY);
       ctx.lineTo(cx + crownWidth / 2, crownY + crownHeight);
       ctx.closePath();
       ctx.fill();
     }
   
-    // Eyes / face based on type
-    const eyeOffsetX = headRadius * 0.5;
-    const eyeOffsetY = headRadius * 0.2;
-    const eyeRadius = headRadius * 0.18;
+    // Eyes / face – smaller, more grounded
+    const eyeOffsetX = headRadius * 0.35;
+    const eyeOffsetY = headRadius * 0.1;
   
-    let eyeColor = '#ffffff';
-    let irisColor = '#000000';
+    let eyeColor = '#f0f0f0';
+    let irisColor = '#151515';
+    let mouthColor = '#151515';
+    let mouthOpen = state === 'attacking';
   
     switch (sprite.type) {
       case 'skeleton':
-        eyeColor = '#000000';
-        irisColor = '#ff0000';
+        eyeColor = '#111111';
+        irisColor = '#ff4b4b';
+        mouthColor = '#dcdcdc';
         break;
       case 'demon':
-        eyeColor = '#ffff00';
-        irisColor = '#ff8800';
+        eyeColor = '#f3e588';
+        irisColor = '#ff7a2b';
+        mouthColor = rgbToCss(hotColor);
         break;
       case 'ghost':
-        eyeColor = 'rgba(180, 210, 255, 0.9)';
-        irisColor = '#88ccff';
+        eyeColor = 'rgba(190, 210, 255, 0.9)';
+        irisColor = '#9ec9ff';
+        mouthColor = 'rgba(210, 225, 255, 0.9)';
         break;
       case 'golem':
-        eyeColor = '#ffaa00';
-        irisColor = '#442200';
+        eyeColor = '#f2bf63';
+        irisColor = '#3a2614';
+        mouthColor = '#4a3622';
         break;
       case 'boss_dragon':
-        eyeColor = '#ffff88';
-        irisColor = '#ff4400';
+        eyeColor = '#fff6a2';
+        irisColor = '#ff4b16';
+        mouthColor = rgbToCss(hotColor);
         break;
       case 'boss_necromancer':
-        eyeColor = '#cc88ff';
-        irisColor = '#330066';
+        eyeColor = '#e1c0ff';
+        irisColor = '#3b0b66';
+        mouthColor = '#9c4dff';
         break;
       case 'boss_lich':
-        eyeColor = '#88ffdd';
-        irisColor = '#004433';
+        eyeColor = '#b2ffec';
+        irisColor = '#025344';
+        mouthColor = '#1ce8b0';
         break;
       default:
-        eyeColor = '#ffffff';
-        irisColor = '#000000';
+        eyeColor = '#f0f0f0';
+        irisColor = '#151515';
+        mouthColor = '#151515';
     }
   
-    // Eyes
+    const eyeAttackScale =
+      state === 'attacking' ? 1.2 : state === 'chasing' ? 1.05 : 1.0;
+    const eyeRadius = headRadius * 0.14 * eyeAttackScale;
+    const irisRadius = eyeRadius * 0.55;
+  
     ctx.fillStyle = eyeColor;
     ctx.beginPath();
     ctx.arc(cx - eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
@@ -1041,17 +1137,16 @@ const WizardDungeonCrawler = () => {
     ctx.fill();
   
     ctx.fillStyle = irisColor;
-    const irisRadius = eyeRadius * 0.55;
     ctx.beginPath();
     ctx.arc(
-      cx - eyeOffsetX + eyeRadius * 0.2,
+      cx - eyeOffsetX + eyeRadius * 0.1,
       headY - eyeOffsetY,
       irisRadius,
       0,
       Math.PI * 2
     );
     ctx.arc(
-      cx + eyeOffsetX + eyeRadius * 0.2,
+      cx + eyeOffsetX + eyeRadius * 0.1,
       headY - eyeOffsetY,
       irisRadius,
       0,
@@ -1059,24 +1154,81 @@ const WizardDungeonCrawler = () => {
     );
     ctx.fill();
   
-    // Ghost fade trail
+    // Subtle eye glow only for spooky things / bosses
+    if (sprite.type === 'ghost' || sprite.isBoss || sprite.type === 'demon') {
+      const glowScale = state === 'attacking' ? 1.4 : 1.2;
+      const glowAlpha = 0.25 * brightness * (state === 'idle' ? 0.7 : 1);
+      ctx.fillStyle =
+        sprite.type === 'ghost'
+          ? `rgba(170, 195, 255, ${glowAlpha})`
+          : sprite.isBoss
+          ? `rgba(255, 240, 210, ${glowAlpha})`
+          : `rgba(255, 130, 90, ${glowAlpha})`;
+  
+      ctx.beginPath();
+      ctx.arc(
+        cx - eyeOffsetX + eyeRadius * 0.1,
+        headY - eyeOffsetY,
+        eyeRadius * glowScale,
+        0,
+        Math.PI * 2
+      );
+      ctx.arc(
+        cx + eyeOffsetX + eyeRadius * 0.1,
+        headY - eyeOffsetY,
+        eyeRadius * glowScale,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  
+    // Mouth – small and simple
+    ctx.fillStyle = mouthColor;
+    const mouthWidth = headRadius * 0.6;
+    const mouthHeight = mouthOpen ? headRadius * 0.35 : headRadius * 0.18;
+    const mouthY = headY + headRadius * 0.3;
+  
+    ctx.beginPath();
+    if (mouthOpen) {
+      ctx.ellipse(
+        cx,
+        mouthY,
+        mouthWidth * 0.45,
+        mouthHeight * 0.6,
+        0,
+        0,
+        Math.PI * 2
+      );
+    } else {
+      ctx.roundRect(
+        cx - mouthWidth * 0.5,
+        mouthY - mouthHeight * 0.25,
+        mouthWidth,
+        mouthHeight * 0.5,
+        mouthHeight * 0.25
+      );
+    }
+    ctx.fill();
+  
+    // Ghost trail – more ethereal, less cartoony blob
     if (sprite.type === 'ghost') {
-      const tailHeight = bodyHeight * 0.5;
+      const tailHeight = bodyHeight * (state === 'attacking' ? 0.6 : 0.5);
       const tailGrad = ctx.createLinearGradient(
         cx,
-        cy + bodyHeight * 0.1,
+        torsoBottom - bodyHeight * 0.05,
         cx,
-        cy + bodyHeight * 0.1 + tailHeight
+        torsoBottom + tailHeight
       );
-      tailGrad.addColorStop(0, 'rgba(184, 198, 255, 0.6)');
+      tailGrad.addColorStop(0, 'rgba(184, 198, 255, 0.45)');
       tailGrad.addColorStop(1, 'rgba(184, 198, 255, 0)');
       ctx.fillStyle = tailGrad;
       ctx.beginPath();
       ctx.ellipse(
         cx,
-        cy + bodyHeight * 0.3,
-        bodyWidth * 0.8,
-        tailHeight * 0.9,
+        torsoBottom + tailHeight * 0.35,
+        bodyWidth * 0.65,
+        tailHeight * 0.8,
         0,
         0,
         Math.PI * 2
@@ -1084,28 +1236,138 @@ const WizardDungeonCrawler = () => {
       ctx.fill();
     }
   
-    // Simple arms that sway slightly
-    const armLength = bodyHeight * 0.6;
-    const armOffsetY = bodyHeight * 0.05;
-    const armSwing = Math.sin(time * 3 + sprite.id * 3) * bodyWidth * 0.08;
+    // Golem cracks
+    if (sprite.type === 'golem') {
+      const crackAlpha =
+        0.18 +
+        (state === 'attacking' ? 0.25 : state === 'chasing' ? 0.16 : 0.08);
+      ctx.strokeStyle = `rgba(30, 18, 10, ${crackAlpha})`;
+      ctx.lineWidth = Math.max(1.5, w * 0.018);
+      ctx.beginPath();
+      ctx.moveTo(cx - bodyWidth * 0.4, torsoTop + torsoHeight * 0.2);
+      ctx.lineTo(cx - bodyWidth * 0.1, torsoTop + torsoHeight * 0.5);
+      ctx.lineTo(cx + bodyWidth * 0.25, torsoTop + torsoHeight * 0.35);
+      ctx.stroke();
+    }
+  
+    // Boss extras – simplified but still distinct
+  
+    if (sprite.type === 'boss_necromancer') {
+      const staffX = cx - bodyWidth * 0.65;
+      const staffTop = torsoTop - headRadius * 0.4;
+      const staffBottom = legsBottom;
+      ctx.strokeStyle = 'rgba(60, 20, 100, 0.9)';
+      ctx.lineWidth = Math.max(2, w * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(staffX, staffTop);
+      ctx.lineTo(staffX, staffBottom);
+      ctx.stroke();
+  
+      const orbRadius = headRadius * 0.5;
+      const orbGlow = ctx.createRadialGradient(
+        staffX,
+        staffTop - orbRadius * 0.1,
+        0,
+        staffX,
+        staffTop - orbRadius * 0.1,
+        orbRadius * 1.6
+      );
+      const orbIntensity =
+        0.25 +
+        (state === 'attacking' ? 0.45 : state === 'chasing' ? 0.3 : 0.15);
+      orbGlow.addColorStop(0, `rgba(170, 0, 255, ${orbIntensity})`);
+      orbGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = orbGlow;
+      ctx.beginPath();
+      ctx.arc(
+        staffX,
+        staffTop - orbRadius * 0.1,
+        orbRadius * 1.4,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  
+    if (sprite.type === 'boss_dragon') {
+      const wingsSpan = bodyWidth * 1.5;
+      const wingsHeight = bodyHeight * 0.7;
+      ctx.fillStyle = `rgba(50, 0, 0, ${
+        0.35 + (state === 'attacking' ? 0.25 : 0.1)
+      })`;
+      ctx.beginPath();
+      ctx.moveTo(cx - wingsSpan, torsoTop + torsoHeight * 0.25);
+      ctx.quadraticCurveTo(
+        cx,
+        torsoTop - wingsHeight * 0.3,
+        cx + wingsSpan,
+        torsoTop + torsoHeight * 0.25
+      );
+      ctx.quadraticCurveTo(
+        cx,
+        torsoTop + torsoHeight * 0.7,
+        cx - wingsSpan,
+        torsoTop + torsoHeight * 0.25
+      );
+      ctx.fill();
+    }
+  
+    if (sprite.type === 'boss_lich') {
+      const auraRadius = bodyWidth * 1.4;
+      const auraGrad = ctx.createRadialGradient(
+        cx,
+        (torsoTop + legsBottom) / 2,
+        0,
+        cx,
+        (torsoTop + legsBottom) / 2,
+        auraRadius
+      );
+      auraGrad.addColorStop(
+        0,
+        `rgba(0, 255, 170, ${
+          0.25 + (state === 'attacking' ? 0.3 : 0.15)
+        })`
+      );
+      auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.arc(
+        cx,
+        (torsoTop + legsBottom) / 2,
+        auraRadius,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  
+    // Arms – just enough motion to feel alive
+    const armLength = torsoHeight * 0.8;
+    const armOffsetY = torsoTop + torsoHeight * 0.25;
+    const armSwing =
+      Math.sin(phase * (state === 'idle' ? 0.8 : 1.5)) *
+      bodyWidth *
+      (state === 'attacking' ? 0.12 : 0.06);
   
     ctx.strokeStyle = rgbToCss(dark);
-    ctx.lineWidth = Math.max(2, w * 0.03);
+    ctx.lineWidth = Math.max(2, w * 0.025);
     ctx.lineCap = 'round';
   
+    // Left arm
     ctx.beginPath();
-    ctx.moveTo(cx - bodyWidth * 0.9, cy + armOffsetY);
+    ctx.moveTo(cx - bodyWidth * 0.55, armOffsetY);
     ctx.lineTo(
-      cx - bodyWidth * 0.9 - armSwing,
-      cy + armOffsetY + armLength * 0.6
+      cx - bodyWidth * 0.55 - armSwing,
+      armOffsetY + armLength * 0.7
     );
     ctx.stroke();
   
+    // Right arm
     ctx.beginPath();
-    ctx.moveTo(cx + bodyWidth * 0.9, cy + armOffsetY);
+    ctx.moveTo(cx + bodyWidth * 0.55, armOffsetY);
     ctx.lineTo(
-      cx + bodyWidth * 0.9 + armSwing,
-      cy + armOffsetY + armLength * 0.6
+      cx + bodyWidth * 0.55 + armSwing,
+      armOffsetY + armLength * 0.7
     );
     ctx.stroke();
   
@@ -2147,6 +2409,7 @@ const WizardDungeonCrawler = () => {
       
             // Attack if close enough
             if (distance < 1.5 && newAttackCooldown <= 0) {
+              newState = 'attacking';
               setPlayer(p => ({
                 ...p,
                 health: Math.max(0, p.health - enemy.damage)
