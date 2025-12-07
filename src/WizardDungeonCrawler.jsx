@@ -37,11 +37,25 @@ function fadeVolume(audio, target, speed = 0.02) {
 }
 
 const musicTracks = [
-    chillyWilly,
-    glow,
-    sunnyDaze,
-    messinAround
-  ];
+  chillyWilly,
+  glow,
+  sunnyDaze,
+  messinAround
+];
+
+const ZERO_GAMEPAD = {
+  lx: 0,
+  ly: 0,
+  rx: 0,
+  ry: 0,
+  fire: false,
+  rb: false,
+  lb: false,
+  rbPressed: false,
+  lbPressed: false,
+  start: false,
+  startPressed: false
+};
 
 const WizardDungeonCrawler = () => {
   // Game state
@@ -294,20 +308,6 @@ const WizardDungeonCrawler = () => {
     start: false,
     startPressed: false
   });
-
-  const ZERO_GAMEPAD = {
-  lx: 0,
-  ly: 0,
-  rx: 0,
-  ry: 0,
-  fire: false,
-  rb: false,
-  lb: false,
-  rbPressed: false,
-  lbPressed: false,
-  start: false,
-  startPressed: false
-};
   
   const [gamepadConnected, setGamepadConnected] = useState(false);
 
@@ -531,6 +531,61 @@ const WizardDungeonCrawler = () => {
       window.removeEventListener('gamepaddisconnected', handleDisconnect);
     };
   }, []);
+
+  // --- Global gamepad poller (runs regardless of gameState) ---
+  useEffect(() => {
+    if (!navigator.getGamepads) {
+      if (gamepadConnected) setGamepadConnected(false);
+      gamepadStateRef.current = ZERO_GAMEPAD;
+      return;
+    }
+
+    let frameId;
+
+    const poll = () => {
+      const pads = navigator.getGamepads();
+      const gp = pads && pads[0];
+
+      if (!gp) {
+        if (gamepadConnected) setGamepadConnected(false);
+        gamepadStateRef.current = ZERO_GAMEPAD;
+      } else {
+        if (!gamepadConnected) setGamepadConnected(true);
+
+        const lx = gp.axes[0] || 0;
+        const ly = gp.axes[1] || 0;
+        const rx = gp.axes[2] || 0;
+        const ry = gp.axes[3] || 0;
+        const fire = !!(gp.buttons[0] && gp.buttons[0].pressed);
+        const rb   = !!(gp.buttons[5] && gp.buttons[5].pressed);
+        const lb   = !!(gp.buttons[4] && gp.buttons[4].pressed);
+        const start = !!(gp.buttons[9] && gp.buttons[9].pressed);
+
+        const prev = gamepadStateRef.current || ZERO_GAMEPAD;
+
+        const nextState = {
+          lx,
+          ly,
+          rx,
+          ry,
+          fire,
+          rb,
+          lb,
+          rbPressed:  rb   && !prev.rb,
+          lbPressed:  lb   && !prev.lb,
+          start,
+          startPressed: start && !prev.start
+        };
+
+        gamepadStateRef.current = nextState;
+      }
+
+      frameId = requestAnimationFrame(poll);
+    };
+
+    frameId = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frameId);
+  }, [gamepadConnected]);
 
   // Particles
   useEffect(() => {
@@ -1747,56 +1802,6 @@ const WizardDungeonCrawler = () => {
   useEffect(() => {
     if (gameState !== 'playing' || dungeon.length === 0) return;
 
-    const updateGamepadState = () => {
-      // No API = no gamepad
-      if (!navigator.getGamepads) {
-        if (gamepadConnected) setGamepadConnected(false);
-        gamepadStateRef.current = ZERO_GAMEPAD;
-        return ZERO_GAMEPAD;
-      }
-
-      const pads = navigator.getGamepads();
-      const gp = pads && pads[0];
-
-      // No pad detected
-      if (!gp) {
-        if (gamepadConnected) setGamepadConnected(false);
-        gamepadStateRef.current = ZERO_GAMEPAD;
-        return ZERO_GAMEPAD;
-      }
-
-      // We *do* have a pad
-      if (!gamepadConnected) setGamepadConnected(true);
-
-      const lx = gp.axes[0] || 0;
-      const ly = gp.axes[1] || 0;
-      const rx = gp.axes[2] || 0;
-      const ry = gp.axes[3] || 0;
-      const fire = !!(gp.buttons[0] && gp.buttons[0].pressed);
-      const rb   = !!(gp.buttons[5] && gp.buttons[5].pressed);
-      const lb   = !!(gp.buttons[4] && gp.buttons[4].pressed);
-      const start = !!(gp.buttons[9] && gp.buttons[9].pressed);
-
-      const prev = gamepadStateRef.current || ZERO_GAMEPAD;
-
-      const rbPressed    = rb && !prev.rb;
-      const lbPressed    = lb && !prev.lb;
-      const startPressed = start && !prev.start;
-
-      const nextState = {
-        lx, ly, rx, ry,
-        fire,
-        rb, lb,
-        rbPressed,
-        lbPressed,
-        start,
-        startPressed
-      };
-
-      gamepadStateRef.current = nextState;
-      return nextState;
-    };
-
     let animationId;
     const gameLoop = () => {
       const now = Date.now();
@@ -1815,7 +1820,7 @@ const WizardDungeonCrawler = () => {
         if (p.y > 1) p.y -= 1;
       }
 
-      const gamepadState = updateGamepadState();
+      const gamepadState = gamepadStateRef.current || ZERO_GAMEPAD;
 
       if (gamepadState.startPressed) {
         setGameState('paused');
