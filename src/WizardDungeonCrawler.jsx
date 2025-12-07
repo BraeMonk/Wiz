@@ -1402,7 +1402,7 @@ const WizardDungeonCrawler = () => {
           ctx.fillStyle = '#3f0b0b';
           ctx.fillRect(barX, barY, barWidth, barHeight);
           ctx.fillStyle = sprite.isBoss ? '#ffff00' : '#00ff00';
-          ctx.fill​​​​​​​​​​​​​​​​Rect(barX, barY, barWidth * healthPercent, barHeight);
+          ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
           ctx.globalAlpha = 1;
           
           const shadowY = y + spriteHeight + PIXEL_STEP;
@@ -2226,7 +2226,7 @@ const WizardDungeonCrawler = () => {
       }
     };
 
-    const handle​​​​​​​​​​​​​​​​TouchEnd = (e) => {
+    const handleTouchEnd = (e) => {
       for (const touch of e.changedTouches) {
         const isLeft = touch.identifier === leftTouchId.current;
         const isRight = touch.identifier === rightTouchId.current;
@@ -2238,15 +2238,11 @@ const WizardDungeonCrawler = () => {
         if (startPos) {
           const dx = touch.clientX - startPos.x;
           const dy = touch.clientY - startPos.y;
-          const dist = Math.hypot(dx, dy);
-
-          if (dist < 20 && gameState === 'playing') {
+          if (Math.hypot(dx, dy) < 20 && gameState === 'playing') {
             castCurrentSpell();
           }
         } else {
-          if (gameState === 'playing') {
-            castCurrentSpell();
-          }
+          if (gameState === 'playing') castCurrentSpell();
         }
 
         if (isLeft) {
