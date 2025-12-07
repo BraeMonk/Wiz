@@ -23,6 +23,19 @@ import glow from './audio/Glow.mp3';
 import sunnyDaze from './audio/Sunny Daze.mp3';
 import messinAround from './audio/messin around.mp3';
 
+function fadeVolume(audio, target, speed = 0.02) {
+  let v = audio.volume;
+  const fade = setInterval(() => {
+    if (Math.abs(v - target) < speed) {
+      audio.volume = target;
+      clearInterval(fade);
+    } else {
+      v += (target > v ? speed : -speed);
+      audio.volume = Math.max(0, Math.min(1, v));
+    }
+  }, 50);
+}
+
 const musicTracks = [
     chillyWilly,
     glow,
@@ -294,6 +307,7 @@ const WizardDungeonCrawler = () => {
   const bgmRef = useRef(null);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [musicVolume, setMusicVolume] = useState(0.5); // 50% default
 
   // Constants
   const DUNGEON_SIZE = 30;
@@ -417,12 +431,13 @@ const WizardDungeonCrawler = () => {
   }, [selectedSpell]);
 
   // Music setup
+  // Music setup – create audio ONCE
   useEffect(() => {
     if (musicTracks.length === 0) return;
 
-    const audio = new Audio(musicTracks[0]);
+    const audio = new Audio();
     audio.loop = false;
-    audio.volume = 0.4;
+    audio.volume = musicVolume;
     bgmRef.current = audio;
 
     const handleEnded = () => {
@@ -432,11 +447,12 @@ const WizardDungeonCrawler = () => {
     audio.addEventListener('ended', handleEnded);
 
     return () => {
-      audio.pause();
       audio.removeEventListener('ended', handleEnded);
+      audio.pause();
       audio.src = '';
+      bgmRef.current = null;
     };
-  }, [musicTracks]);
+  }, []); // <- no deps, runs once
 
   useEffect(() => {
     const audio = bgmRef.current;
@@ -446,9 +462,11 @@ const WizardDungeonCrawler = () => {
     audio.load();
 
     if (gameState === 'playing' && musicEnabled) {
+      audio.volume = 0; // start quiet
       audio.play().catch(() => {});
+      fadeVolume(audio, musicVolume, 0.02); // fade up to target volume
     }
-  }, [currentTrackIndex, musicTracks]);
+  }, [currentTrackIndex, gameState, musicEnabled]); // <- no musicVolume
 
   useEffect(() => {
     const audio = bgmRef.current;
@@ -463,6 +481,14 @@ const WizardDungeonCrawler = () => {
       audio.play().catch(() => {});
     }
   }, [gameState, musicEnabled]);
+
+  useEffect(() => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    // Fade to new volume whenever musicVolume changes
+    fadeVolume(audio, musicVolume, 0.05);
+  }, [musicVolume]);
   
   // Detect mobile
   useEffect(() => {
@@ -2161,9 +2187,13 @@ const WizardDungeonCrawler = () => {
     rightTouchId.current = null;
   
     if (bgmRef.current && musicEnabled) {
-      bgmRef.current.src = musicTracks[0];
-      bgmRef.current.load();
-      bgmRef.current.play().catch(err => console.log('Audio play blocked:', err));
+      const audio = bgmRef.current;
+      audio.src = musicTracks[0];
+      audio.load();
+      audio.volume = 0; // start silent
+      audio.play().catch(err => console.log('Audio play blocked:', err));
+
+      fadeVolume(audio, musicVolume, 0.02); // fade 0 -> musicVolume
     }
   };
 
@@ -2724,6 +2754,18 @@ const WizardDungeonCrawler = () => {
           >
             {musicEnabled ? '🔊 Music: On' : '🔇 Music: Off'}
           </button>
+
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={musicVolume}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setMusicVolume(v);
+            }}
+          />
 
           <button
             onClick={() => setGameState('playing')}
