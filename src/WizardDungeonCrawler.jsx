@@ -332,48 +332,51 @@ const WizardDungeonCrawler = () => {
   }, []);
 
   const castCurrentSpell = useCallback(() => {
-    const spells = equippedSpellsRef.current;
     const idx = selectedSpellRef.current;
-
-    if (!spells || idx < 0 || idx >= spells.length) return;
-    const spell = spells[idx];
-    if (!spell) return;
-
-    let canCast = false;
-    let updatedPlayer = null;
-
-    setPlayer(prev => {
-      if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
-      canCast = true;
-      updatedPlayer = { ...prev, mana: prev.mana - spell.manaCost };
-      return updatedPlayer;
-    });
-
-    if (!canCast || !updatedPlayer) return;
-
-    setEquippedSpells(prev =>
-      prev.map((s, i) =>
-        i === idx ? { ...s, cooldown: s.maxCooldown } : s
-      )
-    );
-
-    const p = playerRef.current;
-
-    setProjectiles(prev => [
-      ...prev,
-      {
-        id: Math.random(),
-        x: p.x,
-        y: p.y,
-        angle: p.angle,
-        speed: 8,
-        damage: spell.damage,
-        color: spell.color,
-        lifetime: 3,
-        dead: false,
-        spellType: spell.key
+  
+    setEquippedSpells(prev => {
+      if (idx < 0 || idx >= prev.length) return prev;
+      const spell = prev[idx];
+    
+      // Check if we can cast
+      if (spell.cooldown > 0) {
+        console.log('On cooldown:', spell.cooldown);
+        return prev;
       }
-    ]);
+    
+      // Check mana from playerRef
+      const currentPlayer = playerRef.current;
+      if (currentPlayer.mana < spell.manaCost) {
+        console.log('Not enough mana');
+        return prev;
+      }
+    
+      // Deduct mana
+      setPlayer(p => ({ ...p, mana: p.mana - spell.manaCost }));
+    
+      // Create projectile
+      console.log('FIRING PROJECTILE at', currentPlayer.x, currentPlayer.y, 'angle', currentPlayer.angle);
+      setProjectiles(projs => [
+        ...projs,
+        {
+          id: Math.random(),
+          x: currentPlayer.x,
+          y: currentPlayer.y,
+          angle: currentPlayer.angle,
+          speed: 8,
+          damage: spell.damage,
+          color: spell.color,
+          lifetime: 3,
+          dead: false,
+          spellType: spell.key
+        }
+      ]);
+    
+      // Return spells with cooldown applied
+      return prev.map((s, i) =>
+        i === idx ? { ...s, cooldown: s.maxCooldown } : s
+      );
+    });
   }, []);
 
   // Generate dungeon + terrain
@@ -1794,7 +1797,7 @@ const WizardDungeonCrawler = () => {
   }, []);
 
   const startGame = () => {
-    levelStartTimeRef.current = Date.now();   // <--- add this
+    levelStartTimeRef.current = Date.now();
   
     setGameState('playing');
     setCurrentLevel(1);
@@ -1819,6 +1822,13 @@ const WizardDungeonCrawler = () => {
     mobileLookRef.current = { x: 0, y: 0 };
     leftTouchId.current = null;
     rightTouchId.current = null;
+  
+    // FORCE AUDIO TO PLAY ON USER INTERACTION
+    if (bgmRef.current && musicEnabled) {
+      bgmRef.current.src = musicTracks[0];
+      bgmRef.current.load();
+      bgmRef.current.play().catch(err => console.log('Audio play blocked:', err));
+    }
   };
 
   const nextLevel = () => {
