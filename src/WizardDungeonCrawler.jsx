@@ -48,6 +48,7 @@ const WizardDungeonCrawler = () => {
 
   const [selectedSpell, setSelectedSpell] = useState(0);
   const equippedSpellsRef = useRef(equippedSpells);
+  const selectedSpellRef = useRef(0);
 
   // Dungeon & entities
   const [dungeon, setDungeon] = useState([]);
@@ -83,7 +84,20 @@ const WizardDungeonCrawler = () => {
   const mobileLookRef = useRef({ x: 0, y: 0 });
 
   // Gamepad state
-  const gamepadStateRef = useRef({ lx: 0, ly: 0, rx: 0, ry: 0, fire: false, rb: false, lb: false, rbPressed: false, lbPressed: false });
+  const gamepadStateRef = useRef({
+    lx: 0,
+    ly: 0,
+    rx: 0,
+    ry: 0,
+    fire: false,
+    rb: false,
+    lb: false,
+    rbPressed: false,
+    lbPressed: false,
+    start: false,
+    startPressed: false
+  });
+  
   const [gamepadConnected, setGamepadConnected] = useState(false);
 
   // Vertical look and jump
@@ -223,6 +237,10 @@ const WizardDungeonCrawler = () => {
   }, [equippedSpells]);
 
   useEffect(() => {
+    selectedSpellRef.current = selectedSpell;
+  }, [selectedSpell]);
+
+  useEffect(() => {
     if (musicTracks.length === 0) return;
 
     const audio = new Audio(musicTracks[0]);
@@ -319,6 +337,52 @@ const WizardDungeonCrawler = () => {
     particlesRef.current = particles;
   }, []);
 
+  const castCurrentSpell = useCallback(() => {
+    const spells = equippedSpellsRef.current;
+    const idx = selectedSpellRef.current;
+
+    if (!spells || idx < 0 || idx >= spells.length) return;
+    const spell = spells[idx];
+    if (!spell) return;
+
+    let canCast = false;
+
+    // Check mana & cooldown and spend mana
+    setPlayer(prev => {
+      if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
+      canCast = true;
+      return { ...prev, mana: prev.mana - spell.manaCost };
+    });
+
+    if (!canCast) return;
+
+    // Put spell on cooldown
+    setEquippedSpells(prev =>
+      prev.map((s, i) =>
+        i === idx ? { ...s, cooldown: s.maxCooldown } : s
+      )
+    );
+
+    // Spawn projectile from live playerRef
+    const p = playerRef.current;
+
+    setProjectiles(prev => [
+      ...prev,
+      {
+        id: Math.random(),
+        x: p.x,
+        y: p.y,
+        angle: p.angle,
+        speed: 8,
+        damage: spell.damage,
+        color: spell.color,
+        lifetime: 3,
+        dead: false,
+        spellType: spell.key
+      }
+    ]);
+  }, []);
+  
   // Generate dungeon + terrain
   const generateDungeon = useCallback((level) => {
     const size = DUNGEON_SIZE;
@@ -1295,9 +1359,22 @@ const WizardDungeonCrawler = () => {
       const pads = navigator.getGamepads();
       const gp = pads[0];
       if (!gp) {
-        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, ry: 0, fire: false, rb: false, lb: false, rbPressed: false, lbPressed: false };
+        gamepadStateRef.current = {
+          lx: 0,
+          ly: 0,
+          rx: 0,
+          ry: 0,
+          fire: false,
+          rb: false,
+          lb: false,
+          rbPressed: false,
+          lbPressed: false,
+          start: false,
+          startPressed: false
+        };
         return;
       }
+      
       const lx = gp.axes[0] || 0;
       const ly = gp.axes[1] || 0;
       const rx = gp.axes[2] || 0;
@@ -1305,55 +1382,22 @@ const WizardDungeonCrawler = () => {
       const fire = !!(gp.buttons[0] && gp.buttons[0].pressed);
       const rb = !!(gp.buttons[5] && gp.buttons[5].pressed); // Right bumper
       const lb = !!(gp.buttons[4] && gp.buttons[4].pressed); // Left bumper
+      const start = !!(gp.buttons[9] && gp.buttons[9].pressed); // Start / Options
       
       // Track if these are NEW presses (not held)
       const prevState = gamepadStateRef.current;
       const rbPressed = rb && !prevState.rb;
       const lbPressed = lb && !prevState.lb;
-      
-      gamepadStateRef.current = { lx, ly, rx, ry, fire, rb, lb, rbPressed, lbPressed };
-    };
+      const startPressed = start && !prevState.start;
 
-    // Then in castSpellFromLoop, use the ref:
-    const castSpellFromLoop = () => {
-      if (selectedSpell < 0 || selectedSpell >= equippedSpellsRef.current.length) return;
-      const spell = equippedSpellsRef.current[selectedSpell];
-      if (!spell) return;
-    
-      let didCast = false;
-    
-      setPlayer(prev => {
-        if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
-        didCast = true;
-        return { ...prev, mana: prev.mana - spell.manaCost };
-      });
-    
-      if (!didCast) return;
-    
-      setEquippedSpells(prev =>
-        prev.map((s, i) =>
-          i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
-        )
-      );
-    
-      const p = playerRef.current;
-    
-      setProjectiles(prev => [
-        ...prev,
-        {
-          id: Math.random(),
-          x: p.x,
-          y: p.y,
-          angle: p.angle,
-          speed: 8,
-          damage: spell.damage,
-          color: spell.color,
-          lifetime: 3,
-          dead: false,
-          spellType: spell.key
-        }
-      ]);
-    };
+      gamepadStateRef.current = {
+        lx, ly, rx, ry,
+        fire,
+        rb, lb,
+        rbPressed, lbPressed,
+        start, startPressed
+      };
+    }
 
     let animationId;
     const gameLoop = () => {
@@ -1379,10 +1423,27 @@ const WizardDungeonCrawler = () => {
       if (gamepadConnected) {
         updateGamepadState();
       } else {
-        gamepadStateRef.current = { lx: 0, ly: 0, rx: 0, ry: 0, fire: false };
+        gamepadStateRef.current = {
+          lx: 0,
+          ly: 0,
+          rx: 0,
+          ry: 0,
+          fire: false,
+          rb: false,
+          lb: false,
+          rbPressed: false,
+          lbPressed: false,
+          start: false,
+          startPressed: false
+        };
       }
 
       const gamepadState = gamepadStateRef.current;
+
+      // Gamepad Start button to pause
+      if (gamepadState.startPressed) {
+        setGameState('paused');
+      }
 
       // Player movement
       setPlayer(prev => {
@@ -1503,7 +1564,7 @@ const WizardDungeonCrawler = () => {
 
       // Gamepad right bumper to cast
       if (gamepadState.rbPressed) {
-        castSpellFromLoop();
+        castCurrentSpell();
       }
       
       // Gamepad left bumper to cycle spells
@@ -1716,12 +1777,11 @@ const WizardDungeonCrawler = () => {
     enemies.length,
     render,
     player.health,
-    equippedSpells,
-    selectedSpell,
+    player.x,
+    player.y,
     gamepadConnected,
     isMobile,
-    player.x,
-    player.y
+    castCurrentSpell
   ]);
 
   // Resize handler
@@ -1873,40 +1933,8 @@ const WizardDungeonCrawler = () => {
         }
       }
 
-      // Cast spell
-      if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
-      const spell = equippedSpells[selectedSpell];
-
-      if (spell.cooldown > 0 || player.mana < spell.manaCost) return;
-
-      setPlayer(prev => ({
-        ...prev,
-        mana: prev.mana - spell.manaCost
-      }));
-
-      setEquippedSpells(prev =>
-        prev.map((s, i) =>
-          i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
-        )
-      );
-
-      const p = playerRef.current;
-
-      setProjectiles(prev => [
-        ...prev,
-        {
-          id: Math.random(),
-          x: p.x,
-          y: p.y,
-          angle: p.angle,
-          speed: 8,
-          damage: spell.damage,
-          color: spell.color,
-          lifetime: 3,
-          dead: false,
-          spellType: spell.key
-        }
-      ]);
+      // Single unified casting path
+      castCurrentSpell();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -1920,7 +1948,7 @@ const WizardDungeonCrawler = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
     };
-  }, [gameState, equippedSpells, selectedSpell, player.mana, isMobile]);
+  }, [gameState, castCurrentSpell, isMobile]);
 
   // Touch controls (mobile)
   useEffect(() => {
@@ -1957,48 +1985,28 @@ const WizardDungeonCrawler = () => {
 
     const handleTouchEnd = (e) => {
       for (const touch of e.changedTouches) {
+
+        // --- LEFT SIDE (movement stick)
         if (touch.identifier === leftTouchId.current) {
           leftTouchId.current = null;
           mobileMoveRef.current = { x: 0, y: 0 };
-        } else if (touch.identifier === rightTouchId.current) {
+        }
+
+        // --- RIGHT SIDE (look + tap-to-cast)
+        if (touch.identifier === rightTouchId.current) {
+
+          // Check if this was a TAP (not a drag)
+          const dx = touch.clientX - rightStart.current.x;
+          const dy = touch.clientY - rightStart.current.y;
+          const dist = Math.hypot(dx, dy);
+
+          // If the finger barely moved → treat as a CAST
+          if (dist < 20 && gameState === 'playing') {
+            castCurrentSpell();
+          }
+
           rightTouchId.current = null;
           mobileLookRef.current = { x: 0, y: 0 };
-
-          // TAP TO CAST on right side
-          if (gameState === 'playing') {
-            if (selectedSpell < 0 || selectedSpell >= equippedSpells.length) return;
-            const spell = equippedSpells[selectedSpell];
-            if (spell && spell.cooldown <= 0 && player.mana >= spell.manaCost) {
-              setPlayer(prev => ({
-                ...prev,
-                mana: prev.mana - spell.manaCost
-              }));
-
-              setEquippedSpells(prev =>
-                prev.map((s, i) =>
-                  i === selectedSpell ? { ...s, cooldown: s.maxCooldown } : s
-                )
-              );
-
-              const p = playerRef.current;
-
-              setProjectiles(prev => [
-                ...prev,
-                {
-                  id: Math.random(),
-                  x: p.x,
-                  y: p.y,
-                  angle: p.angle,
-                  speed: 8,
-                  damage: spell.damage,
-                  color: spell.color,
-                  lifetime: 3,
-                  dead: false,
-                  spellType: spell.key
-                }
-              ]);
-            }
-          }
         }
       }
     };
@@ -2017,7 +2025,7 @@ const WizardDungeonCrawler = () => {
       el.removeEventListener('touchend', handleTouchEnd);
       el.removeEventListener('touchcancel', handleTouchCancel);
     };
-  }, [isMobile, gameState, equippedSpells, selectedSpell, player.mana]);
+  }, [isMobile, gameState, castCurrentSpell]);
 
   // ---------- SCREENS ----------
 
@@ -2230,6 +2238,15 @@ const WizardDungeonCrawler = () => {
         height={dimensions.height}
         className="w-full h-full"
       />
+
+      {/* Pause button (mobile + desktop) */}
+      <button
+        type="button"
+        onClick={() => setGameState('paused')}
+        className="absolute top-3 right-3 bg-black bg-opacity-70 text-white text-xs md:text-sm px-3 py-2 rounded-lg z-20 pointer-events-auto"
+      >
+        Pause
+      </button>
 
       {/* HUD Overlay */}
       <div className="absolute top-0 left-0 right-0 p-2 md:p-4 pointer-events-none">
