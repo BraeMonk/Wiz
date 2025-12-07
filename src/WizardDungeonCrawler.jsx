@@ -902,215 +902,215 @@ const WizardDungeonCrawler = () => {
 
   // Draw monster sprite
   // NEW 2.5D ENEMY SPRITE RENDERER
-const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
-  ctx.save();
-
-  const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#ffffff';
-  const baseRgb = hexToRgb(baseColor);
-
-  const dark = {
-    r: Math.round(baseRgb.r * 0.4),
-    g: Math.round(baseRgb.g * 0.4),
-    b: Math.round(baseRgb.b * 0.4)
-  };
-  const light = {
-    r: Math.min(255, Math.round(baseRgb.r * 1.3)),
-    g: Math.min(255, Math.round(baseRgb.g * 1.3)),
-    b: Math.min(255, Math.round(baseRgb.b * 1.3))
-  };
-
-  const bodyWidth = w * (sprite.isBoss ? 0.55 : 0.45);
-  const bodyHeight = h * (sprite.isBoss ? 0.75 : 0.65);
-
-  // Idle bob + sway to feel alive
-  const bob = Math.sin(time * 2 + sprite.id * 7) * (h * 0.04);
-  const sway = Math.sin(time * 1.5 + sprite.id * 5) * (w * 0.05);
-
-  const cx = x + w / 2 + sway;
-  const cy = y + h / 2 + bob;
-
-  const bodyTop = cy - bodyHeight * 0.5;
-  const bodyBottom = cy + bodyHeight * 0.5;
-
-  // Body gradient to fake volume
-  const bodyGrad = ctx.createLinearGradient(cx, bodyTop, cx, bodyBottom);
-  bodyGrad.addColorStop(0, rgbToCss(light));
-  bodyGrad.addColorStop(0.4, rgbToCss(baseRgb));
-  bodyGrad.addColorStop(1, rgbToCss(dark));
-
-  ctx.globalAlpha = brightness;
-  ctx.fillStyle = bodyGrad;
-
-  // Main body as rounded billboard
-  ctx.beginPath();
-  ctx.ellipse(
-    cx,
-    cy,
-    bodyWidth * 0.9,
-    bodyHeight * 0.9,
-    0,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  // Head
-  const headRadius = Math.min(bodyWidth * 0.55, h * 0.18);
-  const headY = bodyTop - headRadius * 0.3;
-
-  const headGrad = ctx.createRadialGradient(
-    cx - headRadius * 0.3,
-    headY - headRadius * 0.3,
-    headRadius * 0.2,
-    cx,
-    headY,
-    headRadius
-  );
-  headGrad.addColorStop(0, rgbToCss(light));
-  headGrad.addColorStop(1, rgbToCss(dark));
-
-  ctx.fillStyle = headGrad;
-  ctx.beginPath();
-  ctx.arc(cx, headY, headRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Boss crown
-  if (sprite.isBoss) {
-    const crownWidth = headRadius * 1.6;
-    const crownHeight = headRadius * 0.7;
-    const crownY = headY - headRadius * 1.1;
-
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath();
-    ctx.moveTo(cx - crownWidth / 2, crownY + crownHeight);
-    ctx.lineTo(cx - crownWidth / 3, crownY);
-    ctx.lineTo(cx, crownY + crownHeight * 0.2);
-    ctx.lineTo(cx + crownWidth / 3, crownY);
-    ctx.lineTo(cx + crownWidth / 2, crownY + crownHeight);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Eyes / face based on type
-  const eyeOffsetX = headRadius * 0.5;
-  const eyeOffsetY = headRadius * 0.2;
-  const eyeRadius = headRadius * 0.18;
-
-  let eyeColor = '#ffffff';
-  let irisColor = '#000000';
-
-  switch (sprite.type) {
-    case 'skeleton':
-      eyeColor = '#000000';
-      irisColor = '#ff0000';
-      break;
-    case 'demon':
-      eyeColor = '#ffff00';
-      irisColor = '#ff8800';
-      break;
-    case 'ghost':
-      eyeColor = 'rgba(180, 210, 255, 0.9)';
-      irisColor = '#88ccff';
-      break;
-    case 'golem':
-      eyeColor = '#ffaa00';
-      irisColor = '#442200';
-      break;
-    case 'boss_dragon':
-      eyeColor = '#ffff88';
-      irisColor = '#ff4400';
-      break;
-    case 'boss_necromancer':
-      eyeColor = '#cc88ff';
-      irisColor = '#330066';
-      break;
-    case 'boss_lich':
-      eyeColor = '#88ffdd';
-      irisColor = '#004433';
-      break;
-    default:
-      eyeColor = '#ffffff';
-      irisColor = '#000000';
-  }
-
-  // Eyes
-  ctx.fillStyle = eyeColor;
-  ctx.beginPath();
-  ctx.arc(cx - eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
-  ctx.arc(cx + eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = irisColor;
-  const irisRadius = eyeRadius * 0.55;
-  ctx.beginPath();
-  ctx.arc(
-    cx - eyeOffsetX + eyeRadius * 0.2,
-    headY - eyeOffsetY,
-    irisRadius,
-    0,
-    Math.PI * 2
-  );
-  ctx.arc(
-    cx + eyeOffsetX + eyeRadius * 0.2,
-    headY - eyeOffsetY,
-    irisRadius,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  // Ghost fade trail
-  if (sprite.type === 'ghost') {
-    const tailHeight = bodyHeight * 0.5;
-    const tailGrad = ctx.createLinearGradient(
-      cx,
-      cy + bodyHeight * 0.1,
-      cx,
-      cy + bodyHeight * 0.1 + tailHeight
-    );
-    tailGrad.addColorStop(0, 'rgba(184, 198, 255, 0.6)');
-    tailGrad.addColorStop(1, 'rgba(184, 198, 255, 0)');
-    ctx.fillStyle = tailGrad;
+  const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
+    ctx.save();
+  
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#ffffff';
+    const baseRgb = hexToRgb(baseColor);
+  
+    const dark = {
+      r: Math.round(baseRgb.r * 0.4),
+      g: Math.round(baseRgb.g * 0.4),
+      b: Math.round(baseRgb.b * 0.4)
+    };
+    const light = {
+      r: Math.min(255, Math.round(baseRgb.r * 1.3)),
+      g: Math.min(255, Math.round(baseRgb.g * 1.3)),
+      b: Math.min(255, Math.round(baseRgb.b * 1.3))
+    };
+  
+    const bodyWidth = w * (sprite.isBoss ? 0.55 : 0.45);
+    const bodyHeight = h * (sprite.isBoss ? 0.75 : 0.65);
+  
+    // Idle bob + sway to feel alive
+    const bob = Math.sin(time * 2 + sprite.id * 7) * (h * 0.04);
+    const sway = Math.sin(time * 1.5 + sprite.id * 5) * (w * 0.05);
+  
+    const cx = x + w / 2 + sway;
+    const cy = y + h / 2 + bob;
+  
+    const bodyTop = cy - bodyHeight * 0.5;
+    const bodyBottom = cy + bodyHeight * 0.5;
+  
+    // Body gradient to fake volume
+    const bodyGrad = ctx.createLinearGradient(cx, bodyTop, cx, bodyBottom);
+    bodyGrad.addColorStop(0, rgbToCss(light));
+    bodyGrad.addColorStop(0.4, rgbToCss(baseRgb));
+    bodyGrad.addColorStop(1, rgbToCss(dark));
+  
+    ctx.globalAlpha = brightness;
+    ctx.fillStyle = bodyGrad;
+  
+    // Main body as rounded billboard
     ctx.beginPath();
     ctx.ellipse(
       cx,
-      cy + bodyHeight * 0.3,
-      bodyWidth * 0.8,
-      tailHeight * 0.9,
+      cy,
+      bodyWidth * 0.9,
+      bodyHeight * 0.9,
       0,
       0,
       Math.PI * 2
     );
     ctx.fill();
-  }
-
-  // Simple arms that sway slightly
-  const armLength = bodyHeight * 0.6;
-  const armOffsetY = bodyHeight * 0.05;
-  const armSwing = Math.sin(time * 3 + sprite.id * 3) * bodyWidth * 0.08;
-
-  ctx.strokeStyle = rgbToCss(dark);
-  ctx.lineWidth = Math.max(2, w * 0.03);
-  ctx.lineCap = 'round';
-
-  ctx.beginPath();
-  ctx.moveTo(cx - bodyWidth * 0.9, cy + armOffsetY);
-  ctx.lineTo(
-    cx - bodyWidth * 0.9 - armSwing,
-    cy + armOffsetY + armLength * 0.6
-  );
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(cx + bodyWidth * 0.9, cy + armOffsetY);
-  ctx.lineTo(
-    cx + bodyWidth * 0.9 + armSwing,
-    cy + armOffsetY + armLength * 0.6
-  );
-  ctx.stroke();
-
-  ctx.restore();
-};
+  
+    // Head
+    const headRadius = Math.min(bodyWidth * 0.55, h * 0.18);
+    const headY = bodyTop - headRadius * 0.3;
+  
+    const headGrad = ctx.createRadialGradient(
+      cx - headRadius * 0.3,
+      headY - headRadius * 0.3,
+      headRadius * 0.2,
+      cx,
+      headY,
+      headRadius
+    );
+    headGrad.addColorStop(0, rgbToCss(light));
+    headGrad.addColorStop(1, rgbToCss(dark));
+  
+    ctx.fillStyle = headGrad;
+    ctx.beginPath();
+    ctx.arc(cx, headY, headRadius, 0, Math.PI * 2);
+    ctx.fill();
+  
+    // Boss crown
+    if (sprite.isBoss) {
+      const crownWidth = headRadius * 1.6;
+      const crownHeight = headRadius * 0.7;
+      const crownY = headY - headRadius * 1.1;
+  
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.moveTo(cx - crownWidth / 2, crownY + crownHeight);
+      ctx.lineTo(cx - crownWidth / 3, crownY);
+      ctx.lineTo(cx, crownY + crownHeight * 0.2);
+      ctx.lineTo(cx + crownWidth / 3, crownY);
+      ctx.lineTo(cx + crownWidth / 2, crownY + crownHeight);
+      ctx.closePath();
+      ctx.fill();
+    }
+  
+    // Eyes / face based on type
+    const eyeOffsetX = headRadius * 0.5;
+    const eyeOffsetY = headRadius * 0.2;
+    const eyeRadius = headRadius * 0.18;
+  
+    let eyeColor = '#ffffff';
+    let irisColor = '#000000';
+  
+    switch (sprite.type) {
+      case 'skeleton':
+        eyeColor = '#000000';
+        irisColor = '#ff0000';
+        break;
+      case 'demon':
+        eyeColor = '#ffff00';
+        irisColor = '#ff8800';
+        break;
+      case 'ghost':
+        eyeColor = 'rgba(180, 210, 255, 0.9)';
+        irisColor = '#88ccff';
+        break;
+      case 'golem':
+        eyeColor = '#ffaa00';
+        irisColor = '#442200';
+        break;
+      case 'boss_dragon':
+        eyeColor = '#ffff88';
+        irisColor = '#ff4400';
+        break;
+      case 'boss_necromancer':
+        eyeColor = '#cc88ff';
+        irisColor = '#330066';
+        break;
+      case 'boss_lich':
+        eyeColor = '#88ffdd';
+        irisColor = '#004433';
+        break;
+      default:
+        eyeColor = '#ffffff';
+        irisColor = '#000000';
+    }
+  
+    // Eyes
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(cx - eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
+    ctx.arc(cx + eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
+    ctx.fill();
+  
+    ctx.fillStyle = irisColor;
+    const irisRadius = eyeRadius * 0.55;
+    ctx.beginPath();
+    ctx.arc(
+      cx - eyeOffsetX + eyeRadius * 0.2,
+      headY - eyeOffsetY,
+      irisRadius,
+      0,
+      Math.PI * 2
+    );
+    ctx.arc(
+      cx + eyeOffsetX + eyeRadius * 0.2,
+      headY - eyeOffsetY,
+      irisRadius,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Ghost fade trail
+    if (sprite.type === 'ghost') {
+      const tailHeight = bodyHeight * 0.5;
+      const tailGrad = ctx.createLinearGradient(
+        cx,
+        cy + bodyHeight * 0.1,
+        cx,
+        cy + bodyHeight * 0.1 + tailHeight
+      );
+      tailGrad.addColorStop(0, 'rgba(184, 198, 255, 0.6)');
+      tailGrad.addColorStop(1, 'rgba(184, 198, 255, 0)');
+      ctx.fillStyle = tailGrad;
+      ctx.beginPath();
+      ctx.ellipse(
+        cx,
+        cy + bodyHeight * 0.3,
+        bodyWidth * 0.8,
+        tailHeight * 0.9,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  
+    // Simple arms that sway slightly
+    const armLength = bodyHeight * 0.6;
+    const armOffsetY = bodyHeight * 0.05;
+    const armSwing = Math.sin(time * 3 + sprite.id * 3) * bodyWidth * 0.08;
+  
+    ctx.strokeStyle = rgbToCss(dark);
+    ctx.lineWidth = Math.max(2, w * 0.03);
+    ctx.lineCap = 'round';
+  
+    ctx.beginPath();
+    ctx.moveTo(cx - bodyWidth * 0.9, cy + armOffsetY);
+    ctx.lineTo(
+      cx - bodyWidth * 0.9 - armSwing,
+      cy + armOffsetY + armLength * 0.6
+    );
+    ctx.stroke();
+  
+    ctx.beginPath();
+    ctx.moveTo(cx + bodyWidth * 0.9, cy + armOffsetY);
+    ctx.lineTo(
+      cx + bodyWidth * 0.9 + armSwing,
+      cy + armOffsetY + armLength * 0.6
+    );
+    ctx.stroke();
+  
+    ctx.restore();
+  };
 
   const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
     ctx.save();
@@ -1308,6 +1308,8 @@ const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
 
     const ctx = canvas.getContext('2d');
     const { width, height } = dimensions;
+
+    const time = performance.now() / 1000;
 
     // Enable smoothing for crisp rendering
     ctx.imageSmoothingEnabled = true;
@@ -1535,7 +1537,7 @@ const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
         brightness = Math.max(0.2, Math.min(1.0, brightness));
 
         if (sprite.spriteType === 'enemy') {
-          drawMonsterSprite(ctx, sprite, x, y, spriteWidth, spriteHeight, brightness);
+          drawMonsterSprite(ctx, sprite, x, y, spriteWidth, spriteHeight, brightness, time);
 
           const healthPercent = sprite.health / sprite.maxHealth;
           const barWidth = spriteWidth;
@@ -1973,12 +1975,71 @@ const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
         return remaining;
       });
 
+      // Build a distance field from player to every walkable tile
+      const buildDistanceField = () => {
+        const w = DUNGEON_SIZE;
+        const h = DUNGEON_SIZE;
+        const dist = Array.from({ length: h }, () =>
+          new Array(w).fill(Infinity)
+        );
+      
+        const startX = Math.floor(player.x);
+        const startY = Math.floor(player.y);
+      
+        if (
+          startX < 0 ||
+          startX >= w ||
+          startY < 0 ||
+          startY >= h ||
+          dungeon[startY][startX] > 0
+        ) {
+          return dist;
+        }
+      
+        const q = [];
+        dist[startY][startX] = 0;
+        q.push([startX, startY]);
+      
+        const dirs = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ];
+      
+        while (q.length) {
+          const [cx, cy] = q.shift();
+          const base = dist[cy][cx];
+      
+          for (const [ox, oy] of dirs) {
+            const nx = cx + ox;
+            const ny = cy + oy;
+            if (
+              nx < 0 ||
+              nx >= w ||
+              ny < 0 ||
+              ny >= h ||
+              dungeon[ny][nx] > 0
+            )
+              continue;
+            if (dist[ny][nx] > base + 1) {
+              dist[ny][nx] = base + 1;
+              q.push([nx, ny]);
+            }
+          }
+        }
+      
+        return dist;
+      };
+      
+      const distField = buildDistanceField();
+
       setEnemies(prev =>
         prev.map(enemy => {
           const dx = player.x - enemy.x;
           const dy = player.y - enemy.y;
           const distance = Math.hypot(dx, dy);
-
+      
           let newState = enemy.state;
           let newX = enemy.x;
           let newY = enemy.y;
@@ -1987,39 +2048,144 @@ const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
             0,
             enemy.attackCooldown - deltaTime
           );
-
-          if (distance < 10) {
+      
+          const canSeePlayer = distance < 12;
+      
+          if (canSeePlayer) {
             newState = 'chasing';
-
-            if (distance > 1) {
-              newAngle = Math.atan2(dy, dx);
-              const moveAmount = enemy.speed * deltaTime;
-              newX += Math.cos(newAngle) * moveAmount;
-              newY += Math.sin(newAngle) * moveAmount;
-
-              const tileX = Math.floor(newX);
-              const tileY = Math.floor(newY);
-              if (
-                tileX < 0 ||
-                tileX >= DUNGEON_SIZE ||
-                tileY < 0 ||
-                tileY >= DUNGEON_SIZE ||
-                dungeon[tileY][tileX] > 0
-              ) {
-                newX = enemy.x;
-                newY = enemy.y;
+      
+            // Use distance field to move around walls
+            const ex = Math.floor(enemy.x);
+            const ey = Math.floor(enemy.y);
+      
+            if (
+              ex >= 0 &&
+              ex < DUNGEON_SIZE &&
+              ey >= 0 &&
+              ey < DUNGEON_SIZE
+            ) {
+              const hereDist =
+                distField[ey] && distField[ey][ex] !== undefined
+                  ? distField[ey][ex]
+                  : Infinity;
+      
+              const dirs = [
+                [1, 0],
+                [-1, 0],
+                [0, 1],
+                [0, -1]
+              ];
+      
+              let bestTile = null;
+              let bestDist = hereDist;
+      
+              for (const [ox, oy] of dirs) {
+                const nx = ex + ox;
+                const ny = ey + oy;
+                if (
+                  nx < 0 ||
+                  nx >= DUNGEON_SIZE ||
+                  ny < 0 ||
+                  ny >= DUNGEON_SIZE
+                )
+                  continue;
+      
+                const d = distField[ny][nx];
+                if (d < bestDist) {
+                  bestDist = d;
+                  bestTile = { x: nx, y: ny };
+                }
               }
-            } else if (distance < 1.5 && newAttackCooldown <= 0) {
+      
+              // Only move if we have a better tile to go to
+              if (bestTile && bestDist < Infinity) {
+                const targetX = bestTile.x + 0.5;
+                const targetY = bestTile.y + 0.5;
+                const dirX = targetX - enemy.x;
+                const dirY = targetY - enemy.y;
+                const len = Math.hypot(dirX, dirY) || 1;
+                const moveAmount = enemy.speed * deltaTime;
+      
+                newX = enemy.x + (dirX / len) * moveAmount;
+                newY = enemy.y + (dirY / len) * moveAmount;
+                newAngle = Math.atan2(dirY, dirX);
+      
+                const tileX = Math.floor(newX);
+                const tileY = Math.floor(newY);
+                if (
+                  tileX < 0 ||
+                  tileX >= DUNGEON_SIZE ||
+                  tileY < 0 ||
+                  tileY >= DUNGEON_SIZE ||
+                  dungeon[tileY][tileX] > 0
+                ) {
+                  // If tile blocked, fall back to the old direct chase step
+                  const fallbackMove = enemy.speed * deltaTime * 0.6;
+                  const fallbackAngle = Math.atan2(dy, dx);
+                  const fx = enemy.x + Math.cos(fallbackAngle) * fallbackMove;
+                  const fy = enemy.y + Math.sin(fallbackAngle) * fallbackMove;
+      
+                  const ftx = Math.floor(fx);
+                  const fty = Math.floor(fy);
+                  if (
+                    ftx >= 0 &&
+                    ftx < DUNGEON_SIZE &&
+                    fty >= 0 &&
+                    fty < DUNGEON_SIZE &&
+                    dungeon[fty][ftx] === 0
+                  ) {
+                    newX = fx;
+                    newY = fy;
+                    newAngle = fallbackAngle;
+                  } else {
+                    newX = enemy.x;
+                    newY = enemy.y;
+                  }
+                }
+              }
+            }
+      
+            // Attack if close enough
+            if (distance < 1.5 && newAttackCooldown <= 0) {
               setPlayer(p => ({
                 ...p,
                 health: Math.max(0, p.health - enemy.damage)
               }));
+      
+              // === VIBRATION ON HIT (step 3 as well) ===
+              try {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(60);
+                }
+      
+                if (navigator.getGamepads) {
+                  const pads = navigator.getGamepads();
+                  const gp = pads && pads[0];
+                  if (
+                    gp &&
+                    gp.vibrationActuator &&
+                    gp.vibrationActuator.type === 'dual-rumble'
+                  ) {
+                    gp.vibrationActuator
+                      .playEffect('dual-rumble', {
+                        duration: 90,
+                        strongMagnitude: 0.9,
+                        weakMagnitude: 0.4
+                      })
+                      .catch(() => {});
+                  }
+                }
+              } catch (err) {
+                console.log('Haptics not supported', err);
+              }
+              // === /VIBRATION ===
+      
               newAttackCooldown = 1.5;
             }
           } else {
             newState = 'idle';
           }
-
+      
           return {
             ...enemy,
             x: newX,
