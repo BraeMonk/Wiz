@@ -2314,22 +2314,19 @@ const WizardDungeonCrawler = () => {
   if (showUpgradeMenu) {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-indigo-900 to-black flex flex-col">
-        {/* Header */}
-        <div className="px-4 pt-10 pb-4 text-center shrink-0">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-            <TrendingUp className="inline-block mb-2" size={48} />
+        {/* Header - Fixed at top */}
+        <div className="px-4 pt-4 pb-3 text-center bg-black bg-opacity-30">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-1">
+            <TrendingUp className="inline-block mb-1" size={40} />
             <br />
             Permanent Upgrades
           </h1>
-          <p className="text-xl text-purple-300 mb-1">Essence: ✨ {essence}</p>
+          <p className="text-lg md:text-xl text-purple-300 mb-0">Essence: ✨ {essence}</p>
           <p className="text-sm text-gray-400">Total Runs: {totalRuns}</p>
         </div>
   
-        {/* Scrollable upgrades list */}
-        <div
-          className="flex-1 overflow-y-auto px-4 pb-4"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
+        {/* Scrollable upgrades list - Takes remaining space between header and footer */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.keys(UPGRADE_COSTS).map(upgradeKey => {
               const currentLevel = permanentUpgrades[upgradeKey];
@@ -2342,10 +2339,10 @@ const WizardDungeonCrawler = () => {
                   key={upgradeKey}
                   className="bg-black bg-opacity-60 p-4 rounded-lg border-2 border-purple-600"
                 >
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-3">
                     <Icon size={32} className="text-purple-400" />
                     <div className="text-left flex-1">
-                      <h3 className="text-white font-bold">
+                      <h3 className="text-white font-bold text-base">
                         {UPGRADE_NAMES[upgradeKey]}
                       </h3>
                       <p className="text-gray-300 text-sm">
@@ -2382,11 +2379,11 @@ const WizardDungeonCrawler = () => {
           </div>
         </div>
   
-        {/* Footer button */}
-        <div className="px-4 py-4 shrink-0">
+        {/* Footer button - Fixed at bottom */}
+        <div className="px-4 py-3 bg-black bg-opacity-30">
           <button
             onClick={() => setShowUpgradeMenu(false)}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-xl"
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg"
           >
             Back to Menu
           </button>
@@ -2398,19 +2395,16 @@ const WizardDungeonCrawler = () => {
   if (showShop) {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black flex flex-col">
-        {/* Header */}
-        <div className="px-4 pt-10 pb-4 text-center shrink-0">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+        {/* Header - Fixed at top */}
+        <div className="px-4 pt-4 pb-3 text-center bg-black bg-opacity-30">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-1">
             Spell Shop
           </h1>
-          <p className="text-xl text-yellow-400">Gold: 💰 {player.gold}</p>
+          <p className="text-lg md:text-xl text-yellow-400">Gold: 💰 {player.gold}</p>
         </div>
   
-        {/* Scrollable spell list */}
-        <div
-          className="flex-1 overflow-y-auto px-4 pb-4"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
+        {/* Scrollable spell list - Takes remaining space between header and footer */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.values(ALL_SPELLS).map(spell => {
               const Icon = spell.icon;
@@ -2429,10 +2423,10 @@ const WizardDungeonCrawler = () => {
                       : 'border-gray-600'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-3">
                     <Icon size={32} style={{ color: spell.color }} />
                     <div className="text-left flex-1">
-                      <h3 className="text-white font-bold">{spell.name}</h3>
+                      <h3 className="text-white font-bold text-base">{spell.name}</h3>
                       <p className="text-gray-300 text-sm">
                         Damage: {spell.damage} | Mana: {spell.manaCost}
                       </p>
@@ -2497,12 +2491,12 @@ const WizardDungeonCrawler = () => {
           </div>
         </div>
   
-        {/* Footer button */}
-        <div className="px-4 py-4 shrink-0">
+        {/* Footer button - Fixed at bottom */}
+        <div className="px-4 py-3 bg-black bg-opacity-30">
           <button
             onClick={continueToNextLevel}
             disabled={equippedSpells.length === 0}
-            className={`w-full text-white font-bold py-4 px-8 rounded-lg text-xl ${
+            className={`w-full text-white font-bold py-3 px-8 rounded-lg text-lg ${
               equippedSpells.length === 0
                 ? 'bg-gray-600'
                 : 'bg-purple-600 hover:bg-purple-700'
@@ -2516,7 +2510,7 @@ const WizardDungeonCrawler = () => {
       </div>
     );
   }
-
+  
   if (gameState === 'menu') {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center">
