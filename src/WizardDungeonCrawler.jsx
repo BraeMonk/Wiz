@@ -1348,6 +1348,9 @@ const WizardDungeonCrawler = () => {
     castRay,
     currentLevel,
     pitch,
+    equippedSpells,
+    selectedSpell,
+    isMobile,
   ]);
 
   // Game loop
@@ -1915,25 +1918,26 @@ const WizardDungeonCrawler = () => {
     };
 
     const handleClick = () => {
+      // Ignore clicks entirely on mobile (touch handles casting there)
+      if (isMobile) return;
       if (gameState !== 'playing') return;
 
-      // Desktop: request pointer lock first click, then cast
-      if (!isMobile) {
-        const canvas = canvasRef.current;
-        if (canvas && document.pointerLockElement !== canvas) {
-          if (canvas.requestPointerLock) {
-            const lockPromise = canvas.requestPointerLock();
-            if (lockPromise && lockPromise.catch) {
-              lockPromise.catch(err => {
-                console.log('Pointer lock failed:', err);
-              });
-            }
+      const canvas = canvasRef.current;
+
+      // Desktop: first click = pointer lock
+      if (canvas && document.pointerLockElement !== canvas) {
+        if (canvas.requestPointerLock) {
+          const lockPromise = canvas.requestPointerLock();
+          if (lockPromise && lockPromise.catch) {
+            lockPromise.catch(err => {
+              console.log('Pointer lock failed:', err);
+            });
           }
-          return;
         }
+        return;
       }
 
-      // Single unified casting path
+      // Desktop click to cast
       castCurrentSpell();
     };
 
@@ -1950,18 +1954,22 @@ const WizardDungeonCrawler = () => {
     };
   }, [gameState, castCurrentSpell, isMobile]);
 
-  // Touch controls (mobile)
+  // Touch controls (mobile) – tap anywhere to cast
   useEffect(() => {
     if (!isMobile || gameState !== 'playing') return;
 
     const handleTouchStart = (e) => {
+      e.preventDefault();
       for (const touch of e.changedTouches) {
         const half = window.innerWidth / 2;
+
         if (touch.clientX < half && leftTouchId.current === null) {
+          // Left thumb = movement
           leftTouchId.current = touch.identifier;
           leftStart.current = { x: touch.clientX, y: touch.clientY };
           mobileMoveRef.current = { x: 0, y: 0 };
         } else if (touch.clientX >= half && rightTouchId.current === null) {
+          // Right thumb = look
           rightTouchId.current = touch.identifier;
           rightStart.current = { x: touch.clientX, y: touch.clientY };
           mobileLookRef.current = { x: 0, y: 0 };
@@ -1985,26 +1993,36 @@ const WizardDungeonCrawler = () => {
 
     const handleTouchEnd = (e) => {
       for (const touch of e.changedTouches) {
+        const isLeft = touch.identifier === leftTouchId.current;
+        const isRight = touch.identifier === rightTouchId.current;
 
-        // --- LEFT SIDE (movement stick)
-        if (touch.identifier === leftTouchId.current) {
-          leftTouchId.current = null;
-          mobileMoveRef.current = { x: 0, y: 0 };
-        }
+        // Figure out how far this finger moved (for tap detection)
+        let startPos = null;
+        if (isLeft) startPos = leftStart.current;
+        else if (isRight) startPos = rightStart.current;
 
-        // --- RIGHT SIDE (look + tap-to-cast)
-        if (touch.identifier === rightTouchId.current) {
-
-          // Check if this was a TAP (not a drag)
-          const dx = touch.clientX - rightStart.current.x;
-          const dy = touch.clientY - rightStart.current.y;
+        if (startPos) {
+          const dx = touch.clientX - startPos.x;
+          const dy = touch.clientY - startPos.y;
           const dist = Math.hypot(dx, dy);
 
           // If the finger barely moved → treat as a CAST
           if (dist < 20 && gameState === 'playing') {
             castCurrentSpell();
           }
+        } else {
+          // Any other quick tap we didn't track as a stick → also cast
+          if (gameState === 'playing') {
+            castCurrentSpell();
+          }
+        }
 
+        // Reset sticks
+        if (isLeft) {
+          leftTouchId.current = null;
+          mobileMoveRef.current = { x: 0, y: 0 };
+        }
+        if (isRight) {
           rightTouchId.current = null;
           mobileLookRef.current = { x: 0, y: 0 };
         }
@@ -2130,9 +2148,9 @@ const WizardDungeonCrawler = () => {
             Begin Your Journey
           </button>
           <div className="mt-8 text-purple-200 text-sm space-y-1">
-            <p>Desktop: WASD Move · Mouse Look · Click Cast · Space Jump</p>
+            <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
             <p>1/2/3 Spells · ESC Pause</p>
-            <p>Mobile: Left Thumb Move · Right Thumb Look · Tap Right to Cast</p>
+            <p>Mobile: Left Thumb Move · Right Thumb Look · Tap to Cast</p>
             <p>Controller: Left Stick Move · Right Stick Look · RB Cast · LB Cycle Spells</p>
           </div>
         </div>
@@ -2401,7 +2419,7 @@ const WizardDungeonCrawler = () => {
           <div className="pointer-events-none absolute bottom-24 left-4 w-24 h-24 rounded-full border border-purple-400/50 bg-purple-500/10" />
           <div className="pointer-events-none absolute bottom-24 right-4 w-24 h-24 rounded-full border border-indigo-400/50 bg-indigo-500/10" />
           <div className="pointer-events-none absolute bottom-4 left-4 right-4 text-center text-[10px] text-purple-100">
-            Left thumb: move · Right thumb: look · Tap right side: cast
+            Left thumb: move · Right thumb: look · Tap to cast
           </div>
         </>
       )}
