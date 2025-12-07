@@ -244,12 +244,11 @@ const WizardDungeonCrawler = () => {
     if (musicTracks.length === 0) return;
 
     const audio = new Audio(musicTracks[0]);
-    audio.loop = false;          // we want playlist looping, not single-track looping
+    audio.loop = false;
     audio.volume = 0.4;
     bgmRef.current = audio;
 
     const handleEnded = () => {
-      // Move to next track in the array (wrap around)
       setCurrentTrackIndex(prev => (prev + 1) % musicTracks.length);
     };
 
@@ -258,26 +257,21 @@ const WizardDungeonCrawler = () => {
     return () => {
       audio.pause();
       audio.removeEventListener('ended', handleEnded);
+      audio.src = '';
     };
-  }, []);
+  }, [musicTracks]);
 
   useEffect(() => {
     const audio = bgmRef.current;
     if (!audio || musicTracks.length === 0) return;
 
-    // Update the current track source
     audio.src = musicTracks[currentTrackIndex];
     audio.load();
 
-    // Only play while game is actually running and music is enabled
     if (gameState === 'playing' && musicEnabled) {
-      audio
-        .play()
-        .catch(() => {
-          // browser may block autoplay until user interacts – safe to ignore
-        });
+      audio.play().catch(() => {});
     }
-  }, [currentTrackIndex, gameState, musicEnabled]);
+  }, [currentTrackIndex, musicTracks]);
 
   useEffect(() => {
     const audio = bgmRef.current;
@@ -288,7 +282,7 @@ const WizardDungeonCrawler = () => {
       return;
     }
 
-    if (audio.paused) {
+    if (audio.paused && audio.readyState >= 2) {
       audio.play().catch(() => {});
     }
   }, [gameState, musicEnabled]);
@@ -346,24 +340,23 @@ const WizardDungeonCrawler = () => {
     if (!spell) return;
 
     let canCast = false;
+    let updatedPlayer = null;
 
-    // Check mana & cooldown and spend mana
     setPlayer(prev => {
       if (spell.cooldown > 0 || prev.mana < spell.manaCost) return prev;
       canCast = true;
-      return { ...prev, mana: prev.mana - spell.manaCost };
+      updatedPlayer = { ...prev, mana: prev.mana - spell.manaCost };
+      return updatedPlayer;
     });
 
-    if (!canCast) return;
+    if (!canCast || !updatedPlayer) return;
 
-    // Put spell on cooldown
     setEquippedSpells(prev =>
       prev.map((s, i) =>
         i === idx ? { ...s, cooldown: s.maxCooldown } : s
       )
     );
 
-    // Spawn projectile from live playerRef
     const p = playerRef.current;
 
     setProjectiles(prev => [
@@ -382,7 +375,7 @@ const WizardDungeonCrawler = () => {
       }
     ]);
   }, []);
-  
+
   // Generate dungeon + terrain
   const generateDungeon = useCallback((level) => {
     const size = DUNGEON_SIZE;
