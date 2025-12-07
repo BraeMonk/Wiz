@@ -900,131 +900,71 @@ const WizardDungeonCrawler = () => {
     return null;
   }, []);
 
-  // More grounded / semi-realistic 2.5D monster billboard
+  // N64-inspired, more detailed / textured monster sprite
   const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
-    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#ffffff';
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#b0b0b0';
     const baseRgb = hexToRgb(baseColor);
   
-    const dark = {
-      r: Math.round(baseRgb.r * 0.35),
-      g: Math.round(baseRgb.g * 0.35),
-      b: Math.round(baseRgb.b * 0.35)
+    // Light from top-left, fake 3-band shading with a bit of nuance
+    const lightDir = { x: -0.6, y: -0.8 }; // not used for normals, but for band bias
+    const bandBoost = (offset) =>
+      Math.max(0.3, Math.min(1.15, brightness + offset));
+  
+    const band1 = {
+      r: Math.round(baseRgb.r * bandBoost(0.2)),
+      g: Math.round(baseRgb.g * bandBoost(0.2)),
+      b: Math.round(baseRgb.b * bandBoost(0.2))
     };
-    const mid = {
-      r: Math.round(baseRgb.r * 0.8),
-      g: Math.round(baseRgb.g * 0.8),
-      b: Math.round(baseRgb.b * 0.8)
+    const band2 = {
+      r: Math.round(baseRgb.r * bandBoost(0.0)),
+      g: Math.round(baseRgb.g * bandBoost(0.0)),
+      b: Math.round(baseRgb.b * bandBoost(0.0))
     };
-    const light = {
-      r: Math.min(255, Math.round(baseRgb.r * 1.15)),
-      g: Math.min(255, Math.round(baseRgb.g * 1.15)),
-      b: Math.min(255, Math.round(baseRgb.b * 1.15))
+    const band3 = {
+      r: Math.round(baseRgb.r * bandBoost(-0.25)),
+      g: Math.round(baseRgb.g * bandBoost(-0.25)),
+      b: Math.round(baseRgb.b * bandBoost(-0.25))
     };
+  
+    // Clamp colors
+    const clamp = (v) => Math.max(0, Math.min(255, v));
+    [band1, band2, band3].forEach((b) => {
+      b.r = clamp(b.r);
+      b.g = clamp(b.g);
+      b.b = clamp(b.b);
+    });
   
     const state = sprite.state || 'idle';
   
-    // Animation tuned down a bit for realism
-    const baseSpeed =
-      state === 'idle' ? 1.0 : state === 'chasing' ? 2.0 : 3.0;
-    const bobAmp =
-      state === 'idle' ? 0.02 : state === 'chasing' ? 0.035 : 0.05;
-    const swayAmp =
-      state === 'idle' ? 0.02 : state === 'chasing' ? 0.04 : 0.06;
-    const pulseAmp =
-      state === 'idle' ? 0.04 : state === 'chasing' ? 0.08 : 0.12;
+    // Animation: subtle & weighty
+    const baseSpeed = state === 'idle' ? 0.7 : state === 'chasing' ? 1.2 : 1.7;
+    const bobAmp   = state === 'idle' ? 0.015 : state === 'chasing' ? 0.025 : 0.035;
+    const swayAmp  = state === 'idle' ? 0.015 : state === 'chasing' ? 0.03  : 0.04;
   
-    const phase = time * baseSpeed + sprite.id * 2.13;
+    const phase = time * baseSpeed + sprite.id * 1.23;
   
-    // Taller proportions
-    const bodyWidth = w * (sprite.isBoss ? 0.5 : 0.4);
-    const bodyHeight = h * (sprite.isBoss ? 0.9 : 0.8);
+    const bodyWidth  = w * (sprite.isBoss ? 0.6 : 0.5);
+    const bodyHeight = h * (sprite.isBoss ? 0.95 : 0.85);
   
-    const bob = Math.sin(phase) * (h * bobAmp);
-    const sway = Math.sin(phase * 0.8) * (w * swayAmp);
-    const scalePulse = 1 + Math.sin(phase * 2) * pulseAmp * brightness;
+    const bob  = Math.sin(phase) * (h * bobAmp);
+    const sway = Math.sin(phase * 0.9) * (w * swayAmp);
   
     const cx = x + w / 2 + sway;
     const cy = y + h / 2 + bob;
   
-    const bodyTop = cy - bodyHeight * 0.5 * scalePulse;
-    const bodyBottom = cy + bodyHeight * 0.5 * scalePulse;
-  
-    // Extra warmth when attacking, but less neon
-    const stateHeat =
-      state === 'attacking' ? 0.45 : state === 'chasing' ? 0.2 : 0;
-    const heatFactor = stateHeat * (0.5 + 0.5 * brightness);
-    const hotColor = {
-      r: Math.min(255, baseRgb.r + 150 * heatFactor),
-      g: Math.max(0, baseRgb.g - 60 * heatFactor),
-      b: Math.max(0, baseRgb.b - 110 * heatFactor)
-    };
-  
-    const bodyGrad = ctx.createLinearGradient(cx, bodyTop, cx, bodyBottom);
-    bodyGrad.addColorStop(0, rgbToCss(light));
-    bodyGrad.addColorStop(0.35, rgbToCss(mid));
-    bodyGrad.addColorStop(1, rgbToCss(dark));
+    const bodyTop    = cy - bodyHeight * 0.5;
+    const bodyBottom = cy + bodyHeight * 0.5;
   
     ctx.globalAlpha = brightness;
-    ctx.fillStyle = bodyGrad;
   
-    // Torso
-    const torsoHeight = bodyHeight * 0.55;
-    const torsoTop = bodyTop + bodyHeight * 0.1;
-    const torsoBottom = torsoTop + torsoHeight;
+    // ===== Feet shadow =====
+    const shadowWidth  = bodyWidth * 0.8;
+    const shadowHeight = h * 0.035;
+    const shadowY      = bodyBottom + shadowHeight * 0.3;
   
-    ctx.beginPath();
-    ctx.roundRect(
-      cx - bodyWidth * 0.5,
-      torsoTop,
-      bodyWidth,
-      torsoHeight,
-      bodyWidth * 0.18
-    );
-    ctx.fill();
-  
-    // Legs as simple vertical forms for grounded look
-    const legHeight = bodyHeight * 0.35;
-    const legWidth = bodyWidth * 0.35;
-  
-    const legsTop = torsoBottom - legHeight * 0.15;
-    const legsBottom = legsTop + legHeight;
-  
-    ctx.fillStyle = rgbToCss(dark);
-    ctx.beginPath();
-    ctx.roundRect(
-      cx - legWidth * 0.9,
-      legsTop,
-      legWidth,
-      legHeight,
-      legWidth * 0.25
-    );
-    ctx.roundRect(
-      cx + legWidth * 0.1,
-      legsTop,
-      legWidth,
-      legHeight,
-      legWidth * 0.25
-    );
-    ctx.fill();
-  
-    // Subtle shadow under feet
-    const shadowWidth = bodyWidth * 0.9;
-    const shadowHeight = h * 0.04;
-    const shadowY = legsBottom + shadowHeight * 0.4;
-  
-    const shadowGrad = ctx.createRadialGradient(
-      cx,
-      shadowY,
-      0,
-      cx,
-      shadowY,
-      shadowWidth / 2
-    );
-    shadowGrad.addColorStop(0, `rgba(0, 0, 0, ${0.35 * brightness})`);
-    shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = shadowGrad;
+    ctx.fillStyle = `rgba(0,0,0,${0.45 * brightness})`;
     ctx.beginPath();
     ctx.ellipse(
       cx,
@@ -1037,338 +977,414 @@ const WizardDungeonCrawler = () => {
     );
     ctx.fill();
   
-    // Head: smaller, less chibi
-    const headRadius = Math.min(bodyWidth * 0.4, h * 0.14) * scalePulse;
-    const headY = bodyTop + headRadius * 1.0;
+    // ===== Torso: panelled, 3-band block with subtle "texture" =====
+    const torsoHeight = bodyHeight * 0.55;
+    const torsoTop    = bodyTop + bodyHeight * 0.18;
+    const torsoMid    = torsoTop + torsoHeight * 0.5;
+    const torsoBottom = torsoTop + torsoHeight;
+    const leftX       = cx - bodyWidth * 0.5;
+    const rightX      = cx + bodyWidth * 0.5;
   
-    const headGrad = ctx.createRadialGradient(
-      cx - headRadius * 0.3,
-      headY - headRadius * 0.4,
-      headRadius * 0.15,
-      cx,
-      headY,
-      headRadius
+    // Top band
+    ctx.fillStyle = rgbToCss(band1);
+    ctx.fillRect(leftX, torsoTop, bodyWidth, torsoHeight * 0.35);
+  
+    // Mid band
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.fillRect(
+      leftX,
+      torsoTop + torsoHeight * 0.35,
+      bodyWidth,
+      torsoHeight * 0.35
     );
-    headGrad.addColorStop(0, rgbToCss(light));
-    headGrad.addColorStop(1, rgbToCss(dark));
   
-    ctx.fillStyle = headGrad;
-    ctx.beginPath();
-    ctx.arc(cx, headY, headRadius, 0, Math.PI * 2);
-    ctx.fill();
+    // Bottom band
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.fillRect(torsoTop, torsoMid, 0, 0); // noop but keeps flow
+    ctx.fillRect(leftX, torsoMid, bodyWidth, torsoHeight * 0.3);
   
-    // Boss crown, toned down
-    if (sprite.isBoss) {
-      const crownWidth = headRadius * 1.3;
-      const crownHeight = headRadius * 0.55;
-      const crownY = headY - headRadius * 1.1;
-  
-      ctx.fillStyle = '#e6c666';
+    // Vertical "panel" lines for texture
+    ctx.strokeStyle = `rgba(0,0,0,${0.35 * brightness})`;
+    ctx.lineWidth = 1;
+    const panelCount = 3;
+    for (let i = 1; i <= panelCount; i++) {
+      const tx = leftX + (bodyWidth * (i / (panelCount + 1)));
       ctx.beginPath();
-      ctx.moveTo(cx - crownWidth / 2, crownY + crownHeight);
-      ctx.lineTo(cx - crownWidth / 3, crownY);
-      ctx.lineTo(cx, crownY + crownHeight * 0.1);
-      ctx.lineTo(cx + crownWidth / 3, crownY);
-      ctx.lineTo(cx + crownWidth / 2, crownY + crownHeight);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(tx, torsoTop + 2);
+      ctx.lineTo(tx, torsoBottom - 2);
+      ctx.stroke();
     }
   
-    // Eyes / face – smaller, more grounded
-    const eyeOffsetX = headRadius * 0.35;
-    const eyeOffsetY = headRadius * 0.1;
+    // Slight “noise strips” for texture (like fake low-res texture)
+    ctx.strokeStyle = `rgba(255,255,255,${0.08 * brightness})`;
+    for (let row = 0; row < 3; row++) {
+      const ty = torsoTop + (torsoHeight * (row / 3)) + 2;
+      ctx.beginPath();
+      ctx.moveTo(leftX + 3, ty);
+      ctx.lineTo(rightX - 3, ty);
+      ctx.stroke();
+    }
   
-    let eyeColor = '#f0f0f0';
-    let irisColor = '#151515';
-    let mouthColor = '#151515';
-    let mouthOpen = state === 'attacking';
+    // Shoulder wedges for angular look
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.moveTo(leftX, torsoTop);
+    ctx.lineTo(leftX - bodyWidth * 0.25, torsoTop + torsoHeight * 0.22);
+    ctx.lineTo(leftX, torsoTop + torsoHeight * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  
+    ctx.beginPath();
+    ctx.moveTo(rightX, torsoTop);
+    ctx.lineTo(rightX + bodyWidth * 0.25, torsoTop + torsoHeight * 0.22);
+    ctx.lineTo(rightX, torsoTop + torsoHeight * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  
+    // ===== Legs: blockier, with knee panels =====
+    const legHeight = bodyHeight * 0.35;
+    const legWidth  = bodyWidth * 0.28;
+    const legsTop   = torsoBottom - legHeight * 0.2;
+  
+    const legColors = [band3, band2];
+    const legOffsets = [-legWidth * 0.95, legWidth * 0.05];
+  
+    legOffsets.forEach((offset, idx) => {
+      const col = legColors[idx];
+      ctx.fillStyle = rgbToCss(col);
+      const lx = cx + offset;
+      ctx.fillRect(lx, legsTop, legWidth, legHeight);
+  
+      // Knee plate
+      ctx.fillStyle = rgbToCss({
+        r: clamp(col.r + 12),
+        g: clamp(col.g + 12),
+        b: clamp(col.b + 12)
+      });
+      ctx.fillRect(
+        lx + legWidth * 0.15,
+        legsTop + legHeight * 0.4,
+        legWidth * 0.7,
+        legHeight * 0.24
+      );
+    });
+  
+    // ===== Head: rectangular with slight bevel + more detailed face =====
+    const headHeight = bodyHeight * 0.26;
+    const headWidth  = bodyWidth * 0.65;
+    const headTop    = bodyTop;
+    const headLeft   = cx - headWidth / 2;
+    const headRight  = cx + headWidth / 2;
+  
+    // Base head
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
+  
+    // Top bevel
+    ctx.fillStyle = rgbToCss(band1);
+    ctx.fillRect(headLeft, headTop, headWidth, headHeight * 0.4);
+  
+    // Lower shadow band under eyes
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.fillRect(
+      headLeft,
+      headTop + headHeight * 0.6,
+      headWidth,
+      headHeight * 0.4
+    );
+  
+    // Thin border line bottom of head
+    ctx.strokeStyle = `rgba(0,0,0,${0.5 * brightness})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(headLeft, headTop + headHeight);
+    ctx.lineTo(headRight, headTop + headHeight);
+    ctx.stroke();
+  
+    // ===== Face detail per type =====
+    let eyeBaseColor = '#e0e0e0';
+    let irisColor    = '#181818';
+    let mouthColor   = '#181818';
   
     switch (sprite.type) {
       case 'skeleton':
-        eyeColor = '#111111';
-        irisColor = '#ff4b4b';
-        mouthColor = '#dcdcdc';
+        eyeBaseColor = '#141414';
+        irisColor    = '#ff4b4b';
+        mouthColor   = '#dcdcdc';
         break;
       case 'demon':
-        eyeColor = '#f3e588';
-        irisColor = '#ff7a2b';
-        mouthColor = rgbToCss(hotColor);
+        eyeBaseColor = '#f4e47d';
+        irisColor    = '#ff7a2b';
+        mouthColor   = '#b02020';
         break;
       case 'ghost':
-        eyeColor = 'rgba(190, 210, 255, 0.9)';
-        irisColor = '#9ec9ff';
-        mouthColor = 'rgba(210, 225, 255, 0.9)';
+        eyeBaseColor = 'rgba(220, 235, 255, 0.95)';
+        irisColor    = '#90bfff';
+        mouthColor   = 'rgba(220, 235, 255, 0.95)';
         break;
       case 'golem':
-        eyeColor = '#f2bf63';
-        irisColor = '#3a2614';
-        mouthColor = '#4a3622';
+        eyeBaseColor = '#f1c46b';
+        irisColor    = '#3a2614';
+        mouthColor   = '#3c2b1c';
         break;
       case 'boss_dragon':
-        eyeColor = '#fff6a2';
-        irisColor = '#ff4b16';
-        mouthColor = rgbToCss(hotColor);
+        eyeBaseColor = '#fff7aa';
+        irisColor    = '#ff4b16';
+        mouthColor   = '#b02a1f';
         break;
       case 'boss_necromancer':
-        eyeColor = '#e1c0ff';
-        irisColor = '#3b0b66';
-        mouthColor = '#9c4dff';
+        eyeBaseColor = '#e3c7ff';
+        irisColor    = '#3b0b66';
+        mouthColor   = '#8f42df';
         break;
       case 'boss_lich':
-        eyeColor = '#b2ffec';
-        irisColor = '#025344';
-        mouthColor = '#1ce8b0';
+        eyeBaseColor = '#b2ffec';
+        irisColor    = '#025344';
+        mouthColor   = '#19cfa0';
         break;
       default:
-        eyeColor = '#f0f0f0';
-        irisColor = '#151515';
-        mouthColor = '#151515';
+        eyeBaseColor = '#e0e0e0';
+        irisColor    = '#181818';
+        mouthColor   = '#181818';
     }
   
     const eyeAttackScale =
-      state === 'attacking' ? 1.2 : state === 'chasing' ? 1.05 : 1.0;
-    const eyeRadius = headRadius * 0.14 * eyeAttackScale;
-    const irisRadius = eyeRadius * 0.55;
+      state === 'attacking' ? 1.25 : state === 'chasing' ? 1.1 : 1.0;
   
-    ctx.fillStyle = eyeColor;
-    ctx.beginPath();
-    ctx.arc(cx - eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
-    ctx.arc(cx + eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
-    ctx.fill();
+    const eyeWidth  = (headWidth * 0.17) * eyeAttackScale;
+    const eyeHeight = (headHeight * 0.18) * eyeAttackScale;
+    const eyeY      = headTop + headHeight * 0.32;
+    const eyeOffsetX = headWidth * 0.24;
   
-    ctx.fillStyle = irisColor;
-    ctx.beginPath();
-    ctx.arc(
-      cx - eyeOffsetX + eyeRadius * 0.1,
-      headY - eyeOffsetY,
-      irisRadius,
-      0,
-      Math.PI * 2
+    // Eye whites: rectangles
+    ctx.fillStyle = eyeBaseColor;
+    ctx.fillRect(
+      cx - eyeOffsetX - eyeWidth / 2,
+      eyeY,
+      eyeWidth,
+      eyeHeight
     );
-    ctx.arc(
-      cx + eyeOffsetX + eyeRadius * 0.1,
-      headY - eyeOffsetY,
-      irisRadius,
-      0,
-      Math.PI * 2
+    ctx.fillRect(
+      cx + eyeOffsetX - eyeWidth / 2,
+      eyeY,
+      eyeWidth,
+      eyeHeight
     );
-    ctx.fill();
   
-    // Subtle eye glow only for spooky things / bosses
-    if (sprite.type === 'ghost' || sprite.isBoss || sprite.type === 'demon') {
-      const glowScale = state === 'attacking' ? 1.4 : 1.2;
-      const glowAlpha = 0.25 * brightness * (state === 'idle' ? 0.7 : 1);
-      ctx.fillStyle =
-        sprite.type === 'ghost'
-          ? `rgba(170, 195, 255, ${glowAlpha})`
-          : sprite.isBoss
-          ? `rgba(255, 240, 210, ${glowAlpha})`
-          : `rgba(255, 130, 90, ${glowAlpha})`;
+    // Iris / pupil: smaller rectangle inside
+    const irisHeight = eyeHeight * 0.55;
+    const irisWidth  = eyeWidth * 0.55;
+    const irisY      = eyeY + (eyeHeight - irisHeight) / 2;
+    ctx.fillStyle    = irisColor;
   
-      ctx.beginPath();
-      ctx.arc(
-        cx - eyeOffsetX + eyeRadius * 0.1,
-        headY - eyeOffsetY,
-        eyeRadius * glowScale,
-        0,
-        Math.PI * 2
-      );
-      ctx.arc(
-        cx + eyeOffsetX + eyeRadius * 0.1,
-        headY - eyeOffsetY,
-        eyeRadius * glowScale,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    }
+    ctx.fillRect(
+      cx - eyeOffsetX - irisWidth / 2,
+      irisY,
+      irisWidth,
+      irisHeight
+    );
+    ctx.fillRect(
+      cx + eyeOffsetX - irisWidth / 2,
+      irisY,
+      irisWidth,
+      irisHeight
+    );
   
-    // Mouth – small and simple
+    // Tiny "eyelid" line for more detail
+    ctx.strokeStyle = `rgba(0,0,0,${0.7 * brightness})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - eyeOffsetX - eyeWidth / 2, eyeY);
+    ctx.lineTo(cx - eyeOffsetX + eyeWidth / 2, eyeY);
+    ctx.moveTo(cx + eyeOffsetX - eyeWidth / 2, eyeY);
+    ctx.lineTo(cx + eyeOffsetX + eyeWidth / 2, eyeY);
+    ctx.stroke();
+  
+    // Mouth
+    const mouthWidth  = headWidth * 0.45;
+    const mouthHeight = state === 'attacking'
+      ? headHeight * 0.22
+      : headHeight * 0.14;
+    const mouthY = headTop + headHeight * 0.65;
+  
     ctx.fillStyle = mouthColor;
-    const mouthWidth = headRadius * 0.6;
-    const mouthHeight = mouthOpen ? headRadius * 0.35 : headRadius * 0.18;
-    const mouthY = headY + headRadius * 0.3;
+    ctx.fillRect(
+      cx - mouthWidth / 2,
+      mouthY,
+      mouthWidth,
+      mouthHeight
+    );
   
-    ctx.beginPath();
-    if (mouthOpen) {
-      ctx.ellipse(
-        cx,
-        mouthY,
-        mouthWidth * 0.45,
-        mouthHeight * 0.6,
-        0,
-        0,
-        Math.PI * 2
-      );
-    } else {
-      ctx.roundRect(
-        cx - mouthWidth * 0.5,
-        mouthY - mouthHeight * 0.25,
-        mouthWidth,
-        mouthHeight * 0.5,
-        mouthHeight * 0.25
-      );
+    // Teeth / jaw hints for skeleton, demon, dragon
+    if (['skeleton', 'demon', 'boss_dragon', 'boss_lich'].includes(sprite.type)) {
+      ctx.strokeStyle = `rgba(240,240,240,${0.65 * brightness})`;
+      ctx.lineWidth = 1;
+      const toothCount = 4;
+      for (let i = 1; i < toothCount; i++) {
+        const tx = cx - mouthWidth / 2 + (mouthWidth * (i / toothCount));
+        ctx.beginPath();
+        ctx.moveTo(tx, mouthY);
+        ctx.lineTo(tx, mouthY + mouthHeight * 0.4);
+        ctx.stroke();
+      }
     }
-    ctx.fill();
   
-    // Ghost trail – more ethereal, less cartoony blob
-    if (sprite.type === 'ghost') {
-      const tailHeight = bodyHeight * (state === 'attacking' ? 0.6 : 0.5);
-      const tailGrad = ctx.createLinearGradient(
-        cx,
-        torsoBottom - bodyHeight * 0.05,
-        cx,
-        torsoBottom + tailHeight
-      );
-      tailGrad.addColorStop(0, 'rgba(184, 198, 255, 0.45)');
-      tailGrad.addColorStop(1, 'rgba(184, 198, 255, 0)');
-      ctx.fillStyle = tailGrad;
+    // Boss crown: more angular & segmented
+    if (sprite.isBoss) {
+      const crownWidth  = headWidth * 0.8;
+      const crownHeight = headHeight * 0.35;
+      const crownTopY   = headTop - crownHeight * 0.9;
+  
+      ctx.fillStyle = '#e0c86b';
       ctx.beginPath();
-      ctx.ellipse(
-        cx,
-        torsoBottom + tailHeight * 0.35,
-        bodyWidth * 0.65,
-        tailHeight * 0.8,
-        0,
-        0,
-        Math.PI * 2
-      );
+      ctx.moveTo(cx - crownWidth / 2, crownTopY + crownHeight);
+      ctx.lineTo(cx - crownWidth / 3, crownTopY);
+      ctx.lineTo(cx - crownWidth / 6, crownTopY + crownHeight * 0.3);
+      ctx.lineTo(cx, crownTopY);
+      ctx.lineTo(cx + crownWidth / 6, crownTopY + crownHeight * 0.3);
+      ctx.lineTo(cx + crownWidth / 3, crownTopY);
+      ctx.lineTo(cx + crownWidth / 2, crownTopY + crownHeight);
+      ctx.closePath();
       ctx.fill();
-    }
   
-    // Golem cracks
-    if (sprite.type === 'golem') {
-      const crackAlpha =
-        0.18 +
-        (state === 'attacking' ? 0.25 : state === 'chasing' ? 0.16 : 0.08);
-      ctx.strokeStyle = `rgba(30, 18, 10, ${crackAlpha})`;
-      ctx.lineWidth = Math.max(1.5, w * 0.018);
-      ctx.beginPath();
-      ctx.moveTo(cx - bodyWidth * 0.4, torsoTop + torsoHeight * 0.2);
-      ctx.lineTo(cx - bodyWidth * 0.1, torsoTop + torsoHeight * 0.5);
-      ctx.lineTo(cx + bodyWidth * 0.25, torsoTop + torsoHeight * 0.35);
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
   
-    // Boss extras – simplified but still distinct
+    // ===== Enemy-specific body details =====
   
+    // Ghost tail & translucency
+    if (sprite.type === 'ghost') {
+      const tailTop    = torsoBottom - bodyHeight * 0.05;
+      const tailBottom = tailTop + bodyHeight * 0.45;
+  
+      ctx.fillStyle = 'rgba(210, 225, 255, 0.72)';
+      ctx.beginPath();
+      ctx.moveTo(cx - bodyWidth * 0.3, tailTop);
+      ctx.lineTo(cx + bodyWidth * 0.3, tailTop);
+      ctx.lineTo(cx + bodyWidth * 0.15, tailBottom);
+      ctx.lineTo(cx - bodyWidth * 0.15, tailBottom);
+      ctx.closePath();
+      ctx.fill();
+  
+      // Low-res-ish vertical “fade”
+      const ghostLines = 3;
+      ctx.strokeStyle = 'rgba(180, 200, 255, 0.45)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < ghostLines; i++) {
+        const gx = cx - bodyWidth * 0.25 + (bodyWidth * 0.5 * (i / (ghostLines - 1 || 1)));
+        ctx.beginPath();
+        ctx.moveTo(gx, tailTop + 2);
+        ctx.lineTo(gx, tailBottom - 2);
+        ctx.stroke();
+      }
+    }
+  
+    // Golem cracks & plates
+    if (sprite.type === 'golem') {
+      ctx.strokeStyle = 'rgba(25,15,8,0.75)';
+      ctx.lineWidth = Math.max(1.5, w * 0.015);
+  
+      ctx.beginPath();
+      ctx.moveTo(cx - bodyWidth * 0.32, torsoTop + torsoHeight * 0.22);
+      ctx.lineTo(cx - bodyWidth * 0.1, torsoTop + torsoHeight * 0.48);
+      ctx.lineTo(cx + bodyWidth * 0.18, torsoTop + torsoHeight * 0.38);
+      ctx.stroke();
+  
+      ctx.beginPath();
+      ctx.moveTo(cx + bodyWidth * 0.28, torsoTop + torsoHeight * 0.18);
+      ctx.lineTo(cx + bodyWidth * 0.12, torsoTop + torsoHeight * 0.32);
+      ctx.stroke();
+    }
+  
+    // Necromancer staff
     if (sprite.type === 'boss_necromancer') {
-      const staffX = cx - bodyWidth * 0.65;
-      const staffTop = torsoTop - headRadius * 0.4;
-      const staffBottom = legsBottom;
-      ctx.strokeStyle = 'rgba(60, 20, 100, 0.9)';
-      ctx.lineWidth = Math.max(2, w * 0.02);
+      const staffX   = cx - bodyWidth * 0.6;
+      const staffTop = torsoTop - headHeight * 0.15;
+      const staffBot = legsTop + legHeight;
+  
+      ctx.strokeStyle = 'rgba(50,20,80,0.95)';
+      ctx.lineWidth   = Math.max(2, w * 0.02);
       ctx.beginPath();
       ctx.moveTo(staffX, staffTop);
-      ctx.lineTo(staffX, staffBottom);
+      ctx.lineTo(staffX, staffBot);
       ctx.stroke();
   
-      const orbRadius = headRadius * 0.5;
-      const orbGlow = ctx.createRadialGradient(
-        staffX,
-        staffTop - orbRadius * 0.1,
-        0,
-        staffX,
-        staffTop - orbRadius * 0.1,
-        orbRadius * 1.6
-      );
-      const orbIntensity =
-        0.25 +
-        (state === 'attacking' ? 0.45 : state === 'chasing' ? 0.3 : 0.15);
-      orbGlow.addColorStop(0, `rgba(170, 0, 255, ${orbIntensity})`);
-      orbGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = orbGlow;
+      const orbR = headHeight * 0.2;
+      ctx.fillStyle = 'rgba(170,0,255,0.8)';
       ctx.beginPath();
-      ctx.arc(
-        staffX,
-        staffTop - orbRadius * 0.1,
-        orbRadius * 1.4,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(staffX, staffTop - orbR * 0.5, orbR, 0, Math.PI * 2);
       ctx.fill();
+  
+      // Small aura ring
+      ctx.strokeStyle = 'rgba(170,0,255,0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(staffX, staffTop - orbR * 0.5, orbR * 1.4, 0, Math.PI * 2);
+      ctx.stroke();
     }
   
+    // Dragon wings
     if (sprite.type === 'boss_dragon') {
-      const wingsSpan = bodyWidth * 1.5;
+      const wingsSpan   = bodyWidth * 1.5;
       const wingsHeight = bodyHeight * 0.7;
-      ctx.fillStyle = `rgba(50, 0, 0, ${
-        0.35 + (state === 'attacking' ? 0.25 : 0.1)
-      })`;
+      const wingsY      = torsoTop + torsoHeight * 0.35;
+  
+      ctx.fillStyle = `rgba(40,0,0,${0.55 * brightness})`;
       ctx.beginPath();
-      ctx.moveTo(cx - wingsSpan, torsoTop + torsoHeight * 0.25);
-      ctx.quadraticCurveTo(
-        cx,
-        torsoTop - wingsHeight * 0.3,
-        cx + wingsSpan,
-        torsoTop + torsoHeight * 0.25
-      );
-      ctx.quadraticCurveTo(
-        cx,
-        torsoTop + torsoHeight * 0.7,
-        cx - wingsSpan,
-        torsoTop + torsoHeight * 0.25
-      );
+      ctx.moveTo(cx - wingsSpan, wingsY);
+      ctx.lineTo(cx, wingsY - wingsHeight * 0.55);
+      ctx.lineTo(cx + wingsSpan, wingsY);
+      ctx.lineTo(cx, wingsY + wingsHeight * 0.35);
+      ctx.closePath();
       ctx.fill();
+  
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
   
+    // Lich aura
     if (sprite.type === 'boss_lich') {
-      const auraRadius = bodyWidth * 1.4;
-      const auraGrad = ctx.createRadialGradient(
-        cx,
-        (torsoTop + legsBottom) / 2,
-        0,
-        cx,
-        (torsoTop + legsBottom) / 2,
-        auraRadius
-      );
-      auraGrad.addColorStop(
-        0,
-        `rgba(0, 255, 170, ${
-          0.25 + (state === 'attacking' ? 0.3 : 0.15)
-        })`
-      );
-      auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = auraGrad;
+      const auraWidth  = bodyWidth * 1.5;
+      const auraHeight = bodyHeight * 1.1;
+      ctx.strokeStyle  = `rgba(0,255,200,${0.35 * brightness})`;
+      ctx.lineWidth    = 2;
       ctx.beginPath();
-      ctx.arc(
+      ctx.ellipse(
         cx,
-        (torsoTop + legsBottom) / 2,
-        auraRadius,
+        (torsoTop + legsTop + legHeight) / 2,
+        auraWidth / 2,
+        auraHeight / 2,
+        0,
         0,
         Math.PI * 2
       );
-      ctx.fill();
+      ctx.stroke();
     }
   
-    // Arms – just enough motion to feel alive
-    const armLength = torsoHeight * 0.8;
-    const armOffsetY = torsoTop + torsoHeight * 0.25;
-    const armSwing =
-      Math.sin(phase * (state === 'idle' ? 0.8 : 1.5)) *
-      bodyWidth *
-      (state === 'attacking' ? 0.12 : 0.06);
+    // ===== Arms: straight segments with slight swing =====
+    const armLength  = torsoHeight * 0.8;
+    const armY       = torsoTop + torsoHeight * 0.35;
+    const armSwing   =
+      Math.sin(phase * (state === 'idle' ? 0.8 : 1.4)) *
+      (bodyWidth * 0.22);
   
-    ctx.strokeStyle = rgbToCss(dark);
-    ctx.lineWidth = Math.max(2, w * 0.025);
-    ctx.lineCap = 'round';
+    ctx.strokeStyle = rgbToCss(band3);
+    ctx.lineWidth   = Math.max(2, w * 0.022);
+    ctx.lineCap     = 'square';
   
     // Left arm
     ctx.beginPath();
-    ctx.moveTo(cx - bodyWidth * 0.55, armOffsetY);
-    ctx.lineTo(
-      cx - bodyWidth * 0.55 - armSwing,
-      armOffsetY + armLength * 0.7
-    );
+    ctx.moveTo(cx - bodyWidth * 0.55, armY);
+    ctx.lineTo(cx - bodyWidth * 0.55 - armSwing, armY + armLength);
     ctx.stroke();
   
     // Right arm
     ctx.beginPath();
-    ctx.moveTo(cx + bodyWidth * 0.55, armOffsetY);
-    ctx.lineTo(
-      cx + bodyWidth * 0.55 + armSwing,
-      armOffsetY + armLength * 0.7
-    );
+    ctx.moveTo(cx + bodyWidth * 0.55, armY);
+    ctx.lineTo(cx + bodyWidth * 0.55 + armSwing, armY + armLength);
     ctx.stroke();
   
     ctx.restore();
