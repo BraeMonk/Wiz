@@ -901,260 +901,216 @@ const WizardDungeonCrawler = () => {
   }, []);
 
   // Draw monster sprite
-  const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness) => {
-    ctx.save();
-    ctx.globalAlpha = brightness;
-  
-    const baseColor = hexToRgb(sprite.color.startsWith('#') ? sprite.color : '#ffffff');
-    const darkColor = {
-      r: Math.round(baseColor.r * 0.4),
-      g: Math.round(baseColor.g * 0.4),
-      b: Math.round(baseColor.b * 0.4)
-    };
-    const lightColor = {
-      r: Math.min(255, Math.round(baseColor.r * 1.3)),
-      g: Math.min(255, Math.round(baseColor.g * 1.3)),
-      b: Math.min(255, Math.round(baseColor.b * 1.3))
-    };
-  
-    const fillBase = rgbToCss(baseColor);
-    const fillDark = rgbToCss(darkColor);
-    const fillLight = rgbToCss(lightColor);
-  
-    const px = Math.max(3, Math.floor(w / 8));
-    const py = Math.max(3, Math.floor(h / 8));
-  
-    const cx = x + w / 2;
-    const cy = y + h / 2;
-  
-    // Boss indicator - simple crown
-    if (sprite.isBoss) {
-      const crownY = y - py * 2;
-      ctx.fillStyle = '#ffd700';
-      ctx.fillRect(cx - px * 2, crownY, px * 4, py);
-      ctx.fillRect(cx - px * 1.5, crownY - py, px, py);
-      ctx.fillRect(cx - px * 0.5, crownY - py, px, py);
-      ctx.fillRect(cx + px * 0.5, crownY - py, px, py);
-    }
-  
-    switch (sprite.type) {
-      case 'skeleton': {
-        // Head
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 2, y + py, px * 4, py * 3);
-        
-        // Eyes
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(cx - px * 1.5, y + py * 1.5, px, py);
-        ctx.fillRect(cx + px * 0.5, y + py * 1.5, px, py);
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(cx - px * 1.25, y + py * 1.75, px * 0.5, py * 0.5);
-        ctx.fillRect(cx + px * 0.75, y + py * 1.75, px * 0.5, py * 0.5);
-        
-        // Teeth
-        ctx.fillStyle = '#ffffff';
-        for (let i = 0; i < 4; i++) {
-          ctx.fillRect(cx - px * 1.5 + i * px, y + py * 3, px * 0.75, py * 0.5);
-        }
-        
-        // Body
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 2, y + py * 4, px * 4, py * 4);
-        
-        // Ribs
-        ctx.fillStyle = fillDark;
-        for (let i = 0; i < 3; i++) {
-          ctx.fillRect(cx - px * 1.5, y + py * (5 + i), px * 3, py * 0.5);
-        }
-        
-        // Arms
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 3, y + py * 4.5, px, py * 3);
-        ctx.fillRect(cx + px * 2, y + py * 4.5, px, py * 3);
-        
-        // Legs
-        ctx.fillRect(cx - px * 1.5, y + py * 8, px, py * 3);
-        ctx.fillRect(cx + px * 0.5, y + py * 8, px, py * 3);
-        break;
-      }
-  
-      case 'demon': {
-        // Body
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 2.5, y + py * 2, px * 5, py * 5);
-        
-        // Horns
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 3, y, px, py * 2);
-        ctx.fillRect(cx + px * 2, y, px, py * 2);
-        
-        // Eyes
-        ctx.fillStyle = '#ffff00';
-        ctx.fillRect(cx - px * 1.5, y + py * 3, px, py);
-        ctx.fillRect(cx + px * 0.5, y + py * 3, px, py);
-        
-        // Mouth
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(cx - px, y + py * 4.5, px * 2, py * 0.5);
-        
-        // Fangs
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(cx - px * 0.75, y + py * 4.5, px * 0.5, py);
-        ctx.fillRect(cx + px * 0.25, y + py * 4.5, px * 0.5, py);
-        
-        // Arms
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 4, y + py * 3, px * 1.5, py * 4);
-        ctx.fillRect(cx + px * 2.5, y + py * 3, px * 1.5, py * 4);
-        
-        // Claws
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(cx - px * 4, y + py * 7, px * 1.5, py);
-        ctx.fillRect(cx + px * 2.5, y + py * 7, px * 1.5, py);
-        
-        // Legs
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.5, y + py * 7, px, py * 4);
-        ctx.fillRect(cx + px * 0.5, y + py * 7, px, py * 4);
-        
-        // Tail
-        ctx.fillStyle = fillDark;
-        for (let i = 0; i < 3; i++) {
-          ctx.fillRect(cx + px * 2, y + py * (7 + i), px, py);
-          ctx.fillRect(cx + px * 3, y + py * (8 + i), px, py);
-        }
-        break;
-      }
-  
-      case 'ghost': {
-        // Main body with wave effect
-        const waveOffset = Math.sin(Date.now() * 0.003) * py * 0.3;
-        ctx.fillStyle = fillBase;
-        ctx.globalAlpha = brightness * 0.8;
-        ctx.fillRect(cx - px * 3, y + py + waveOffset, px * 6, py * 6);
-        
-        // Eyes
-        ctx.fillStyle = '#88ccff';
-        ctx.fillRect(cx - px * 1.5, y + py * 2, px, py * 1.5);
-        ctx.fillRect(cx + px * 0.5, y + py * 2, px, py * 1.5);
-        
-        // Mouth
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 0.5, y + py * 4, px, py);
-        
-        // Wavy bottom
-        ctx.fillStyle = fillBase;
-        for (let i = 0; i < 6; i++) {
-          const offset = Math.sin(Date.now() * 0.004 + i) * py * 0.5;
-          ctx.fillRect(cx - px * 3 + i * px, y + py * 7 + offset, px, py * 2);
-        }
-        
-        // Arms
-        ctx.fillRect(cx - px * 4, y + py * 3, px, py * 3);
-        ctx.fillRect(cx + px * 3, y + py * 3, px, py * 3);
-        
-        ctx.globalAlpha = brightness;
-        break;
-      }
-  
-      case 'golem': {
-        // Body
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 3, y + py * 3, px * 6, py * 5);
-        
-        // Rock texture
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 2, y + py * 4, px * 4, py * 0.5);
-        ctx.fillRect(cx - px * 2, y + py * 6, px * 4, py * 0.5);
-        ctx.fillRect(cx, y + py * 3.5, px * 0.5, py * 4);
-        
-        // Highlights
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(cx - px * 2, y + py * 3.5, px, py);
-        ctx.fillRect(cx + px, y + py * 6, px, py);
-        
-        // Head
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 2, y, px * 4, py * 3);
-        
-        // Eyes - glowing
-        ctx.fillStyle = '#ffaa00';
-        ctx.fillRect(cx - px * 1.25, y + py * 1.25, px * 0.75, py * 0.75);
-        ctx.fillRect(cx + px * 0.5, y + py * 1.25, px * 0.75, py * 0.75);
-        
-        // Arms
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 4.5, y + py * 3.5, px * 1.5, py * 4);
-        ctx.fillRect(cx + px * 3, y + py * 3.5, px * 1.5, py * 4);
-        
-        // Legs
-        ctx.fillRect(cx - px * 2, y + py * 8, px * 1.5, py * 3);
-        ctx.fillRect(cx + px * 0.5, y + py * 8, px * 1.5, py * 3);
-        break;
-      }
-  
-      case 'boss_necromancer':
-      case 'boss_dragon':
-      case 'boss_lich': {
-        // Large body
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 3, y + py * 2, px * 6, py * 6);
-        
-        // Robe details
-        ctx.fillStyle = fillDark;
-        for (let i = 0; i < 4; i++) {
-          ctx.fillRect(cx - px * 2.5 + i * px * 1.5, y + py * 3, px, py * 5);
-        }
-        
-        // Evil eyes
-        ctx.fillStyle = '#ffff00';
-        ctx.fillRect(cx - px * 1.75, y + py * 3.5, px * 1.25, py * 1.25);
-        ctx.fillRect(cx + px * 0.5, y + py * 3.5, px * 1.25, py * 1.25);
-        
-        // Arms
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 4.5, y + py * 3, px * 1.5, py * 4);
-        ctx.fillRect(cx + px * 3, y + py * 3, px * 1.5, py * 4);
-        
-        // Boss-specific features
-        if (sprite.type === 'boss_necromancer') {
-          // Staff
-          ctx.fillStyle = fillDark;
-          ctx.fillRect(cx - px * 5, y + py, px * 0.75, py * 6);
-          ctx.fillStyle = '#aa00ff';
-          ctx.fillRect(cx - px * 5.5, y, px * 1.5, py * 1.5);
-        } else if (sprite.type === 'boss_dragon') {
-          // Wings
-          ctx.fillStyle = fillDark;
-          ctx.fillRect(cx - px * 5, y + py * 4, px * 2, py * 3);
-          ctx.fillRect(cx + px * 3, y + py * 4, px * 2, py * 3);
-          ctx.fillRect(cx - px * 6, y + py * 5, px, py * 2);
-          ctx.fillRect(cx + px * 5, y + py * 5, px, py * 2);
-        } else {
-          // Lich glow
-          ctx.fillStyle = '#00ffaa';
-          ctx.globalAlpha = brightness * 0.6;
-          ctx.fillRect(cx - px * 4, y + py * 2, px, py);
-          ctx.fillRect(cx + px * 3, y + py * 3, px, py);
-          ctx.fillRect(cx - px * 3.5, y + py * 5, px, py);
-          ctx.globalAlpha = brightness;
-        }
-        
-        // Legs
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 2, y + py * 8, px * 1.5, py * 3);
-        ctx.fillRect(cx + px * 0.5, y + py * 8, px * 1.5, py * 3);
-        break;
-      }
-  
-      default: {
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(x, y, w, h);
-      }
-    }
-  
-    ctx.restore();
+  // NEW 2.5D ENEMY SPRITE RENDERER
+const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
+  ctx.save();
+
+  const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#ffffff';
+  const baseRgb = hexToRgb(baseColor);
+
+  const dark = {
+    r: Math.round(baseRgb.r * 0.4),
+    g: Math.round(baseRgb.g * 0.4),
+    b: Math.round(baseRgb.b * 0.4)
   };
+  const light = {
+    r: Math.min(255, Math.round(baseRgb.r * 1.3)),
+    g: Math.min(255, Math.round(baseRgb.g * 1.3)),
+    b: Math.min(255, Math.round(baseRgb.b * 1.3))
+  };
+
+  const bodyWidth = w * (sprite.isBoss ? 0.55 : 0.45);
+  const bodyHeight = h * (sprite.isBoss ? 0.75 : 0.65);
+
+  // Idle bob + sway to feel alive
+  const bob = Math.sin(time * 2 + sprite.id * 7) * (h * 0.04);
+  const sway = Math.sin(time * 1.5 + sprite.id * 5) * (w * 0.05);
+
+  const cx = x + w / 2 + sway;
+  const cy = y + h / 2 + bob;
+
+  const bodyTop = cy - bodyHeight * 0.5;
+  const bodyBottom = cy + bodyHeight * 0.5;
+
+  // Body gradient to fake volume
+  const bodyGrad = ctx.createLinearGradient(cx, bodyTop, cx, bodyBottom);
+  bodyGrad.addColorStop(0, rgbToCss(light));
+  bodyGrad.addColorStop(0.4, rgbToCss(baseRgb));
+  bodyGrad.addColorStop(1, rgbToCss(dark));
+
+  ctx.globalAlpha = brightness;
+  ctx.fillStyle = bodyGrad;
+
+  // Main body as rounded billboard
+  ctx.beginPath();
+  ctx.ellipse(
+    cx,
+    cy,
+    bodyWidth * 0.9,
+    bodyHeight * 0.9,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  // Head
+  const headRadius = Math.min(bodyWidth * 0.55, h * 0.18);
+  const headY = bodyTop - headRadius * 0.3;
+
+  const headGrad = ctx.createRadialGradient(
+    cx - headRadius * 0.3,
+    headY - headRadius * 0.3,
+    headRadius * 0.2,
+    cx,
+    headY,
+    headRadius
+  );
+  headGrad.addColorStop(0, rgbToCss(light));
+  headGrad.addColorStop(1, rgbToCss(dark));
+
+  ctx.fillStyle = headGrad;
+  ctx.beginPath();
+  ctx.arc(cx, headY, headRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Boss crown
+  if (sprite.isBoss) {
+    const crownWidth = headRadius * 1.6;
+    const crownHeight = headRadius * 0.7;
+    const crownY = headY - headRadius * 1.1;
+
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath();
+    ctx.moveTo(cx - crownWidth / 2, crownY + crownHeight);
+    ctx.lineTo(cx - crownWidth / 3, crownY);
+    ctx.lineTo(cx, crownY + crownHeight * 0.2);
+    ctx.lineTo(cx + crownWidth / 3, crownY);
+    ctx.lineTo(cx + crownWidth / 2, crownY + crownHeight);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Eyes / face based on type
+  const eyeOffsetX = headRadius * 0.5;
+  const eyeOffsetY = headRadius * 0.2;
+  const eyeRadius = headRadius * 0.18;
+
+  let eyeColor = '#ffffff';
+  let irisColor = '#000000';
+
+  switch (sprite.type) {
+    case 'skeleton':
+      eyeColor = '#000000';
+      irisColor = '#ff0000';
+      break;
+    case 'demon':
+      eyeColor = '#ffff00';
+      irisColor = '#ff8800';
+      break;
+    case 'ghost':
+      eyeColor = 'rgba(180, 210, 255, 0.9)';
+      irisColor = '#88ccff';
+      break;
+    case 'golem':
+      eyeColor = '#ffaa00';
+      irisColor = '#442200';
+      break;
+    case 'boss_dragon':
+      eyeColor = '#ffff88';
+      irisColor = '#ff4400';
+      break;
+    case 'boss_necromancer':
+      eyeColor = '#cc88ff';
+      irisColor = '#330066';
+      break;
+    case 'boss_lich':
+      eyeColor = '#88ffdd';
+      irisColor = '#004433';
+      break;
+    default:
+      eyeColor = '#ffffff';
+      irisColor = '#000000';
+  }
+
+  // Eyes
+  ctx.fillStyle = eyeColor;
+  ctx.beginPath();
+  ctx.arc(cx - eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
+  ctx.arc(cx + eyeOffsetX, headY - eyeOffsetY, eyeRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = irisColor;
+  const irisRadius = eyeRadius * 0.55;
+  ctx.beginPath();
+  ctx.arc(
+    cx - eyeOffsetX + eyeRadius * 0.2,
+    headY - eyeOffsetY,
+    irisRadius,
+    0,
+    Math.PI * 2
+  );
+  ctx.arc(
+    cx + eyeOffsetX + eyeRadius * 0.2,
+    headY - eyeOffsetY,
+    irisRadius,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  // Ghost fade trail
+  if (sprite.type === 'ghost') {
+    const tailHeight = bodyHeight * 0.5;
+    const tailGrad = ctx.createLinearGradient(
+      cx,
+      cy + bodyHeight * 0.1,
+      cx,
+      cy + bodyHeight * 0.1 + tailHeight
+    );
+    tailGrad.addColorStop(0, 'rgba(184, 198, 255, 0.6)');
+    tailGrad.addColorStop(1, 'rgba(184, 198, 255, 0)');
+    ctx.fillStyle = tailGrad;
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy + bodyHeight * 0.3,
+      bodyWidth * 0.8,
+      tailHeight * 0.9,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  // Simple arms that sway slightly
+  const armLength = bodyHeight * 0.6;
+  const armOffsetY = bodyHeight * 0.05;
+  const armSwing = Math.sin(time * 3 + sprite.id * 3) * bodyWidth * 0.08;
+
+  ctx.strokeStyle = rgbToCss(dark);
+  ctx.lineWidth = Math.max(2, w * 0.03);
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  ctx.moveTo(cx - bodyWidth * 0.9, cy + armOffsetY);
+  ctx.lineTo(
+    cx - bodyWidth * 0.9 - armSwing,
+    cy + armOffsetY + armLength * 0.6
+  );
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx + bodyWidth * 0.9, cy + armOffsetY);
+  ctx.lineTo(
+    cx + bodyWidth * 0.9 + armSwing,
+    cy + armOffsetY + armLength * 0.6
+  );
+  ctx.stroke();
+
+  ctx.restore();
+};
 
   const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
     ctx.save();
