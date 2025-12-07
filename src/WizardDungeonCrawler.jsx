@@ -23,6 +23,13 @@ import glow from './audio/Glow.mp3';
 import sunnyDaze from './audio/Sunny Daze.mp3';
 import messinAround from './audio/messin around.mp3';
 
+const musicTracks = [
+    chillyWilly,
+    glow,
+    sunnyDaze,
+    messinAround
+  ];
+
 const WizardDungeonCrawler = () => {
   // Game state
   const [gameState, setGameState] = useState('menu');
@@ -320,13 +327,6 @@ const WizardDungeonCrawler = () => {
     boss_dragon: { health: 500, damage: 40, speed: 0.5, xp: 300, color: '#ff0000', gold: 150, essence: 30, isBoss: true },
     boss_lich: { health: 400, damage: 35, speed: 0.7, xp: 250, color: '#00ffaa', gold: 120, essence: 25, isBoss: true }
   };
-
-  const musicTracks = [
-    chillyWilly,
-    glow,
-    sunnyDaze,
-    messinAround
-  ];
 
   // Save persistent data
   useEffect(() => {
@@ -2184,28 +2184,30 @@ const WizardDungeonCrawler = () => {
     setGameState('playing');
   };
 
-  const StatBar = ({ current, max, color, icon: Icon, label }) => (
-    <div className="mb-2">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-1">
-          <Icon size={16} style={{ color }} />
-          <span className="text-xs text-white">{label}</span>
+  const StatBar = ({ current, max, color, icon: Icon, label }) => {
+    const safeMax = max || 1; // avoid divide-by-0
+    const percent = Math.max(0, Math.min(100, (current / safeMax) * 100));
+
+    return (
+      <div className="mb-2">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1">
+            <Icon size={16} style={{ color }} />
+            <span className="text-xs text-white">{label}</span>
+          </div>
+          <span className="text-xs text-white">
+            {Math.floor(current)}/{safeMax}
+          </span>
         </div>
-        <span className="text-xs text-white">
-          {Math.floor(current)}/{max}
-        </span>
+        <div className="w-full h-3 bg-gray-700 rounded overflow-hidden">
+          <div
+            className="h-full transition-all"
+            style={{ width: `${percent}%`, backgroundColor: color }}
+          />
+        </div>
       </div>
-      <div className="w-full h-3 bg-gray-700 rounded overflow-hidden">
-        <div
-          className="h-full transition-all"
-          style={{
-            width: `${(current / max) * 100}%`,
-            backgroundColor: color
-          }}
-        />
-      </div>
-    </div>
-  );
+    );
+  };
 
   useEffect(() => {
     const handleKeyDown = e => {
@@ -2785,10 +2787,16 @@ const WizardDungeonCrawler = () => {
                   <div className="flex-1 h-2 bg-gray-700 rounded overflow-hidden">
                     <div
                       className="h-full transition-all bg-blue-400"
-                      style={{ width: `${(player.mana / player.maxMana) * 100}%` }}
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (player.mana / (player.maxMana || 1)) * 100)
+                        )}%`
+                      }}
                     />
                   </div>
                 </div>
+                
                 <div className="text-yellow-400 text-[9px] mt-1">
                   Lv{player.level} | 💀{enemies.length}
                 </div>
