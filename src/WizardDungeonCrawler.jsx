@@ -826,669 +826,229 @@ const WizardDungeonCrawler = () => {
     const fillDark = rgbToCss(darkColor);
     const fillLight = rgbToCss(lightColor);
   
-    const px = Math.max(2, Math.floor(w / 8));
-    const py = Math.max(2, Math.floor(h / 8));
+    const px = Math.max(3, Math.floor(w / 8));
+    const py = Math.max(3, Math.floor(h / 8));
   
     const cx = x + w / 2;
     const cy = y + h / 2;
   
-    // Boss indicator - ornate crown
+    // Boss indicator - simple crown
     if (sprite.isBoss) {
-      const crownY = y - py * 2.5;
-      const crownSize = px * 1.5;
-      
-      // Crown base
+      const crownY = y - py * 2;
       ctx.fillStyle = '#ffd700';
-      ctx.beginPath();
-      ctx.moveTo(cx, crownY);
-      ctx.lineTo(cx - crownSize, crownY + py);
-      ctx.lineTo(cx - crownSize * 0.7, crownY + py * 0.5);
-      ctx.lineTo(cx - crownSize * 0.3, crownY + py * 0.8);
-      ctx.lineTo(cx, crownY + py * 0.3);
-      ctx.lineTo(cx + crownSize * 0.3, crownY + py * 0.8);
-      ctx.lineTo(cx + crownSize * 0.7, crownY + py * 0.5);
-      ctx.lineTo(cx + crownSize, crownY + py);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Crown gems
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(cx - px * 0.2, crownY + py * 0.4, px * 0.4, py * 0.4);
-      ctx.fillStyle = '#0080ff';
-      ctx.fillRect(cx - crownSize * 0.6, crownY + py * 0.6, px * 0.3, py * 0.3);
-      ctx.fillRect(cx + crownSize * 0.4, crownY + py * 0.6, px * 0.3, py * 0.3);
+      ctx.fillRect(cx - px * 2, crownY, px * 4, py);
+      ctx.fillRect(cx - px * 1.5, crownY - py, px, py);
+      ctx.fillRect(cx - px * 0.5, crownY - py, px, py);
+      ctx.fillRect(cx + px * 0.5, crownY - py, px, py);
     }
   
     switch (sprite.type) {
       case 'skeleton': {
-        // Skull
-        const skullW = px * 3.5;
-        const skullH = py * 2.5;
-        const skullY = y + py * 0.5;
-        
-        // Skull base
+        // Head
         ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - skullW / 2, skullY, skullW, skullH);
+        ctx.fillRect(cx - px * 2, y + py, px * 4, py * 3);
         
-        // Skull detail - cheekbones
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(cx - skullW * 0.4, skullY + py * 0.3, px * 0.4, py * 0.8);
-        ctx.fillRect(cx + skullW * 0.3, skullY + py * 0.3, px * 0.4, py * 0.8);
-        
-        // Eye sockets
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 1.2, skullY + py * 0.6, px * 0.8, py * 0.9);
-        ctx.fillRect(cx + px * 0.4, skullY + py * 0.6, px * 0.8, py * 0.9);
-        
-        // Glowing eyes
+        // Eyes
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(cx - px * 1.5, y + py * 1.5, px, py);
+        ctx.fillRect(cx + px * 0.5, y + py * 1.5, px, py);
         ctx.fillStyle = '#ff0000';
-        ctx.fillRect(cx - px * 1.0, skullY + py * 0.8, px * 0.4, py * 0.5);
-        ctx.fillRect(cx + px * 0.6, skullY + py * 0.8, px * 0.4, py * 0.5);
-        
-        // Nose cavity
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 0.3, skullY + py * 1.3, px * 0.6, py * 0.5);
+        ctx.fillRect(cx - px * 1.25, y + py * 1.75, px * 0.5, py * 0.5);
+        ctx.fillRect(cx + px * 0.75, y + py * 1.75, px * 0.5, py * 0.5);
         
         // Teeth
-        ctx.fillStyle = fillBase;
-        for (let i = 0; i < 5; i++) {
-          const teethX = cx - skullW * 0.35 + (i * skullW * 0.18);
-          ctx.fillRect(teethX, skullY + skullH - py * 0.6, px * 0.3, py * 0.6);
-        }
-        
-        // Jaw line
-        ctx.strokeStyle = fillDark;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx - skullW * 0.4, skullY + skullH - py * 0.7);
-        ctx.lineTo(cx + skullW * 0.4, skullY + skullH - py * 0.7);
-        ctx.stroke();
-        
-        // Spine/neck
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 0.4, skullY + skullH, px * 0.8, py * 1.2);
-        
-        // Ribcage
-        const ribStart = skullY + skullH + py * 1.2;
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.5, ribStart, px * 3, py * 2.5);
-        
-        // Individual ribs
-        ctx.strokeStyle = fillDark;
-        ctx.lineWidth = 2;
+        ctx.fillStyle = '#ffffff';
         for (let i = 0; i < 4; i++) {
-          const ribY = ribStart + py * 0.4 + (i * py * 0.6);
-          ctx.beginPath();
-          ctx.arc(cx, ribY, px * 1.3, 0, Math.PI);
-          ctx.stroke();
+          ctx.fillRect(cx - px * 1.5 + i * px, y + py * 3, px * 0.75, py * 0.5);
         }
         
-        // Spine segments
-        for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = i % 2 === 0 ? fillLight : fillDark;
-          ctx.fillRect(cx - px * 0.3, ribStart + py * 0.3 + (i * py * 0.6), px * 0.6, py * 0.4);
-        }
-        
-        // Arms with bones
-        for (let i = 0; i < 2; i++) {
-          const armX = i === 0 ? cx - px * 2.2 : cx + px * 1.5;
-          const armY = ribStart + py * 0.5;
-          
-          // Upper arm
-          ctx.fillStyle = fillBase;
-          ctx.fillRect(armX, armY, px * 0.7, py * 1.5);
-          
-          // Elbow joint
-          ctx.fillStyle = fillLight;
-          ctx.fillRect(armX, armY + py * 1.5, px * 0.7, py * 0.4);
-          
-          // Forearm
-          ctx.fillStyle = fillBase;
-          ctx.fillRect(armX, armY + py * 1.9, px * 0.7, py * 1.3);
-          
-          // Hand bones
-          ctx.fillRect(armX, armY + py * 3.2, px * 0.7, py * 0.5);
-          for (let f = 0; f < 3; f++) {
-            ctx.fillRect(armX + (f * px * 0.2), armY + py * 3.7, px * 0.15, py * 0.4);
-          }
-        }
-        
-        // Pelvis
+        // Body
         ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.3, ribStart + py * 2.5, px * 2.6, py * 0.8);
+        ctx.fillRect(cx - px * 2, y + py * 4, px * 4, py * 4);
+        
+        // Ribs
+        ctx.fillStyle = fillDark;
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(cx - px * 1.5, y + py * (5 + i), px * 3, py * 0.5);
+        }
+        
+        // Arms
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(cx - px * 3, y + py * 4.5, px, py * 3);
+        ctx.fillRect(cx + px * 2, y + py * 4.5, px, py * 3);
         
         // Legs
-        const legY = ribStart + py * 3.3;
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.0, legY, px * 0.7, py * 2);
-        ctx.fillRect(cx + px * 0.3, legY, px * 0.7, py * 2);
-        
-        // Knee joints
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(cx - px * 1.0, legY + py * 1.0, px * 0.7, py * 0.3);
-        ctx.fillRect(cx + px * 0.3, legY + py * 1.0, px * 0.7, py * 0.3);
-        
-        // Feet bones
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.2, legY + py * 2, px * 1.0, py * 0.5);
-        ctx.fillRect(cx + px * 0.2, legY + py * 2, px * 1.0, py * 0.5);
+        ctx.fillRect(cx - px * 1.5, y + py * 8, px, py * 3);
+        ctx.fillRect(cx + px * 0.5, y + py * 8, px, py * 3);
         break;
       }
   
       case 'demon': {
         // Body
-        const bodyW = px * 4;
-        const bodyH = h * 0.5;
-        const bodyX = cx - bodyW / 2;
-        const bodyY = cy - bodyH / 4;
-        
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
-        
-        // Muscular chest detail
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(bodyX + px * 0.5, bodyY + py * 0.5, bodyW - px, py * 0.3);
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX + px, bodyY + py * 0.9, px * 0.8, py * 0.8);
-        ctx.fillRect(bodyX + bodyW - px * 1.8, bodyY + py * 0.9, px * 0.8, py * 0.8);
-        
-        // Abs
-        for (let i = 0; i < 3; i++) {
-          ctx.fillStyle = fillDark;
-          const absY = bodyY + py * 1.8 + (i * py * 0.5);
-          ctx.fillRect(bodyX + px * 1.2, absY, px * 0.7, py * 0.3);
-          ctx.fillRect(bodyX + bodyW - px * 1.9, absY, px * 0.7, py * 0.3);
-        }
+        ctx.fillRect(cx - px * 2.5, y + py * 2, px * 5, py * 5);
         
         // Horns
         ctx.fillStyle = fillDark;
-        ctx.beginPath();
-        ctx.moveTo(bodyX - px * 0.3, bodyY - py * 0.5);
-        ctx.lineTo(bodyX - px * 1.2, bodyY - py * 1.8);
-        ctx.lineTo(bodyX + px * 0.3, bodyY - py);
-        ctx.closePath();
-        ctx.fill();
+        ctx.fillRect(cx - px * 3, y, px, py * 2);
+        ctx.fillRect(cx + px * 2, y, px, py * 2);
         
-        ctx.beginPath();
-        ctx.moveTo(bodyX + bodyW + px * 0.3, bodyY - py * 0.5);
-        ctx.lineTo(bodyX + bodyW + px * 1.2, bodyY - py * 1.8);
-        ctx.lineTo(bodyX + bodyW - px * 0.3, bodyY - py);
-        ctx.closePath();
-        ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(cx - px * 1.5, y + py * 3, px, py);
+        ctx.fillRect(cx + px * 0.5, y + py * 3, px, py);
         
-        // Horn ridges
-        ctx.strokeStyle = fillBase;
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 3; i++) {
-          ctx.beginPath();
-          ctx.moveTo(bodyX - px * 0.5 - (i * px * 0.3), bodyY - py * 0.8 - (i * py * 0.3));
-          ctx.lineTo(bodyX - px * 0.2 - (i * px * 0.3), bodyY - py * 0.7 - (i * py * 0.3));
-          ctx.stroke();
-          
-          ctx.beginPath();
-          ctx.moveTo(bodyX + bodyW + px * 0.5 + (i * px * 0.3), bodyY - py * 0.8 - (i * py * 0.3));
-          ctx.lineTo(bodyX + bodyW + px * 0.2 + (i * px * 0.3), bodyY - py * 0.7 - (i * py * 0.3));
-          ctx.stroke();
-        }
+        // Mouth
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(cx - px, y + py * 4.5, px * 2, py * 0.5);
         
-        // Glowing demonic eyes
-        const glowGrad = ctx.createRadialGradient(bodyX + px * 1.2, bodyY + py * 0.7, 0, bodyX + px * 1.2, bodyY + py * 0.7, px * 0.8);
-        glowGrad.addColorStop(0, '#ffff00');
-        glowGrad.addColorStop(1, 'rgba(255, 230, 120, 0)');
-        ctx.fillStyle = glowGrad;
-        ctx.fillRect(bodyX + px * 0.8, bodyY + py * 0.4, px * 0.8, py * 0.6);
-        
-        const glowGrad2 = ctx.createRadialGradient(bodyX + bodyW - px * 1.2, bodyY + py * 0.7, 0, bodyX + bodyW - px * 1.2, bodyY + py * 0.7, px * 0.8);
-        glowGrad2.addColorStop(0, '#ffff00');
-        glowGrad2.addColorStop(1, 'rgba(255, 230, 120, 0)');
-        ctx.fillStyle = glowGrad2;
-        ctx.fillRect(bodyX + bodyW - px * 1.6, bodyY + py * 0.4, px * 0.8, py * 0.6);
-        
-        // Fanged mouth
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(bodyX + px * 1, bodyY + py * 1.8, bodyW - px * 2, py * 0.6);
+        // Fangs
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(bodyX + px * 1.2, bodyY + py * 1.8, px * 0.3, py * 0.5);
-        ctx.fillRect(bodyX + bodyW - px * 1.5, bodyY + py * 1.8, px * 0.3, py * 0.5);
+        ctx.fillRect(cx - px * 0.75, y + py * 4.5, px * 0.5, py);
+        ctx.fillRect(cx + px * 0.25, y + py * 4.5, px * 0.5, py);
         
-        // Muscular arms
+        // Arms
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX - px * 1.2, bodyY + py, px * 1.2, py * 2.5);
-        ctx.fillRect(bodyX + bodyW, bodyY + py, px * 1.2, py * 2.5);
+        ctx.fillRect(cx - px * 4, y + py * 3, px * 1.5, py * 4);
+        ctx.fillRect(cx + px * 2.5, y + py * 3, px * 1.5, py * 4);
         
-        // Bicep bulge
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX - px * 1.1, bodyY + py * 1.2, px * 0.8, py * 0.8);
-        ctx.fillRect(bodyX + bodyW + px * 0.3, bodyY + py * 1.2, px * 0.8, py * 0.8);
+        // Claws
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(cx - px * 4, y + py * 7, px * 1.5, py);
+        ctx.fillRect(cx + px * 2.5, y + py * 7, px * 1.5, py);
         
-        // Clawed hands
-        ctx.fillStyle = fillDark;
-        for (let i = 0; i < 2; i++) {
-          const handX = i === 0 ? bodyX - px * 1.2 : bodyX + bodyW;
-          const handY = bodyY + py * 3.5;
-          
-          ctx.fillRect(handX, handY, px * 1.2, py * 0.6);
-          
-          // Claws
-          ctx.fillStyle = '#333333';
-          for (let c = 0; c < 3; c++) {
-            ctx.beginPath();
-            ctx.moveTo(handX + (c * px * 0.4) + px * 0.1, handY + py * 0.6);
-            ctx.lineTo(handX + (c * px * 0.4) + px * 0.2, handY + py * 1.2);
-            ctx.lineTo(handX + (c * px * 0.4) + px * 0.3, handY + py * 0.6);
-            ctx.closePath();
-            ctx.fill();
-          }
-          ctx.fillStyle = fillBase;
-        }
-        
-        // Legs with hooves
-        const legY = bodyY + bodyH;
+        // Legs
         ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.2, legY, px, py * 2);
-        ctx.fillRect(cx + px * 0.2, legY, px, py * 2);
-        
-        // Hooves
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 1.4, legY + py * 2, px * 1.4, py * 0.6);
-        ctx.fillRect(cx + px * 0.2, legY + py * 2, px * 1.4, py * 0.6);
-        
-        // Hoof split
-        ctx.strokeStyle = fillBase;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx - px * 0.7, legY + py * 2.1);
-        ctx.lineTo(cx - px * 0.7, legY + py * 2.5);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(cx + px * 0.9, legY + py * 2.1);
-        ctx.lineTo(cx + px * 0.9, legY + py * 2.5);
-        ctx.stroke();
+        ctx.fillRect(cx - px * 1.5, y + py * 7, px, py * 4);
+        ctx.fillRect(cx + px * 0.5, y + py * 7, px, py * 4);
         
         // Tail
-        ctx.strokeStyle = fillBase;
-        ctx.lineWidth = px * 0.4;
-        ctx.beginPath();
-        ctx.moveTo(cx, legY + py * 0.3);
-        ctx.quadraticCurveTo(cx + px * 2, legY + py, cx + px * 2.5, legY + py * 1.5);
-        ctx.stroke();
-        
-        // Tail spade
         ctx.fillStyle = fillDark;
-        ctx.beginPath();
-        ctx.moveTo(cx + px * 2.5, legY + py * 1.5);
-        ctx.lineTo(cx + px * 2.2, legY + py * 1.8);
-        ctx.lineTo(cx + px * 2.5, legY + py * 2);
-        ctx.lineTo(cx + px * 2.8, legY + py * 1.8);
-        ctx.closePath();
-        ctx.fill();
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(cx + px * 2, y + py * (7 + i), px, py);
+          ctx.fillRect(cx + px * 3, y + py * (8 + i), px, py);
+        }
         break;
       }
   
       case 'ghost': {
-        const bodyW = px * 4;
-        const bodyH = h * 0.75;
-        const bodyX = cx - bodyW / 2;
-        const bodyY = y + py;
-        
-        // Ghostly glow
-        const ghostGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, bodyW);
-        ghostGlow.addColorStop(0, 'rgba(184, 198, 255, 0.4)');
-        ghostGlow.addColorStop(1, 'rgba(184, 198, 255, 0)');
-        ctx.fillStyle = ghostGlow;
-        ctx.beginPath();
-        ctx.arc(cx, cy, bodyW, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Main body
+        // Main body with wave effect
+        const waveOffset = Math.sin(Date.now() * 0.003) * py * 0.3;
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
+        ctx.globalAlpha = brightness * 0.8;
+        ctx.fillRect(cx - px * 3, y + py + waveOffset, px * 6, py * 6);
         
-        // Ethereal wisps
-        ctx.fillStyle = fillLight;
-        for (let i = 0; i < 3; i++) {
-          const wispX = bodyX + (i * bodyW / 3) + px * 0.5;
-          const wispY = bodyY + py * 0.5 + (Math.sin(Date.now() * 0.003 + i) * py * 0.3);
-          ctx.globalAlpha = brightness * 0.6;
-          ctx.fillRect(wispX, wispY, px * 0.8, py * 1.2);
-        }
-        ctx.globalAlpha = brightness;
+        // Eyes
+        ctx.fillStyle = '#88ccff';
+        ctx.fillRect(cx - px * 1.5, y + py * 2, px, py * 1.5);
+        ctx.fillRect(cx + px * 0.5, y + py * 2, px, py * 1.5);
         
-        // Flowing bottom with multiple waves
+        // Mouth
         ctx.fillStyle = fillDark;
-        for (let i = 0; i < 5; i++) {
-          const waveX = bodyX + (i * bodyW / 5);
-          const waveY = bodyY + bodyH - py * 0.8;
-          const waveH = py * 0.8 + (Math.sin(Date.now() * 0.005 + i) * py * 0.2);
-          ctx.fillRect(waveX, waveY, bodyW / 6, waveH);
-        }
+        ctx.fillRect(cx - px * 0.5, y + py * 4, px, py);
         
-        // Hollow eyes
-        ctx.fillStyle = 'rgba(40, 40, 80, 0.9)';
-        ctx.fillRect(bodyX + px * 0.8, bodyY + py * 0.8, px * 0.8, py * 1.2);
-        ctx.fillRect(bodyX + bodyW - px * 1.6, bodyY + py * 0.8, px * 0.8, py * 1.2);
-        
-        // Eye glow
-        const eyeGlow1 = ctx.createRadialGradient(bodyX + px * 1.2, bodyY + py * 1.4, 0, bodyX + px * 1.2, bodyY + py * 1.4, px * 0.6);
-        eyeGlow1.addColorStop(0, '#88ccff');
-        eyeGlow1.addColorStop(1, 'rgba(136, 204, 255, 0)');
-        ctx.fillStyle = eyeGlow1;
-        ctx.fillRect(bodyX + px * 0.6, bodyY + py * 0.8, px * 1.2, py * 1.2);
-        
-        const eyeGlow2 = ctx.createRadialGradient(bodyX + bodyW - px * 1.2, bodyY + py * 1.4, 0, bodyX + bodyW - px * 1.2, bodyY + py * 1.4, px * 0.6);
-        eyeGlow2.addColorStop(0, '#88ccff');
-        eyeGlow2.addColorStop(1, 'rgba(136, 204, 255, 0)');
-        ctx.fillStyle = eyeGlow2;
-        ctx.fillRect(bodyX + bodyW - px * 1.8, bodyY + py * 0.8, px * 1.2, py * 1.2);
-        
-        // Moaning mouth
-        ctx.fillStyle = fillDark;
-        ctx.beginPath();
-        ctx.arc(cx, bodyY + py * 2.5, px * 0.8, 0, Math.PI);
-        ctx.fill();
-        
-        // Spectral arms
-        ctx.globalAlpha = brightness * 0.7;
+        // Wavy bottom
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX - px * 0.8, bodyY + py * 1.5, px * 0.8, py * 2);
-        ctx.fillRect(bodyX + bodyW, bodyY + py * 1.5, px * 0.8, py * 2);
-        
-        // Wispy hands
-        for (let i = 0; i < 2; i++) {
-          const handX = i === 0 ? bodyX - px * 0.8 : bodyX + bodyW;
-          const handY = bodyY + py * 3.5;
-          
-          for (let f = 0; f < 3; f++) {
-            const fingerH = py * (0.8 + Math.sin(Date.now() * 0.004 + f) * 0.3);
-            ctx.fillRect(handX + (f * px * 0.25), handY, px * 0.2, fingerH);
-          }
+        for (let i = 0; i < 6; i++) {
+          const offset = Math.sin(Date.now() * 0.004 + i) * py * 0.5;
+          ctx.fillRect(cx - px * 3 + i * px, y + py * 7 + offset, px, py * 2);
         }
-        ctx.globalAlpha = brightness;
         
-        // Ethereal outline pulse
-        ctx.strokeStyle = 'rgba(200, 220, 255, 0.6)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(bodyX - 2, bodyY - 2, bodyW + 4, bodyH + 4);
+        // Arms
+        ctx.fillRect(cx - px * 4, y + py * 3, px, py * 3);
+        ctx.fillRect(cx + px * 3, y + py * 3, px, py * 3);
         
-        // Inner glow lines
-        ctx.strokeStyle = fillLight;
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 4; i++) {
-          ctx.globalAlpha = brightness * (0.3 + Math.sin(Date.now() * 0.002 + i) * 0.2);
-          ctx.beginPath();
-          ctx.moveTo(bodyX + px, bodyY + py * (1 + i * 0.8));
-          ctx.lineTo(bodyX + bodyW - px, bodyY + py * (1 + i * 0.8));
-          ctx.stroke();
-        }
         ctx.globalAlpha = brightness;
         break;
       }
   
       case 'golem': {
-        const bodyW = px * 5;
-        const bodyH = h * 0.55;
-        const bodyX = cx - bodyW / 2;
-        const bodyY = cy - bodyH / 3;
-        
-        // Main body
+        // Body
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
+        ctx.fillRect(cx - px * 3, y + py * 3, px * 6, py * 5);
         
-        // Rock texture - cracks and layers
-        ctx.strokeStyle = fillDark;
-        ctx.lineWidth = 2;
-        
-        // Horizontal cracks
-        for (let i = 0; i < 4; i++) {
-          ctx.beginPath();
-          ctx.moveTo(bodyX, bodyY + (i * bodyH / 4));
-          ctx.lineTo(bodyX + bodyW, bodyY + (i * bodyH / 4));
-          ctx.stroke();
-        }
-        
-        // Vertical cracks
-        for (let i = 1; i < 4; i++) {
-          ctx.beginPath();
-          ctx.moveTo(bodyX + (i * bodyW / 4), bodyY);
-          ctx.lineTo(bodyX + (i * bodyW / 4), bodyY + bodyH);
-          ctx.stroke();
-        }
-        
-        // Rock chunks/highlights
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX + px * 0.5, bodyY + py * 0.5, px * 1.2, py * 1);
-        ctx.fillRect(bodyX + bodyW - px * 1.7, bodyY + py * 1.5, px * 1, py * 0.8);
-        ctx.fillRect(bodyX + px * 2, bodyY + bodyH - py * 1.5, px * 1.5, py);
-        
-        // Shadows in cracks
+        // Rock texture
         ctx.fillStyle = fillDark;
-        ctx.fillRect(bodyX + px, bodyY + py * 2, px * 0.3, py * 1.5);
-        ctx.fillRect(bodyX + bodyW - px * 2, bodyY + py, px * 0.3, py * 2);
+        ctx.fillRect(cx - px * 2, y + py * 4, px * 4, py * 0.5);
+        ctx.fillRect(cx - px * 2, y + py * 6, px * 4, py * 0.5);
+        ctx.fillRect(cx, y + py * 3.5, px * 0.5, py * 4);
         
-        // Moss patches
-        ctx.fillStyle = '#3a5f3a';
-        ctx.globalAlpha = brightness * 0.7;
-        ctx.fillRect(bodyX + px * 0.3, bodyY + py * 1.2, px * 1.5, py * 0.6);
-        ctx.fillRect(bodyX + bodyW - px * 2, bodyY + bodyH - py, px * 1.2, py * 0.8);
-        ctx.globalAlpha = brightness;
-        
-        // Large head
-        const headW = px * 3;
-        const headH = py * 2.5;
-        const headX = cx - headW / 2;
-        const headY = bodyY - headH;
-        
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(headX, headY, headW, headH);
-        
-        // Head cracks
-        ctx.strokeStyle = fillDark;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(headX, headY + headH / 2);
-        ctx.lineTo(headX + headW, headY + headH / 2);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(headX + headW / 2, headY);
-        ctx.lineTo(headX + headW / 2, headY + headH);
-        ctx.stroke();
-        
-        // Glowing crystal eyes
-        const crystalGlow1 = ctx.createRadialGradient(headX + px * 0.8, headY + py * 1.2, 0, headX + px * 0.8, headY + py * 1.2, px * 0.8);
-        crystalGlow1.addColorStop(0, '#ffaa00');
-        crystalGlow1.addColorStop(0.5, '#ff6600');
-        crystalGlow1.addColorStop(1, 'rgba(255, 170, 0, 0)');
-        ctx.fillStyle = crystalGlow1;
-        ctx.fillRect(headX + px * 0.3, headY + py * 0.7, px, py);
-        
-        const crystalGlow2 = ctx.createRadialGradient(headX + headW - px * 0.8, headY + py * 1.2, 0, headX + headW - px * 0.8, headY + py * 1.2, px * 0.8);
-        crystalGlow2.addColorStop(0, '#ffaa00');
-        crystalGlow2.addColorStop(0.5, '#ff6600');
-        crystalGlow2.addColorStop(1, 'rgba(255, 170, 0, 0)');
-        ctx.fillStyle = crystalGlow2;
-        ctx.fillRect(headX + headW - px * 1.3, headY + py * 0.7, px, py);
-        
-        // Crystal eye cores
-        ctx.fillStyle = '#ffff88';
-        ctx.fillRect(headX + px * 0.6, headY + py * 1, px * 0.4, py * 0.6);
-        ctx.fillRect(headX + headW - px, headY + py * 1, px * 0.4, py * 0.6);
-        
-        // Massive arms
-        ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX - px * 1.8, bodyY + py * 0.5, px * 1.8, bodyH - py);
-        ctx.fillRect(bodyX + bodyW, bodyY + py * 0.5, px * 1.8, bodyH - py);
-        
-        // Arm details
+        // Highlights
         ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX - px * 1.6, bodyY + py * 1.5, px * 1.2, py * 0.8);
-        ctx.fillRect(bodyX + bodyW + px * 0.2, bodyY + py * 1.5, px * 1.2, py * 0.8);
+        ctx.fillRect(cx - px * 2, y + py * 3.5, px, py);
+        ctx.fillRect(cx + px, y + py * 6, px, py);
         
-        ctx.strokeStyle = fillDark;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(bodyX - px * 1.8, bodyY + py * 2);
-        ctx.lineTo(bodyX, bodyY + py * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(bodyX + bodyW, bodyY + py * 2);
-        ctx.lineTo(bodyX + bodyW + px * 1.8, bodyY + py * 2);
-        ctx.stroke();
-        
-        // Boulder fists
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(bodyX - px * 2.2, bodyY + bodyH - py * 0.5, px * 2.2, py * 1.5);
-        ctx.fillRect(bodyX + bodyW, bodyY + bodyH - py * 0.5, px * 2.2, py * 1.5);
-        
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX - px * 2, bodyY + bodyH - py * 0.3, px * 0.8, py * 0.8);
-        ctx.fillRect(bodyX + bodyW + px * 0.5, bodyY + bodyH - py * 0.3, px * 0.8, py * 0.8);
-        
-        // Thick legs
-        const legY = bodyY + bodyH;
+        // Head
         ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.5, legY, px * 1.3, py * 2.5);
-        ctx.fillRect(cx + px * 0.2, legY, px * 1.3, py * 2.5);
+        ctx.fillRect(cx - px * 2, y, px * 4, py * 3);
         
-        // Leg cracks
-        ctx.strokeStyle = fillDark;
-        for (let i = 0; i < 3; i++) {
-          ctx.beginPath();
-          ctx.moveTo(cx - px * 1.5, legY + py * (0.8 + i * 0.6));
-          ctx.lineTo(cx - px * 0.2, legY + py * (0.8 + i * 0.6));
-          ctx.stroke();
-          
-          ctx.beginPath();
-          ctx.moveTo(cx + px * 0.2, legY + py * (0.8 + i * 0.6));
-          ctx.lineTo(cx + px * 1.5, legY + py * (0.8 + i * 0.6));
-          ctx.stroke();
-        }
+        // Eyes - glowing
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillRect(cx - px * 1.25, y + py * 1.25, px * 0.75, py * 0.75);
+        ctx.fillRect(cx + px * 0.5, y + py * 1.25, px * 0.75, py * 0.75);
         
-        // Boulder feet
-        ctx.fillStyle = fillDark;
-        ctx.fillRect(cx - px * 1.7, legY + py * 2.5, px * 1.7, py * 0.8);
-        ctx.fillRect(cx + px * 0.2, legY + py * 2.5, px * 1.7, py * 0.8);
+        // Arms
+        ctx.fillStyle = fillBase;
+        ctx.fillRect(cx - px * 4.5, y + py * 3.5, px * 1.5, py * 4);
+        ctx.fillRect(cx + px * 3, y + py * 3.5, px * 1.5, py * 4);
+        
+        // Legs
+        ctx.fillRect(cx - px * 2, y + py * 8, px * 1.5, py * 3);
+        ctx.fillRect(cx + px * 0.5, y + py * 8, px * 1.5, py * 3);
         break;
       }
   
       case 'boss_necromancer':
       case 'boss_dragon':
       case 'boss_lich': {
-        // Larger imposing body
-        const bodyW = px * 6;
-        const bodyH = h * 0.6;
-        const bodyX = cx - bodyW / 2;
-        const bodyY = cy - bodyH / 3;
-        
+        // Large body
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
+        ctx.fillRect(cx - px * 3, y + py * 2, px * 6, py * 6);
         
-        // Dark robes/armor pattern
+        // Robe details
         ctx.fillStyle = fillDark;
-        for (let i = 0; i < 5; i++) {
-          ctx.fillRect(bodyX + (i * bodyW / 5), bodyY + py * 0.5, bodyW / 6, bodyH - py);
+        for (let i = 0; i < 4; i++) {
+          ctx.fillRect(cx - px * 2.5 + i * px * 1.5, y + py * 3, px, py * 5);
         }
         
-        // Glowing evil eyes
-        const eyeGlow1 = ctx.createRadialGradient(bodyX + px * 1.5, bodyY + py * 1.2, 0, bodyX + px * 1.5, bodyY + py * 1.2, px);
-        eyeGlow1.addColorStop(0, '#ffff00');
-        eyeGlow1.addColorStop(0.5, '#ffaa00');
-        eyeGlow1.addColorStop(1, 'rgba(255, 255, 0, 0)');
-        ctx.fillStyle = eyeGlow1;
-        ctx.fillRect(bodyX + px, bodyY + py * 0.8, px * 1.2, py * 1);
+        // Evil eyes
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(cx - px * 1.75, y + py * 3.5, px * 1.25, py * 1.25);
+        ctx.fillRect(cx + px * 0.5, y + py * 3.5, px * 1.25, py * 1.25);
         
-        const eyeGlow2 = ctx.createRadialGradient(bodyX + bodyW - px * 1.5, bodyY + py * 1.2, 0, bodyX + bodyW - px * 1.5, bodyY + py * 1.2, px);
-        eyeGlow2.addColorStop(0, '#ffff00');
-        eyeGlow2.addColorStop(0.5, '#ffaa00');
-        eyeGlow2.addColorStop(1, 'rgba(255, 255, 0, 0)');
-        ctx.fillStyle = eyeGlow2;
-        ctx.fillRect(bodyX + bodyW - px * 2.2, bodyY + py * 0.8, px * 1.2, py * 1);
-        
-        // Menacing details
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX + bodyW / 2 - px * 0.5, bodyY + py * 2.5, px, bodyH - py * 2.5);
-        
-        // Dark aura
-        ctx.strokeStyle = fillDark;
-        ctx.lineWidth = 3;
-        for (let i = 0; i < 3; i++) {
-          ctx.globalAlpha = brightness * (0.4 - i * 0.1);
-          ctx.strokeRect(bodyX - i * 2, bodyY - i * 2, bodyW + i * 4, bodyH + i * 4);
-        }
-        ctx.globalAlpha = brightness;
-        
-        // Powerful arms
+        // Arms
         ctx.fillStyle = fillBase;
-        ctx.fillRect(bodyX - px * 2, bodyY + py, px * 2, py * 3);
-        ctx.fillRect(bodyX + bodyW, bodyY + py, px * 2, py * 3);
+        ctx.fillRect(cx - px * 4.5, y + py * 3, px * 1.5, py * 4);
+        ctx.fillRect(cx + px * 3, y + py * 3, px * 1.5, py * 4);
         
-        ctx.fillStyle = fillLight;
-        ctx.fillRect(bodyX - px * 1.8, bodyY + py * 1.5, px * 1.4, py);
-        ctx.fillRect(bodyX + bodyW + px * 0.4, bodyY + py * 1.5, px * 1.4, py);
+        // Boss-specific features
+        if (sprite.type === 'boss_necromancer') {
+          // Staff
+          ctx.fillStyle = fillDark;
+          ctx.fillRect(cx - px * 5, y + py, px * 0.75, py * 6);
+          ctx.fillStyle = '#aa00ff';
+          ctx.fillRect(cx - px * 5.5, y, px * 1.5, py * 1.5);
+        } else if (sprite.type === 'boss_dragon') {
+          // Wings
+          ctx.fillStyle = fillDark;
+          ctx.fillRect(cx - px * 5, y + py * 4, px * 2, py * 3);
+          ctx.fillRect(cx + px * 3, y + py * 4, px * 2, py * 3);
+          ctx.fillRect(cx - px * 6, y + py * 5, px, py * 2);
+          ctx.fillRect(cx + px * 5, y + py * 5, px, py * 2);
+        } else {
+          // Lich glow
+          ctx.fillStyle = '#00ffaa';
+          ctx.globalAlpha = brightness * 0.6;
+          ctx.fillRect(cx - px * 4, y + py * 2, px, py);
+          ctx.fillRect(cx + px * 3, y + py * 3, px, py);
+          ctx.fillRect(cx - px * 3.5, y + py * 5, px, py);
+          ctx.globalAlpha = brightness;
+        }
         
         // Legs
-        const legY = bodyY + bodyH;
         ctx.fillStyle = fillBase;
-        ctx.fillRect(cx - px * 1.5, legY, px * 1.2, py * 2.5);
-        ctx.fillRect(cx + px * 0.3, legY, px * 1.2, py * 2.5);
-        
-        // Boss-specific details
-        if (sprite.type === 'boss_necromancer') {
-          // Necromancer staff
-          ctx.strokeStyle = fillDark;
-          ctx.lineWidth = px * 0.3;
-          ctx.beginPath();
-          ctx.moveTo(bodyX - px * 2, bodyY + py * 3.5);
-          ctx.lineTo(bodyX - px * 2.5, bodyY - py * 2);
-          ctx.stroke();
-          
-          // Skull on staff
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(bodyX - px * 3, bodyY - py * 2.5, px, py);
-          ctx.fillStyle = fillDark;
-          ctx.fillRect(bodyX - px * 2.8, bodyY - py * 2.3, px * 0.2, py * 0.3);
-          ctx.fillRect(bodyX - px * 2.5, bodyY - py * 2.3, px * 0.2, py * 0.3);
-        } else if (sprite.type === 'boss_dragon') {
-          // Dragon wings
-          ctx.fillStyle = fillDark;
-          ctx.beginPath();
-          ctx.moveTo(bodyX, bodyY + py);
-          ctx.lineTo(bodyX - px * 3, bodyY + py * 2);
-          ctx.lineTo(bodyX, bodyY + py * 3);
-          ctx.closePath();
-          ctx.fill();
-          
-          ctx.beginPath();
-          ctx.moveTo(bodyX + bodyW, bodyY + py);
-          ctx.lineTo(bodyX + bodyW + px * 3, bodyY + py * 2);
-          ctx.lineTo(bodyX + bodyW, bodyY + py * 3);
-          ctx.closePath();
-          ctx.fill();
-          
-          // Wing membranes
-          ctx.fillStyle = fillLight;
-          ctx.globalAlpha = brightness * 0.5;
-          ctx.fillRect(bodyX - px * 2.5, bodyY + py * 1.5, px * 2, py);
-          ctx.fillRect(bodyX + bodyW + px * 0.5, bodyY + py * 1.5, px * 2, py);
-          ctx.globalAlpha = brightness;
-        } else if (sprite.type === 'boss_lich') {
-          // Lich ethereal glow
-          const lichGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, bodyW * 0.8);
-          lichGlow.addColorStop(0, 'rgba(0, 255, 170, 0.3)');
-          lichGlow.addColorStop(1, 'rgba(0, 255, 170, 0)');
-          ctx.fillStyle = lichGlow;
-          ctx.beginPath();
-          ctx.arc(cx, cy, bodyW * 0.8, 0, Math.PI * 2);
-          ctx.fill();
-          
-          // Floating runes
-          ctx.fillStyle = '#00ffaa';
-          ctx.globalAlpha = brightness * (0.6 + Math.sin(Date.now() * 0.005) * 0.4);
-          ctx.fillRect(bodyX - px, bodyY + py, px * 0.5, px * 0.5);
-          ctx.fillRect(bodyX + bodyW + px * 0.5, bodyY + py * 1.5, px * 0.5, px * 0.5);
-          ctx.fillRect(bodyX - px * 0.5, bodyY + py * 2.5, px * 0.5, px * 0.5);
-          ctx.globalAlpha = brightness;
-        }
+        ctx.fillRect(cx - px * 2, y + py * 8, px * 1.5, py * 3);
+        ctx.fillRect(cx + px * 0.5, y + py * 8, px * 1.5, py * 3);
         break;
       }
   
