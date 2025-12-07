@@ -13,6 +13,11 @@ import {
   Skull
 } from 'lucide-react';
 
+import chillyWilly from './audio/Chilly Willy.mp3';
+import glow from './audio/Glow.mp3';
+import sunnyDaze from './audio/Sunny Daze.mp3';
+import messinAround from './audio/messin around.mp3';
+
 const WizardDungeonCrawler = () => {
   // Game state
   const [gameState, setGameState] = useState('menu'); // menu, playing, paused, dead, victory
@@ -88,6 +93,10 @@ const WizardDungeonCrawler = () => {
   // Live player ref so spells always use current position/angle
   const playerRef = useRef(player);
 
+  const bgmRef = useRef(null);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+
   // Constants
   const DUNGEON_SIZE = 30;
   const FOV = 60;
@@ -125,6 +134,14 @@ const WizardDungeonCrawler = () => {
     frost: { key: 'frost', name: 'Frost Nova', damage: 35, manaCost: 20, cooldown: 0, maxCooldown: 1.5, color: '#88ddff', icon: Droplet, price: 100 },
     chain: { key: 'chain', name: 'Chain Lightning', damage: 50, manaCost: 30, cooldown: 0, maxCooldown: 2.5, color: '#ffff88', icon: Zap, price: 200 }
   };
+
+  const musicTracks = [
+    chillyWilly,
+    glow,
+    sunnyDaze,
+    messinAround
+  ];
+  
   // --------- COLOR HELPERS FOR ENV + PIXEL SHADING ----------
 
   const hexToRgb = (hex) => {
@@ -204,6 +221,59 @@ const WizardDungeonCrawler = () => {
   useEffect(() => {
     equippedSpellsRef.current = equippedSpells;
   }, [equippedSpells]);
+
+  useEffect(() => {
+    if (musicTracks.length === 0) return;
+
+    const audio = new Audio(musicTracks[0]);
+    audio.loop = false;          // we want playlist looping, not single-track looping
+    audio.volume = 0.4;
+    bgmRef.current = audio;
+
+    const handleEnded = () => {
+      // Move to next track in the array (wrap around)
+      setCurrentTrackIndex(prev => (prev + 1) % musicTracks.length);
+    };
+
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = bgmRef.current;
+    if (!audio || musicTracks.length === 0) return;
+
+    // Update the current track source
+    audio.src = musicTracks[currentTrackIndex];
+    audio.load();
+
+    // Only play while game is actually running and music is enabled
+    if (gameState === 'playing' && musicEnabled) {
+      audio
+        .play()
+        .catch(() => {
+          // browser may block autoplay until user interacts – safe to ignore
+        });
+    }
+  }, [currentTrackIndex, gameState, musicEnabled]);
+
+  useEffect(() => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    if (!musicEnabled || gameState !== 'playing') {
+      audio.pause();
+      return;
+    }
+
+    if (audio.paused) {
+      audio.play().catch(() => {});
+    }
+  }, [gameState, musicEnabled]);
   
   // Detect mobile
   useEffect(() => {
@@ -2124,6 +2194,15 @@ const WizardDungeonCrawler = () => {
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Paused
           </h1>
+
+          {/* Music toggle */}
+          <button
+            onClick={() => setMusicEnabled(prev => !prev)}
+            className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg text-sm mb-4 w-full"
+          >
+            {musicEnabled ? '🔊 Music: On' : '🔇 Music: Off'}
+          </button>
+
           <button
             onClick={() => setGameState('playing')}
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg mb-4 w-full"
