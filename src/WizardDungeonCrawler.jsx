@@ -2313,57 +2313,76 @@ const WizardDungeonCrawler = () => {
 
   if (showUpgradeMenu) {
     return (
-      <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-indigo-900 to-black flex items-center justify-center overflow-y-auto">
-        <div className="text-center px-4 py-8 max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-            <TrendingUp className="inline-block mb-2" size={48} />
-            <br />
-            Permanent Upgrades
-          </h1>
-          <p className="text-xl text-purple-300 mb-2">Essence: ✨ {essence}</p>
-          <p className="text-sm text-gray-400 mb-6">Total Runs: {totalRuns}</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {Object.keys(UPGRADE_COSTS).map(upgradeKey => {
-              const currentLevel = permanentUpgrades[upgradeKey];
-              const cost = UPGRADE_COSTS[upgradeKey](currentLevel);
-              const canAfford = essence >= cost;
-              const Icon = UPGRADE_ICONS[upgradeKey];
-              
-              return (
-                <div key={upgradeKey} className="bg-black bg-opacity-60 p-4 rounded-lg border-2 border-purple-600">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Icon size={32} className="text-purple-400" />
-                    <div className="text-left flex-1">
-                      <h3 className="text-white font-bold">{UPGRADE_NAMES[upgradeKey]}</h3>
-                      <p className="text-gray-300 text-sm">{UPGRADE_DESCRIPTIONS[upgradeKey]}</p>
-                      <p className="text-yellow-400 text-xs">Level: {currentLevel}</p>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      if (canAfford) {
-                        setEssence(prev => prev - cost);
-                        setPermanentUpgrades(prev => ({
-                          ...prev,
-                          [upgradeKey]: prev[upgradeKey] + 1
-                        }));
-                      }
-                    }}
-                    disabled={!canAfford}
-                    className={`w-full py-2 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600'} text-white font-bold`}
-                  >
-                    Upgrade for ✨ {cost}
-                  </button>
-                </div>
-              );
-            })}
+      <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-indigo-900 to-black flex">
+        <div className="w-full max-w-4xl mx-auto flex flex-col px-4 py-8 h-full">
+          <div className="text-center mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+              <TrendingUp className="inline-block mb-2" size={48} />
+              <br />
+              Permanent Upgrades
+            </h1>
+            <p className="text-xl text-purple-300 mb-1">Essence: ✨ {essence}</p>
+            <p className="text-sm text-gray-400">Total Runs: {totalRuns}</p>
           </div>
-          
+
+          {/* scrollable area */}
+          <div className="flex-1 overflow-y-auto pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.keys(UPGRADE_COSTS).map(upgradeKey => {
+                const currentLevel = permanentUpgrades[upgradeKey];
+                const cost = UPGRADE_COSTS[upgradeKey](currentLevel);
+                const canAfford = essence >= cost;
+                const Icon = UPGRADE_ICONS[upgradeKey];
+
+                return (
+                  <div
+                    key={upgradeKey}
+                    className="bg-black bg-opacity-60 p-4 rounded-lg border-2 border-purple-600"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Icon size={32} className="text-purple-400" />
+                      <div className="text-left flex-1">
+                        <h3 className="text-white font-bold">
+                          {UPGRADE_NAMES[upgradeKey]}
+                        </h3>
+                        <p className="text-gray-300 text-sm">
+                          {UPGRADE_DESCRIPTIONS[upgradeKey]}
+                        </p>
+                        <p className="text-yellow-400 text-xs">
+                          Level: {currentLevel}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (canAfford) {
+                          setEssence(prev => prev - cost);
+                          setPermanentUpgrades(prev => ({
+                            ...prev,
+                            [upgradeKey]: prev[upgradeKey] + 1
+                          }));
+                        }
+                      }}
+                      disabled={!canAfford}
+                      className={`w-full py-2 rounded ${
+                        canAfford
+                          ? 'bg-purple-600 hover:bg-purple-700'
+                          : 'bg-gray-600'
+                      } text-white font-bold`}
+                    >
+                      Upgrade for ✨ {cost}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* pinned under scroll area */}
           <button
             onClick={() => setShowUpgradeMenu(false)}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-xl"
+            className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-xl"
           >
             Back to Menu
           </button>
@@ -2374,81 +2393,117 @@ const WizardDungeonCrawler = () => {
 
   if (showShop) {
     return (
-      <div className="w-full h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black flex items-center justify-center overflow-y-auto">
-        <div className="text-center px-4 py-8 max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-            Spell Shop
-          </h1>
-          <p className="text-xl text-yellow-400 mb-6">Gold: 💰 {player.gold}</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {Object.values(ALL_SPELLS).map(spell => {
-              const Icon = spell.icon;
-              const owned = purchasedSpells.includes(spell.key);
-              const equipped = equippedSpells.some(s => s.key === spell.key);
-              const canAfford = player.gold >= spell.price;
-              
-              return (
-                <div key={spell.key} className={`bg-black bg-opacity-60 p-4 rounded-lg border-2 ${equipped ? 'border-yellow-400' : owned ? 'border-green-600' : 'border-gray-600'}`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Icon size={32} style={{ color: spell.color }} />
-                    <div className="text-left flex-1">
-                      <h3 className="text-white font-bold">{spell.name}</h3>
-                      <p className="text-gray-300 text-sm">Damage: {spell.damage} | Mana: {spell.manaCost}</p>
-                      <p className="text-gray-400 text-xs">{spell.description}</p>
-                    </div>
-                  </div>
-                  
-                  {!owned && (
-                    <button
-                      onClick={() => {
-                        if (canAfford) {
-                          setPlayer(prev => ({ ...prev, gold: prev.gold - spell.price }));
-                          setPurchasedSpells(prev => [...prev, spell.key]);
-                        }
-                      }}
-                      disabled={!canAfford}
-                      className={`w-full py-2 rounded ${canAfford ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600'} text-white font-bold`}
-                    >
-                      Buy for 💰 {spell.price}
-                    </button>
-                  )}
-                  
-                  {owned && !equipped && (
-                    <button
-                      onClick={() => {
-                        if (equippedSpells.length < 3) {
-                          setEquippedSpells(prev => [...prev, { ...spell }]);
-                        }
-                      }}
-                      disabled={equippedSpells.length >= 3}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded"
-                    >
-                      {equippedSpells.length >= 3 ? 'Slots Full' : 'Equip'}
-                    </button>
-                  )}
-                  
-                  {equipped && (
-                    <button
-                      onClick={() => {
-                        setEquippedSpells(prev => prev.filter(s => s.key !== spell.key));
-                      }}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded"
-                    >
-                      Unequip
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+      <div className="w-full h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black flex">
+        <div className="w-full max-w-4xl mx-auto flex flex-col px-4 py-8 h-full">
+          <div className="text-center mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+              Spell Shop
+            </h1>
+            <p className="text-xl text-yellow-400">Gold: 💰 {player.gold}</p>
           </div>
-          
+
+          {/* scrollable spells */}
+          <div className="flex-1 overflow-y-auto pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.values(ALL_SPELLS).map(spell => {
+                const Icon = spell.icon;
+                const owned = purchasedSpells.includes(spell.key);
+                const equipped = equippedSpells.some(s => s.key === spell.key);
+                const canAfford = player.gold >= spell.price;
+
+                return (
+                  <div
+                    key={spell.key}
+                    className={`bg-black bg-opacity-60 p-4 rounded-lg border-2 ${
+                      equipped
+                        ? 'border-yellow-400'
+                        : owned
+                        ? 'border-green-600'
+                        : 'border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Icon size={32} style={{ color: spell.color }} />
+                      <div className="text-left flex-1">
+                        <h3 className="text-white font-bold">{spell.name}</h3>
+                        <p className="text-gray-300 text-sm">
+                          Damage: {spell.damage} | Mana: {spell.manaCost}
+                        </p>
+                        <p className="text-gray-400 text-xs">
+                          {spell.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {!owned && (
+                      <button
+                        onClick={() => {
+                          if (canAfford) {
+                            setPlayer(prev => ({
+                              ...prev,
+                              gold: prev.gold - spell.price
+                            }));
+                            setPurchasedSpells(prev => [...prev, spell.key]);
+                          }
+                        }}
+                        disabled={!canAfford}
+                        className={`w-full py-2 rounded ${
+                          canAfford
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-gray-600'
+                        } text-white font-bold`}
+                      >
+                        Buy for 💰 {spell.price}
+                      </button>
+                    )}
+
+                    {owned && !equipped && (
+                      <button
+                        onClick={() => {
+                          if (equippedSpells.length < 3) {
+                            setEquippedSpells(prev => [...prev, { ...spell }]);
+                          }
+                        }}
+                        disabled={equippedSpells.length >= 3}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded"
+                      >
+                        {equippedSpells.length >= 3
+                          ? 'Slots Full'
+                          : 'Equip'}
+                      </button>
+                    )}
+
+                    {equipped && (
+                      <button
+                        onClick={() => {
+                          setEquippedSpells(prev =>
+                            prev.filter(s => s.key !== spell.key)
+                          );
+                        }}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded"
+                      >
+                        Unequip
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* pinned button */}
           <button
             onClick={continueToNextLevel}
             disabled={equippedSpells.length === 0}
-            className={`${equippedSpells.length === 0 ? 'bg-gray-600' : 'bg-purple-600 hover:bg-purple-700'} text-white font-bold py-4 px-8 rounded-lg text-xl`}
+            className={`mt-4 ${
+              equippedSpells.length === 0
+                ? 'bg-gray-600'
+                : 'bg-purple-600 hover:bg-purple-700'
+            } text-white font-bold py-4 px-8 rounded-lg text-xl`}
           >
-            {equippedSpells.length === 0 ? 'Equip at least 1 spell!' : `Continue to Level ${currentLevel + 1}`}
+            {equippedSpells.length === 0
+              ? 'Equip at least 1 spell!'
+              : `Continue to Level ${currentLevel + 1}`}
           </button>
         </div>
       </div>
