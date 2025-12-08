@@ -54,7 +54,8 @@ const ZERO_GAMEPAD = {
   rbPressed: false,
   lbPressed: false,
   start: false,
-  startPressed: false
+  startPressed: false,
+  revealPressed: false
 };
 
 const WizardDungeonCrawler = () => {
@@ -316,6 +317,20 @@ const WizardDungeonCrawler = () => {
     }
   };
 
+  // Spells that can be unlocked from secret chests
+  const SECRET_SPELL_KEYS = [
+    'meteor',
+    'frost',
+    'chain',
+    'windblast',
+    'arcane',
+    'inferno',
+    'blizzard',
+    'storm',
+    'shadow'
+    // you can tweak this list however you want
+  ];
+
   // Spells
   const [equippedSpells, setEquippedSpells] = useState([
     { ...ALL_SPELLS.fire },
@@ -416,6 +431,8 @@ const WizardDungeonCrawler = () => {
   const [musicVolume, setMusicVolume] = useState(0.5);
   const musicInitializedRef = useRef(false);
 
+  const [chests, setChests] = useState([]);
+
   // Constants
   const DUNGEON_SIZE = 30;
   const FOV = 60;
@@ -424,7 +441,11 @@ const WizardDungeonCrawler = () => {
   const MOVE_SPEED = 3;
   const TURN_SPEED = 2;
   const PIXEL_STEP = isMobile ? 2 : 1;  // DECREASED from 4 - smaller pixels = more detail
- 
+
+  const TILE_FLOOR = 0;
+  const TILE_WALL = 1;
+  const TILE_SECRET_DOOR = 8; // NEW secret door tile
+  
   // Dungeon themes - each level cycles through these
   const DUNGEON_THEMES = {
     crypt: {
@@ -857,7 +878,8 @@ const WizardDungeonCrawler = () => {
           rbPressed:  rb   && !prev.rb,
           lbPressed:  lb   && !prev.lb,
           start,
-          startPressed: start && !prev.start
+          startPressed: start && !prev.start,
+          revealPressed: fire && !prev.fire
         };
 
         gamepadStateRef.current = nextState;
@@ -976,16 +998,181 @@ const WizardDungeonCrawler = () => {
     });
   }, [permanentUpgrades.damageBonus]);
 
+  function addSecretRoomsToDungeon(map, level) {
+    const size = map.length;
+    const chests = [];
+
+    const numRooms = Math.min(3, 1 + Math.floor(level / 3)); // up to 3 secret rooms
+
+    for (let n = 0; n < numRooms; n++) {
+      let roomX = null;
+      let roomY = null;
+      let attempts = 0;
+
+      // find a floor tile away from spawn
+      while (attempts < 200 && roomX === null) {
+        const x = Math.floor(Math.random() * size);
+        const y = Math.floor(Math.random() * size);
+        if (map[y][x] === TILE_FLOOR && Math.hypot(x - 5, y - 5) > 8) {
+          roomX = x;
+          roomY = y;
+        }
+        attempts++;
+      }
+
+      if (roomX === null) continue;
+
+      // carve a tiny 3x3 pocket room around (roomX, roomY)
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const tx = roomX + ox;
+          const ty = roomY + oy;
+          if (tx <= 0 || ty <= 0 || tx >= size - 1 || ty >= size - 1) continue;
+
+          if (ox === -1 || ox === 1 || oy === -1 || oy === 1) {
+            // walls around
+            map[ty][tx] = TILE_WALL;
+          } else {
+            // center floor
+            map[ty][tx] = TILE_FLOOR;
+          }
+        }
+      }
+
+      // pick one wall as a secret door
+      const candidates = [
+        [roomX, roomY - 2],
+        [roomX + 2, roomY],
+        [roomX, roomY + 2],
+        [roomX - 2, roomY]
+      ].filter(([x, y]) =>
+        x > 0 && y > 0 && x < size - 1 && y < size - 1 && map[y][x] !== TILE_FLOOR
+      );
+
+      if (candidates.length > 0) {
+        const [sx, sy] = candidates[Math.floor(Math.random() * candidates.length)];
+        map[sy][sx] = TILE_SECRET_DOOR;
+      }
+
+      // chest in center of room
+      chests.push({
+        id: `secret-${n}-${Date.now()}`,
+        x: roomX + 0.5,
+        y: roomY + 0.5,
+        opened: false,
+        inSecretRoom: true
+      });
+    }
+
+    return { mapWithSecrets: map, chests };
+  }
+
+  const grantSecretChestReward = () => {
+    const roll = Math.random();
+    if (roll < 0.5) {
+      upgradeRandomPermanentStat();
+    } else {
+      unlockRandomSecretSpell();
+    }
+  };
+
+  const upgradeRandomPermanentStat = () => {
+    const keys = [
+      'maxHealthBonus',
+      'maxManaBonus',
+      'damageBonus',
+      'speedBonus',
+      'manaRegenBonus',
+      'goldMultiplier',
+      'criticalChance',
+      'lifeSteal',
+      'essenceGain'
+    ];
+
+    const chosenKey = keys[Math.floor(Math.random() * keys.length)];
+
+    setPermanentUpgrades(prev => {
+      const next = {
+        ...prev,
+        [chosenKey]: (prev[chosenKey] || 0) + 1
+      };
+
+      localStorage.setItem('wizardUpgrades', JSON.stringify(next));
+
+      const prettyNameMap = {
+        maxHealthBonus: 'Max Health',
+        maxManaBonus: 'Max Mana',
+        damageBonus: 'Damage',
+        speedBonus: 'Speed',
+        manaRegenBonus: 'Mana Regen',
+        goldMultiplier: 'Gold Gain',
+        criticalChance: 'Critical Chance',
+        lifeSteal: 'Life Steal',
+        essenceGain: 'Essence Gain'
+      };
+
+      const label = prettyNameMap[chosenKey] || chosenKey;
+    showNotification?.(`Secret power: +1 ${label}`, 'green');
+
+      return next;
+    });
+  };
+
+  const unlockRandomSecretSpell = () => {
+    // figure out what we already have equipped
+    const ownedKeys = new Set(equippedSpells.map(s => s.key));
+
+    // pick from secret-only spells that we don't already own
+    const candidates = SECRET_SPELL_KEYS.filter(key => !ownedKeys.has(key));
+
+    if (candidates.length === 0) {
+      // nothing left to unlock
+      showNotification?.('You have mastered all secret spells.', 'purple');
+      return;
+    }
+
+    const key = candidates[Math.floor(Math.random() * candidates.length)];
+    const spell = ALL_SPELLS[key];
+
+    // add it to equipped spells (or your "owned" list if you have one)
+    setEquippedSpells(prev => {
+      // just in case we somehow double-unlock
+      if (prev.some(s => s.key === key)) return prev;
+      return [...prev, { ...spell }];
+    });
+
+    showNotification?.(`Secret spell unlocked: ${spell.name}!`, 'purple');
+  };
+
+  const revealNearbySecretDoors = (px, py, dungeon) => {
+    const size = dungeon.length;
+    const radius = 1;
+    let changed = false;
+
+    for (let y = py - radius; y <= py + radius; y++) {
+      for (let x = px - radius; x <= px + radius; x++) {
+        if (x < 0 || y < 0 || x >= size || y >= size) continue;
+        if (dungeon[y][x] === TILE_SECRET_DOOR) {
+          dungeon[y][x] = TILE_FLOOR;
+          changed = true;
+        }
+      }
+    }
+
+    return changed;
+  };
+  
   // Generate dungeon
   const generateDungeon = useCallback((level) => {
     const size = DUNGEON_SIZE;
     const map = [];
 
+    // base noise / walls
     for (let y = 0; y < size; y++) {
       const row = [];
       for (let x = 0; x < size; x++) {
         if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
-          row.push(1);
+          row.push(TILE_WALL);
         } else {
           if (Math.random() < 0.2) {
             const r = Math.random();
@@ -999,13 +1186,14 @@ const WizardDungeonCrawler = () => {
             else tile = 7;
             row.push(tile);
           } else {
-            row.push(0);
+            row.push(TILE_FLOOR);
           }
         }
       }
       map.push(row);
     }
 
+    // rooms
     const numRooms = 5 + level * 2;
     for (let i = 0; i < numRooms; i++) {
       const roomW = Math.floor(Math.random() * 5) + 3;
@@ -1016,43 +1204,49 @@ const WizardDungeonCrawler = () => {
       for (let y = roomY; y < roomY + roomH; y++) {
         for (let x = roomX; x < roomX + roomW; x++) {
           if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
-            map[y][x] = 0;
+            map[y][x] = TILE_FLOOR;
           }
         }
       }
     }
 
+    // clear spawn area
     for (let dy = -2; dy <= 2; dy++) {
       for (let dx = -2; dx <= 2; dx++) {
         const x = 5 + dx;
         const y = 5 + dy;
         if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
-          map[y][x] = 0;
+          map[y][x] = TILE_FLOOR;
         }
       }
     }
 
+    // 👉 inject secret rooms + chests here
+    const { mapWithSecrets, chests: newChests } = addSecretRoomsToDungeon(map, level);
+
     // Generate enemies
     const newEnemies = [];
     const isBossLevel = level % 5 === 0;
-      
-      // Spawn boss
-      const bossTypes = ['boss_necromancer', 'boss_dragon', 'boss_lich'];
-      const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
 
-      if (isBossLevel) {
+    const bossTypes = ['boss_necromancer', 'boss_dragon', 'boss_lich'];
+    const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+
+    if (isBossLevel) {
       setBossIntro({
         name: bossType.replace('boss_', '').toUpperCase(),
         timer: 3.0
       });
-        
+
       const stats = ENEMY_TYPES[bossType];
 
       let x, y;
       do {
         x = Math.random() * (size - 10) + 5;
         y = Math.random() * (size - 10) + 5;
-      } while (map[Math.floor(y)][Math.floor(x)] !== 0 || Math.hypot(x - 5, y - 5) < 10);
+      } while (
+        mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR ||
+        Math.hypot(x - 5, y - 5) < 10
+      );
 
       newEnemies.push({
         id: Math.random(),
@@ -1065,7 +1259,7 @@ const WizardDungeonCrawler = () => {
         speed: stats.speed,
         xp: stats.xp * level,
         gold: stats.gold * level,
-        essence: stats.essence * (1 + Math.floor(level / 5)), // <-- ADD THIS LINE (bosses give more essence based on depth)
+        essence: stats.essence * (1 + Math.floor(level / 5)),
         color: stats.color,
         angle: Math.random() * Math.PI * 2,
         state: 'idle',
@@ -1073,7 +1267,7 @@ const WizardDungeonCrawler = () => {
         isBoss: true
       });
 
-      // Add some minions
+      // minions
       const minionCount = 5 + level;
       const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem'];
 
@@ -1082,7 +1276,10 @@ const WizardDungeonCrawler = () => {
         do {
           mx = Math.random() * (size - 4) + 2;
           my = Math.random() * (size - 4) + 2;
-        } while (map[Math.floor(my)][Math.floor(mx)] !== 0 || Math.hypot(mx - 5, my - 5) < 5);
+        } while (
+          mapWithSecrets[Math.floor(my)][Math.floor(mx)] !== TILE_FLOOR ||
+          Math.hypot(mx - 5, my - 5) < 5
+        );
 
         const type = enemyTypesList[Math.floor(Math.random() * enemyTypesList.length)];
         const mstats = ENEMY_TYPES[type];
@@ -1116,7 +1313,10 @@ const WizardDungeonCrawler = () => {
         do {
           x = Math.random() * (size - 4) + 2;
           y = Math.random() * (size - 4) + 2;
-        } while (map[Math.floor(y)][Math.floor(x)] !== 0 || Math.hypot(x - 5, y - 5) < 5);
+        } while (
+          mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR ||
+          Math.hypot(x - 5, y - 5) < 5
+        );
 
         const type = enemyTypesList[Math.floor(Math.random() * enemyTypesList.length)];
         const stats = ENEMY_TYPES[type];
@@ -1159,7 +1359,7 @@ const WizardDungeonCrawler = () => {
       do {
         x = Math.random() * (size - 4) + 2;
         y = Math.random() * (size - 4) + 2;
-      } while (map[Math.floor(y)][Math.floor(x)] !== 0);
+      } while (mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR);
 
       const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
       newItems.push({
@@ -1169,13 +1369,14 @@ const WizardDungeonCrawler = () => {
         ...itemType,
         collected: false
       });
-    }
+  }
 
-    setDungeon(map);
+    setDungeon(mapWithSecrets);
     setEnemies(newEnemies);
     setItems(newItems);
+    setChests(newChests);
 
-    return map;
+    return mapWithSecrets;
   }, [permanentUpgrades.goldMultiplier]);
 
   // Initialize game
@@ -5159,6 +5360,25 @@ const WizardDungeonCrawler = () => {
         })
       );
 
+      setChests(prev =>
+        prev.map(chest => {
+          if (chest.opened) return chest;
+
+          const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
+          if (dist < 0.7) {
+            createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
+            addScreenShake(0.3);
+            showNotification?.('You opened a secret chest!', 'yellow');
+
+            grantSecretChestReward();
+
+            return { ...chest, opened: true };
+          }
+
+          return chest;
+        })
+      );
+      
       setPlayer(prev => {
         if (prev.xp >= prev.xpToNext) {
           return {
@@ -5188,6 +5408,26 @@ const WizardDungeonCrawler = () => {
       ) {
         setGameState('victory');
         return;
+      }
+
+      // Reveal secret doors (keyboard + controller)
+      {
+        const px = Math.floor(player.x);
+        const py = Math.floor(player.y);
+
+        const wantsReveal =
+          keysPressed.current['f'] || gamepadState.revealPressed; // we'll wire this below
+
+        if (wantsReveal) {
+          setDungeon(prev => {
+            const copy = prev.map(row => [...row]);
+            const changed = revealNearbySecretDoors(px, py, copy);
+            if (changed) {
+              showNotification?.('A hidden passage opens...', 'purple');
+            }
+            return copy;
+          });
+        }
       }
 
       render();
