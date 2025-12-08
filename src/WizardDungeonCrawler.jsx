@@ -394,16 +394,101 @@ const WizardDungeonCrawler = () => {
   const TURN_SPEED = 2;
   const PIXEL_STEP = isMobile ? 2 : 1;  // DECREASED from 4 - smaller pixels = more detail
  
-  // Wall types
-  const WALL_TYPES = {
-    0: null,
-    1: { color: '#3a3248', name: 'Stone' },
-    2: { color: '#5b3b2a', name: 'Strata' },
-    3: { color: '#244026', name: 'Moss' },
-    4: { color: '#5a1010', name: 'Vein' },
-    5: { color: '#40304a', name: 'Stalactite' },
-    6: { color: '#3b2f24', name: 'Stalagmite' },
-    7: { color: '#4b3a30', name: 'Boulder' }
+  // Dungeon themes - each level cycles through these
+  const DUNGEON_THEMES = {
+    crypt: {
+      name: 'Ancient Crypt',
+      ceiling: '#0f0e14',
+      floorTop: '#1a1622',
+      floorBottom: '#0a0810',
+      fog: '#08070d',
+      walls: {
+        1: { color: '#2d2838', name: 'Stone' },
+        2: { color: '#3f3548', name: 'Carved' },
+        3: { color: '#1a2a1f', name: 'Moss' },
+        4: { color: '#4a1818', name: 'Blood' },
+        5: { color: '#302840', name: 'Cobweb' },
+        6: { color: '#2a2430', name: 'Cracks' },
+        7: { color: '#352d38', name: 'Rubble' }
+      },
+      accent: '#8b7ba8'
+    },
+    lava: {
+      name: 'Volcanic Depths',
+      ceiling: '#1a0a08',
+      floorTop: '#2d1410',
+      floorBottom: '#1a0805',
+      fog: '#0d0603',
+      walls: {
+        1: { color: '#3a1a10', name: 'Basalt' },
+        2: { color: '#4a2515', name: 'Scorched' },
+        3: { color: '#5a2a18', name: 'Charred' },
+        4: { color: '#ff4500', name: 'Lava' },
+        5: { color: '#2a1510', name: 'Obsidian' },
+        6: { color: '#3a2018', name: 'Ember' },
+        7: { color: '#4a2820', name: 'Magma' }
+      },
+      accent: '#ff6600'
+    },
+    ice: {
+      name: 'Frozen Cavern',
+      ceiling: '#0a1418',
+      floorTop: '#152530',
+      floorBottom: '#0a1216',
+      fog: '#060a0d',
+      walls: {
+        1: { color: '#2a3845', name: 'Ice' },
+        2: { color: '#344858', name: 'Frost' },
+        3: { color: '#1f3540', name: 'Glacier' },
+        4: { color: '#4a6875', name: 'Crystal' },
+        5: { color: '#253845', name: 'Frozen' },
+        6: { color: '#2f4350', name: 'Icicle' },
+        7: { color: '#3a5060', name: 'Permafrost' }
+      },
+      accent: '#88ddff'
+    },
+    toxic: {
+      name: 'Poison Swamp',
+      ceiling: '#0e120a',
+      floorTop: '#1a2414',
+      floorBottom: '#0a0f08',
+      fog: '#070a05',
+      walls: {
+        1: { color: '#2a3820', name: 'Slime' },
+        2: { color: '#354a25', name: 'Toxic' },
+        3: { color: '#1f2e18', name: 'Rot' },
+        4: { color: '#4a6030', name: 'Fungal' },
+        5: { color: '#253520', name: 'Decay' },
+        6: { color: '#2f4028', name: 'Spore' },
+        7: { color: '#3a5035', name: 'Mold' }
+      },
+      accent: '#88ff88'
+    },
+    shadow: {
+      name: 'Shadow Realm',
+      ceiling: '#08050a',
+      floorTop: '#12081a',
+      floorBottom: '#060308',
+      fog: '#030204',
+      walls: {
+        1: { color: '#1a1028', name: 'Shadow' },
+        2: { color: '#251838', name: 'Void' },
+        3: { color: '#150820', name: 'Dark' },
+        4: { color: '#3a2048', name: 'Ethereal' },
+        5: { color: '#1f1530', name: 'Phantom' },
+        6: { color: '#2a1a38', name: 'Spectral' },
+        7: { color: '#352545', name: 'Cursed' }
+      },
+      accent: '#aa88ff'
+    }
+  };
+  
+  const THEME_ORDER = ['crypt', 'lava', 'ice', 'toxic', 'shadow'];
+  
+  const getCurrentTheme = (level) => {
+    const themeIndex = (level - 1) % THEME_ORDER.length;
+    const themeName = THEME_ORDER[themeIndex];
+    return DUNGEON_THEMES[themeName];
   };
 
   // Enemy types (including bosses)
@@ -458,34 +543,31 @@ const WizardDungeonCrawler = () => {
   };
 
   const getEnvironmentTheme = (level) => {
-    const t = Math.max(0, Math.min(1, (level - 1) / 8));
-
-    const ceiling = lerpColor('#151826', '#050608', t);
-    const floorTop = lerpColor('#2b2838', '#3a2818', t);
-    const floorBottom = lerpColor('#14101e', '#1a0c08', t);
-    const fog = lerpColor('#05040b', '#030203', t);
-
-    const wallPalette = {
-      1: lerpColor('#3a3248', '#3b2f24', t),
-      2: lerpColor('#5b3b2a', '#6a4324', t),
-      3: lerpColor('#244026', '#3f6b32', t),
-      4: lerpColor('#5a1010', '#c13a16', t),
-      5: lerpColor('#40304a', '#2c1d24', t),
-      6: lerpColor('#3b2f24', '#4b2b1a', t),
-      7: lerpColor('#4b3a30', '#3a2a20', t)
+    const theme = getCurrentTheme(level);
+    const depth = Math.max(0, Math.min(1, (level - 1) / 20));
+  
+    // Darken colors based on depth
+    const darkenColor = (hex, factor) => {
+      const rgb = hexToRgb(hex);
+      return `#${Math.floor(rgb.r * factor).toString(16).padStart(2, '0')}${Math.floor(rgb.g * factor).toString(16).padStart(2, '0')}${Math.floor(rgb.b * factor).toString(16).padStart(2, '0')}`;
     };
-
-    const accentTorch = lerpColor('#ffb347', '#ff7b1a', t);
-    const accentFungi = lerpColor('#6bd6ff', '#9cffc5', t);
-
+  
+    const depthFactor = 1 - depth * 0.4;
+  
     return {
-      ceiling,
-      floorTop,
-      floorBottom,
-      fog,
-      wallPalette,
-      accentTorch,
-      accentFungi
+      ceiling: darkenColor(theme.ceiling, depthFactor),
+      floorTop: darkenColor(theme.floorTop, depthFactor),
+      floorBottom: darkenColor(theme.floorBottom, depthFactor),
+      fog: darkenColor(theme.fog, depthFactor),
+      wallPalette: Object.fromEntries(
+        Object.entries(theme.walls).map(([key, wall]) => [
+          key,
+          darkenColor(wall.color, depthFactor)
+        ])
+      ),
+      accentTorch: theme.accent,
+      accentFungi: theme.accent,
+      themeName: theme.name
     };
   };
 
@@ -2239,6 +2321,18 @@ const WizardDungeonCrawler = () => {
     ctx.fillStyle = env.fog;
     ctx.fillRect(0, 0, width, height);
 
+    // Draw theme name
+    const themeName = env.themeName;
+    if (themeName) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = env.accentTorch;
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(themeName, width - 180, 35);
+      ctx.restore();
+    }
+
     const ceilingHeight = Math.max(0, Math.min(height, horizon));
     const ceilingGrad = ctx.createLinearGradient(0, 0, 0, ceilingHeight);
     ceilingGrad.addColorStop(0, env.ceiling);
@@ -2305,8 +2399,7 @@ const WizardDungeonCrawler = () => {
           sliceHeight = Math.max(PIXEL_STEP, sliceHeight - offset);
         }
 
-        const wallType = WALL_TYPES[tileId];
-        if (wallType) {
+        if (tileId > 0) {
           let brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
 
           const depthFactor =
@@ -2319,7 +2412,7 @@ const WizardDungeonCrawler = () => {
             (i + Math.floor(sliceY / PIXEL_STEP)) % 2 === 0 ? 0.95 : 1.05;
           brightness *= dither;
 
-          const baseHex = env.wallPalette[tileId] || wallType.color;
+          const baseHex = env.wallPalette[tileId] || '#3a3248';
           const { r, g, b } = hexToRgb(baseHex);
 
           const rr = Math.max(0, Math.min(255, r * brightness));
@@ -2376,6 +2469,223 @@ const WizardDungeonCrawler = () => {
         zBuffer[i] = hit.distance;
       }
     }
+
+    // N64-style environmental details per theme
+    const theme = getCurrentTheme(currentLevel);
+    const themeName = THEME_ORDER[(currentLevel - 1) % THEME_ORDER.length];
+    
+    // Draw atmospheric particles/effects based on theme
+    ctx.save();
+    for (let i = 0; i < RESOLUTION; i += 8) {
+      const rayAngle = startAngle + i * rayAngleStep;
+      const hit = castRay(player, rayAngle, dungeon);
+      
+      if (hit && hit.distance < RENDER_DISTANCE) {
+        const sliceWidth = width / RESOLUTION;
+        const x = i * sliceWidth;
+        const wallHeightRaw = hit.distance > 0.1 ? height / hit.distance : height * 2;
+        const baseWallHeight = Math.max(PIXEL_STEP, Math.floor(wallHeightRaw / PIXEL_STEP) * PIXEL_STEP);
+        const yRaw = horizon - baseWallHeight / 2;
+        const sliceY = Math.floor(yRaw / PIXEL_STEP) * PIXEL_STEP;
+        const sliceHeight = baseWallHeight;
+        const brightness = 1.0 - (hit.distance / RENDER_DISTANCE);
+        
+        // Theme-specific wall details
+        if (themeName === 'lava' && hit.tile === 4) {
+          // Glowing lava cracks
+          const glowIntensity = 0.3 + Math.sin(time * 3 + i * 0.5) * 0.2;
+          ctx.fillStyle = `rgba(255, 100, 0, ${glowIntensity * brightness})`;
+          ctx.fillRect(x, sliceY, Math.ceil(sliceWidth) + 1, sliceHeight);
+          
+          // Flowing lava effect
+          const flowOffset = (time * 20 + i * 2) % (sliceHeight / 4);
+          ctx.strokeStyle = `rgba(255, 150, 0, ${0.4 * brightness})`;
+          ctx.lineWidth = 2;
+          for (let flow = 0; flow < sliceHeight; flow += sliceHeight / 4) {
+            ctx.beginPath();
+            ctx.moveTo(x, sliceY + flow + flowOffset);
+            ctx.lineTo(x + sliceWidth, sliceY + flow + flowOffset);
+            ctx.stroke();
+          }
+        }
+        
+        if (themeName === 'ice' && brightness > 0.4) {
+          // Ice crystals and frost
+          const crystalChance = Math.sin(i * 13.37 + hit.tileX * 7.89) * 0.5 + 0.5;
+          if (crystalChance > 0.7) {
+            ctx.fillStyle = `rgba(150, 200, 255, ${0.3 * brightness})`;
+            const crystalSize = 3 + Math.floor(crystalChance * 5);
+            const crystalY = sliceY + Math.floor(Math.sin(i * 3.14) * sliceHeight * 0.3);
+            ctx.fillRect(x + sliceWidth / 2 - crystalSize / 2, crystalY, crystalSize, crystalSize * 2);
+            
+            // Sparkle effect
+            if (Math.sin(time * 5 + i) > 0.8) {
+              ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * brightness})`;
+              ctx.fillRect(x + sliceWidth / 2 - 1, crystalY, 2, 2);
+            }
+          }
+        }
+        
+        if (themeName === 'toxic') {
+          // Dripping slime
+          const dripSeed = Math.sin(i * 9.876 + time * 0.5) * 0.5 + 0.5;
+          if (dripSeed > 0.75) {
+            const dripLength = Math.floor(baseWallHeight * 0.15 * dripSeed);
+            ctx.strokeStyle = `rgba(100, 180, 50, ${0.4 * brightness})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + sliceWidth / 2, sliceY);
+            ctx.lineTo(x + sliceWidth / 2, sliceY + dripLength);
+            ctx.stroke();
+            
+            // Drip blob
+            ctx.fillStyle = `rgba(100, 200, 50, ${0.5 * brightness})`;
+            ctx.beginPath();
+            ctx.arc(x + sliceWidth / 2, sliceY + dripLength, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // Glowing fungus patches
+          if (hit.tile === 3 || hit.tile === 6) {
+            const fungusGlow = 0.2 + Math.sin(time * 2 + i * 0.7) * 0.15;
+            ctx.fillStyle = `rgba(150, 255, 100, ${fungusGlow * brightness})`;
+            const patchY = sliceY + sliceHeight * 0.6;
+            ctx.fillRect(x, patchY, sliceWidth, sliceHeight * 0.3);
+          }
+        }
+        
+        if (themeName === 'shadow') {
+          // Floating shadow wisps
+          const wispChance = Math.sin(i * 11.11 + time * 0.8) * 0.5 + 0.5;
+          if (wispChance > 0.8) {
+            const wispY = sliceY + Math.sin(time * 2 + i * 0.5) * (sliceHeight * 0.3);
+            const wispSize = 4 + Math.sin(time * 3 + i) * 2;
+            
+            const gradient = ctx.createRadialGradient(
+              x + sliceWidth / 2, wispY, 0,
+              x + sliceWidth / 2, wispY, wispSize * 2
+            );
+            gradient.addColorStop(0, `rgba(170, 100, 255, ${0.4 * brightness})`);
+            gradient.addColorStop(1, 'rgba(170, 100, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x + sliceWidth / 2, wispY, wispSize * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // Creeping darkness at wall edges
+          if (hit.side === 1) {
+            ctx.fillStyle = `rgba(10, 5, 20, ${0.3 * brightness})`;
+            ctx.fillRect(x, sliceY, sliceWidth * 0.3, sliceHeight);
+          }
+        }
+        
+        if (themeName === 'crypt') {
+          // Cobwebs
+          if (hit.tile === 5) {
+            const webY = sliceY + sliceHeight * 0.1;
+            ctx.strokeStyle = `rgba(200, 200, 200, ${0.2 * brightness})`;
+            ctx.lineWidth = 1;
+            for (let web = 0; web < 3; web++) {
+              ctx.beginPath();
+              ctx.moveTo(x, webY + web * 4);
+              ctx.lineTo(x + sliceWidth, webY + web * 4 + 2);
+              ctx.stroke();
+            }
+          }
+          
+          // Blood stains
+          if (hit.tile === 4) {
+            const stainAlpha = 0.3 * brightness * (Math.sin(i * 7.77) * 0.3 + 0.7);
+            ctx.fillStyle = `rgba(100, 20, 20, ${stainAlpha})`;
+            const stainHeight = sliceHeight * 0.4;
+            ctx.fillRect(x, sliceY + sliceHeight - stainHeight, sliceWidth, stainHeight);
+          }
+        }
+      }
+    }
+    ctx.restore();
+    
+    // Floor/ceiling atmospheric effects
+    ctx.save();
+    const floorStart = Math.max(0, Math.min(height, horizon));
+    
+    if (themeName === 'lava') {
+      // Lava glow on floor
+      const lavaGlow = ctx.createLinearGradient(0, floorStart, 0, height);
+      lavaGlow.addColorStop(0, 'rgba(255, 80, 0, 0.15)');
+      lavaGlow.addColorStop(0.5, 'rgba(200, 60, 0, 0.08)');
+      lavaGlow.addColorStop(1, 'rgba(150, 40, 0, 0)');
+      ctx.fillStyle = lavaGlow;
+      ctx.fillRect(0, floorStart, width, height - floorStart);
+      
+      // Heat wave distortion effect (simulated with bands)
+      for (let wave = 0; wave < 5; wave++) {
+        const waveY = floorStart + (height - floorStart) * (wave / 5);
+        const waveOffset = Math.sin(time * 2 + wave) * 10;
+        ctx.fillStyle = `rgba(255, 100, 0, ${0.03})`;
+        ctx.fillRect(waveOffset, waveY, width, (height - floorStart) / 5);
+      }
+    }
+    
+    if (themeName === 'ice') {
+      // Frost fog near floor
+      const frostFog = ctx.createLinearGradient(0, floorStart, 0, height);
+      frostFog.addColorStop(0, 'rgba(200, 230, 255, 0.12)');
+      frostFog.addColorStop(1, 'rgba(150, 200, 240, 0)');
+      ctx.fillStyle = frostFog;
+      ctx.fillRect(0, floorStart, width, height - floorStart);
+    }
+    
+    if (themeName === 'toxic') {
+      // Toxic mist
+      const toxicMist = ctx.createLinearGradient(0, floorStart, 0, height);
+      toxicMist.addColorStop(0, 'rgba(100, 180, 50, 0.15)');
+      toxicMist.addColorStop(1, 'rgba(80, 150, 40, 0.05)');
+      ctx.fillStyle = toxicMist;
+      ctx.fillRect(0, floorStart, width, height - floorStart);
+      
+      // Bubbling effect
+      for (let bubble = 0; bubble < 10; bubble++) {
+        const bubbleX = (Math.sin(time * 1.5 + bubble * 2.1) * 0.5 + 0.5) * width;
+        const bubbleY = floorStart + (Math.sin(time * 2 + bubble * 1.7) * 0.5 + 0.5) * (height - floorStart);
+        const bubbleSize = 3 + Math.sin(time * 3 + bubble) * 2;
+        
+        ctx.fillStyle = `rgba(150, 220, 80, 0.3)`;
+        ctx.beginPath();
+        ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    if (themeName === 'shadow') {
+      // Dark tendrils rising from floor
+      for (let tendril = 0; tendril < 8; tendril++) {
+        const tendrilX = (tendril / 8) * width + Math.sin(time * 1.2 + tendril) * 30;
+        const tendrilHeight = 80 + Math.sin(time * 1.5 + tendril * 2) * 40;
+        
+        const tendrilGrad = ctx.createLinearGradient(
+          tendrilX, height,
+          tendrilX, height - tendrilHeight
+        );
+        tendrilGrad.addColorStop(0, 'rgba(50, 20, 80, 0.25)');
+        tendrilGrad.addColorStop(1, 'rgba(50, 20, 80, 0)');
+        
+        ctx.fillStyle = tendrilGrad;
+        ctx.fillRect(tendrilX - 15, height - tendrilHeight, 30, tendrilHeight);
+      }
+    }
+    
+    if (themeName === 'crypt') {
+      // Ghostly fog
+      const cryptFog = ctx.createLinearGradient(0, floorStart, 0, height);
+      cryptFog.addColorStop(0, 'rgba(180, 170, 200, 0.08)');
+      cryptFog.addColorStop(1, 'rgba(160, 150, 180, 0)');
+      ctx.fillStyle = cryptFog;
+      ctx.fillRect(0, floorStart, width, height - floorStart);
+    }
+    ctx.restore();
 
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
