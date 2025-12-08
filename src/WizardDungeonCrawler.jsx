@@ -543,6 +543,8 @@ const WizardDungeonCrawler = () => {
     return DUNGEON_THEMES[themeName];
   };
 
+  const [currentTheme, setCurrentTheme] = useState(getCurrentTheme(1));
+
   // Enemy types (including bosses)
   const ENEMY_TYPES = {
     skeleton: { health: 30, damage: 10, speed: 1.5, xp: 15, color: '#e5e5e5', gold: 5, essence: 1 },
@@ -1163,221 +1165,282 @@ const WizardDungeonCrawler = () => {
   };
   
   // Generate dungeon
-  const generateDungeon = useCallback((level) => {
-    const size = DUNGEON_SIZE;
-    const map = [];
+const generateDungeon = useCallback((level) => {
+  const size = DUNGEON_SIZE;
+  const map = [];
 
-    // base noise / walls
-    for (let y = 0; y < size; y++) {
-      const row = [];
-      for (let x = 0; x < size; x++) {
-        if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
-          row.push(TILE_WALL);
-        } else {
-          if (Math.random() < 0.2) {
-            const r = Math.random();
-            let tile;
-            if (r < 0.5) tile = 1;
-            else if (r < 0.7) tile = 2;
-            else if (r < 0.82) tile = 3;
-            else if (r < 0.9) tile = 4;
-            else if (r < 0.95) tile = 5;
-            else if (r < 0.975) tile = 6;
-            else tile = 7;
-            row.push(tile);
-          } else {
-            row.push(TILE_FLOOR);
-          }
-        }
-      }
-      map.push(row);
-    }
+  // Pick and store theme for this level
+  const theme = getCurrentTheme(level);
+  setCurrentTheme(theme);
 
-    // rooms
-    const numRooms = 5 + level * 2;
-    for (let i = 0; i < numRooms; i++) {
-      const roomW = Math.floor(Math.random() * 5) + 3;
-      const roomH = Math.floor(Math.random() * 5) + 3;
-      const roomX = Math.floor(Math.random() * (size - roomW - 2)) + 1;
-      const roomY = Math.floor(Math.random() * (size - roomH - 2)) + 1;
-
-      for (let y = roomY; y < roomY + roomH; y++) {
-        for (let x = roomX; x < roomX + roomW; x++) {
-          if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
-            map[y][x] = TILE_FLOOR;
-          }
-        }
+  // 1) Start with solid walls (more controllable than noise)
+  for (let y = 0; y < size; y++) {
+    const row = [];
+    for (let x = 0; x < size; x++) {
+      if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
+        row.push(TILE_WALL);
+      } else {
+        row.push(TILE_WALL); // everything is wall, we carve rooms/corridors
       }
     }
+    map.push(row);
+  }
 
-    // clear spawn area
-    for (let dy = -2; dy <= 2; dy++) {
-      for (let dx = -2; dx <= 2; dx++) {
-        const x = 5 + dx;
-        const y = 5 + dy;
+  // 2) Carve rooms and remember their centers
+  const rooms = [];
+  const numRooms = 5 + level * 2;
+
+  for (let i = 0; i < numRooms; i++) {
+    const roomW = Math.floor(Math.random() * 5) + 4; // a bit larger
+    const roomH = Math.floor(Math.random() * 5) + 4;
+    const roomX = Math.floor(Math.random() * (size - roomW - 2)) + 1;
+    const roomY = Math.floor(Math.random() * (size - roomH - 2)) + 1;
+
+    for (let y = roomY; y < roomY + roomH; y++) {
+      for (let x = roomX; x < roomX + roomW; x++) {
         if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
           map[y][x] = TILE_FLOOR;
         }
       }
     }
 
-    // 👉 inject secret rooms + chests here
-    const { mapWithSecrets, chests: newChests } = addSecretRoomsToDungeon(map, level);
+    rooms.push({
+      x: roomX,
+      y: roomY,
+      w: roomW,
+      h: roomH,
+      centerX: Math.floor(roomX + roomW / 2),
+      centerY: Math.floor(roomY + roomH / 2)
+    });
+  }
 
-    // Generate enemies
-    const newEnemies = [];
-    const isBossLevel = level % 5 === 0;
+  // 3) Connect rooms with corridors so layout feels intentional
+  for (let i = 1; i < rooms.length; i++) {
+    const prev = rooms[i - 1];
+    const curr = rooms[i];
 
-    const bossTypes = ['boss_necromancer', 'boss_dragon', 'boss_lich'];
-    const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+    let x1 = prev.centerX;
+    let y1 = prev.centerY;
+    const x2 = curr.centerX;
+    const y2 = curr.centerY;
 
-    if (isBossLevel) {
-      setBossIntro({
-        name: bossType.replace('boss_', '').toUpperCase(),
-        timer: 3.0
+    if (Math.random() < 0.5) {
+      // horizontal then vertical
+      while (x1 !== x2) {
+        map[y1][x1] = TILE_FLOOR;
+        x1 += x2 > x1 ? 1 : -1;
+      }
+      while (y1 !== y2) {
+        map[y1][x1] = TILE_FLOOR;
+        y1 += y2 > y1 ? 1 : -1;
+      }
+    } else {
+      // vertical then horizontal
+      while (y1 !== y2) {
+        map[y1][x1] = TILE_FLOOR;
+        y1 += y2 > y1 ? 1 : -1;
+      }
+      while (x1 !== x2) {
+        map[y1][x1] = TILE_FLOOR;
+        x1 += x2 > x1 ? 1 : -1;
+      }
+    }
+  }
+
+  // 4) Clear spawn area around (5,5) so start is safe
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const x = 5 + dx;
+      const y = 5 + dy;
+      if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
+        map[y][x] = TILE_FLOOR;
+      }
+    }
+  }
+
+  // 5) Decorate walls with themed variants (2–7) near floors
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      if (map[y][x] === TILE_WALL) {
+        const nearFloor =
+          map[y - 1][x] === TILE_FLOOR ||
+          map[y + 1][x] === TILE_FLOOR ||
+          map[y][x - 1] === TILE_FLOOR ||
+          map[y][x + 1] === TILE_FLOOR;
+
+        if (nearFloor && Math.random() < 0.2) {
+          const r = Math.random();
+          let tile = 1;
+          if (r < 0.3) tile = 2;
+          else if (r < 0.5) tile = 3;
+          else if (r < 0.7) tile = 4;
+          else if (r < 0.85) tile = 5;
+          else if (r < 0.95) tile = 6;
+          else tile = 7;
+          map[y][x] = tile;
+        }
+      }
+    }
+  }
+
+  // 6) Secret rooms + chests (uses existing helper)
+  const { mapWithSecrets, chests: newChests } = addSecretRoomsToDungeon(map, level);
+
+  // 7) Generate enemies (same logic as before, but using mapWithSecrets)
+  const newEnemies = [];
+  const isBossLevel = level % 5 === 0;
+
+  const bossTypes = ['boss_necromancer', 'boss_dragon', 'boss_lich'];
+  const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+
+  if (isBossLevel) {
+    setBossIntro({
+      name: bossType.replace('boss_', '').toUpperCase(),
+      timer: 3.0
+    });
+
+    const stats = ENEMY_TYPES[bossType];
+
+    let x, y;
+    do {
+      x = Math.random() * (size - 10) + 5;
+      y = Math.random() * (size - 10) + 5;
+    } while (
+      mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR ||
+      Math.hypot(x - 5, y - 5) < 10
+    );
+
+    newEnemies.push({
+      id: Math.random(),
+      x,
+      y,
+      type: bossType,
+      health: stats.health * (1 + level * 0.2),
+      maxHealth: stats.health * (1 + level * 0.2),
+      damage: stats.damage * (1 + level * 0.1),
+      speed: stats.speed,
+      xp: stats.xp * level,
+      gold: stats.gold * level,
+      essence: stats.essence * (1 + Math.floor(level / 5)),
+      color: stats.color,
+      angle: Math.random() * Math.PI * 2,
+      state: 'idle',
+      attackCooldown: 0,
+      isBoss: true
+    });
+
+    // minions
+    const minionCount = 5 + level;
+    const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem'];
+
+    for (let i = 0; i < minionCount; i++) {
+      let mx, my;
+      do {
+        mx = Math.random() * (size - 4) + 2;
+        my = Math.random() * (size - 4) + 2;
+      } while (
+        mapWithSecrets[Math.floor(my)][Math.floor(mx)] !== TILE_FLOOR ||
+        Math.hypot(mx - 5, my - 5) < 5
+      );
+
+      const type = enemyTypesList[Math.floor(Math.random() * enemyTypesList.length)];
+      const mstats = ENEMY_TYPES[type];
+
+      newEnemies.push({
+        id: Math.random(),
+        x: mx,
+        y: my,
+        type,
+        health: mstats.health * (1 + level * 0.2),
+        maxHealth: mstats.health * (1 + level * 0.2),
+        damage: mstats.damage * (1 + level * 0.1),
+        speed: mstats.speed,
+        xp: mstats.xp * level,
+        gold: mstats.gold * level,
+        essence: mstats.essence,
+        color: mstats.color,
+        angle: Math.random() * Math.PI * 2,
+        state: 'idle',
+        attackCooldown: 0,
+        isBoss: false
       });
+    }
+  } else {
+    // Normal level
+    const enemyCount = 10 + level * 3;
+    const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem'];
 
-      const stats = ENEMY_TYPES[bossType];
-
+    for (let i = 0; i < enemyCount; i++) {
       let x, y;
       do {
-        x = Math.random() * (size - 10) + 5;
-        y = Math.random() * (size - 10) + 5;
+        x = Math.random() * (size - 4) + 2;
+        y = Math.random() * (size - 4) + 2;
       } while (
         mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR ||
-        Math.hypot(x - 5, y - 5) < 10
+        Math.hypot(x - 5, y - 5) < 5
       );
+
+      const type = enemyTypesList[Math.floor(Math.random() * enemyTypesList.length)];
+      const stats = ENEMY_TYPES[type];
 
       newEnemies.push({
         id: Math.random(),
         x,
         y,
-        type: bossType,
+        type,
         health: stats.health * (1 + level * 0.2),
         maxHealth: stats.health * (1 + level * 0.2),
         damage: stats.damage * (1 + level * 0.1),
         speed: stats.speed,
         xp: stats.xp * level,
-        gold: stats.gold * level,
-        essence: stats.essence * (1 + Math.floor(level / 5)),
+        gold: stats.gold * (1 + permanentUpgrades.goldMultiplier * 0.1),
+        essence: stats.essence,
         color: stats.color,
         angle: Math.random() * Math.PI * 2,
         state: 'idle',
         attackCooldown: 0,
-        isBoss: true
+        isBoss: false
       });
-
-      // minions
-      const minionCount = 5 + level;
-      const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem'];
-
-      for (let i = 0; i < minionCount; i++) {
-        let mx, my;
-        do {
-          mx = Math.random() * (size - 4) + 2;
-          my = Math.random() * (size - 4) + 2;
-        } while (
-          mapWithSecrets[Math.floor(my)][Math.floor(mx)] !== TILE_FLOOR ||
-          Math.hypot(mx - 5, my - 5) < 5
-        );
-
-        const type = enemyTypesList[Math.floor(Math.random() * enemyTypesList.length)];
-        const mstats = ENEMY_TYPES[type];
-
-        newEnemies.push({
-          id: Math.random(),
-          x: mx,
-          y: my,
-          type,
-          health: mstats.health * (1 + level * 0.2),
-          maxHealth: mstats.health * (1 + level * 0.2),
-          damage: mstats.damage * (1 + level * 0.1),
-          speed: mstats.speed,
-          xp: mstats.xp * level,
-          gold: mstats.gold * level,
-          essence: mstats.essence,
-          color: mstats.color,
-          angle: Math.random() * Math.PI * 2,
-          state: 'idle',
-          attackCooldown: 0,
-          isBoss: false
-        });
-      }
-    } else {
-      // Normal level
-      const enemyCount = 10 + level * 3;
-      const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem'];
-
-      for (let i = 0; i < enemyCount; i++) {
-        let x, y;
-        do {
-          x = Math.random() * (size - 4) + 2;
-          y = Math.random() * (size - 4) + 2;
-        } while (
-          mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR ||
-          Math.hypot(x - 5, y - 5) < 5
-        );
-
-        const type = enemyTypesList[Math.floor(Math.random() * enemyTypesList.length)];
-        const stats = ENEMY_TYPES[type];
-
-        newEnemies.push({
-          id: Math.random(),
-          x,
-          y,
-          type,
-          health: stats.health * (1 + level * 0.2),
-          maxHealth: stats.health * (1 + level * 0.2),
-          damage: stats.damage * (1 + level * 0.1),
-          speed: stats.speed,
-          xp: stats.xp * level,
-          gold: stats.gold * (1 + permanentUpgrades.goldMultiplier * 0.1),
-          essence: stats.essence,
-          color: stats.color,
-          angle: Math.random() * Math.PI * 2,
-          state: 'idle',
-          attackCooldown: 0,
-          isBoss: false
-        });
-      }
     }
-
-    // Generate items
-    const newItems = [];
-    const itemCount = 5 + level;
-    const itemTypes = [
-      { type: 'health', amount: 30, color: '#ff0000' },
-      { type: 'mana', amount: 40, color: '#0000ff' },
-      { type: 'gold', amount: 25, color: '#ffff00' },
-      { type: 'powerup_damage', duration: 10, multiplier: 1.5, color: '#ff6600' },
-      { type: 'powerup_speed', duration: 10, multiplier: 1.5, color: '#00ff00' },
-      { type: 'powerup_invincible', duration: 5, color: '#ffff00' }
-    ];
-
-    for (let i = 0; i < itemCount; i++) {
-      let x, y;
-      do {
-        x = Math.random() * (size - 4) + 2;
-        y = Math.random() * (size - 4) + 2;
-      } while (mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR);
-
-      const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-      newItems.push({
-        id: Math.random(),
-        x,
-        y,
-        ...itemType,
-        collected: false
-      });
   }
 
-    setDungeon(mapWithSecrets);
-    setEnemies(newEnemies);
-    setItems(newItems);
-    setChests(newChests);
+  // 8) Generate items (unchanged, but using mapWithSecrets)
+  const newItems = [];
+  const itemCount = 5 + level;
+  const itemTypes = [
+    { type: 'health', amount: 30, color: '#ff0000' },
+    { type: 'mana', amount: 40, color: '#0000ff' },
+    { type: 'gold', amount: 25, color: '#ffff00' },
+    { type: 'powerup_damage', duration: 10, multiplier: 1.5, color: '#ff6600' },
+    { type: 'powerup_speed', duration: 10, multiplier: 1.5, color: '#00ff00' },
+    { type: 'powerup_invincible', duration: 5, color: '#ffff00' }
+  ];
 
-    return mapWithSecrets;
-  }, [permanentUpgrades.goldMultiplier]);
+  for (let i = 0; i < itemCount; i++) {
+    let x, y;
+    do {
+      x = Math.random() * (size - 4) + 2;
+      y = Math.random() * (size - 4) + 2;
+    } while (mapWithSecrets[Math.floor(y)][Math.floor(x)] !== TILE_FLOOR);
+
+    const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+    newItems.push({
+      id: Math.random(),
+      x,
+      y,
+      ...itemType,
+      collected: false
+    });
+  }
+
+  // 9) Commit dungeon state
+  setDungeon(mapWithSecrets);
+  setEnemies(newEnemies);
+  setItems(newItems);
+  setChests(newChests);
+
+  return mapWithSecrets;
+}, [permanentUpgrades.goldMultiplier]);
 
   // Initialize game
   useEffect(() => {
