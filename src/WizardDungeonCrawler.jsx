@@ -75,6 +75,13 @@ const WizardDungeonCrawler = () => {
     };
   });
 
+  // Add powerup state to player (around line 86):
+  const [playerBuffs, setPlayerBuffs] = useState({
+    damageBoost: { active: false, multiplier: 1, timeLeft: 0 },
+    speedBoost: { active: false, multiplier: 1, timeLeft: 0 },
+    invincible: { active: false, timeLeft: 0 }
+  });
+
   const [essence, setEssence] = useState(() => {
     const saved = localStorage.getItem('wizardEssence');
     return saved ? parseInt(saved) : 0;
@@ -260,12 +267,21 @@ const WizardDungeonCrawler = () => {
   const equippedSpellsRef = useRef(equippedSpells);
   const selectedSpellRef = useRef(0);
 
+  const [combo, setCombo] = useState({ count: 0, multiplier: 1.0, timer: 0 });
+  const comboRef = useRef({ count: 0, multiplier: 1.0, timer: 0 });
+  
+  useEffect(() => {
+    comboRef.current = combo;
+  }, [combo]);
+  
   // Dungeon & entities
   const [dungeon, setDungeon] = useState([]);
   const [enemies, setEnemies] = useState([]);
   const [items, setItems] = useState([]);
   const [projectiles, setProjectiles] = useState([]);
   const particlesRef = useRef([]);
+
+  const [bossIntro, setBossIntro] = useState(null);
 
   const levelStartTimeRef = useRef(Date.now());
 
@@ -314,6 +330,22 @@ const WizardDungeonCrawler = () => {
   // Vertical look and jump
   const [pitch, setPitch] = useState(0);
   const pitchRef = useRef(0);
+
+  const [screenShake, setScreenShake] = useState({ x: 0, y: 0, intensity: 0 });
+  const screenShakeRef = useRef({ x: 0, y: 0, intensity: 0 });
+  
+  useEffect(() => {
+    screenShakeRef.current = screenShake;
+  }, [screenShake]);
+  
+  // Add this function after the useEffect above
+  const addScreenShake = useCallback((intensity = 1.0) => {
+    setScreenShake(prev => ({
+      x: (Math.random() - 0.5) * intensity * 20,
+      y: (Math.random() - 0.5) * intensity * 20,
+      intensity: Math.max(prev.intensity, intensity)
+    }));
+  }, []);
 
   // Live player ref
   const playerRef = useRef(player);
@@ -602,7 +634,44 @@ const WizardDungeonCrawler = () => {
     }
     particlesRef.current = particles;
   }, []);
-
+  
+  // Enhanced particle system
+  const createParticleEffect = useCallback((x, y, color, count = 10, type = 'explosion') => {
+    const newParticles = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count;
+      const speed = 0.5 + Math.random() * 1.5;
+      newParticles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        life: 1.0,
+        maxLife: 0.5 + Math.random() * 0.5,
+        size: 3 + Math.random() * 5,
+        type
+      });
+    }
+    particlesRef.current = [...particlesRef.current, ...newParticles];
+  }, []);
+  
+  const gameParticlesRef = useRef([]);
+  
+  // Add this function after createParticleEffect
+  const updateGameParticles = useCallback((deltaTime) => {
+    gameParticlesRef.current = gameParticlesRef.current
+      .map(p => ({
+        ...p,
+        x: p.x + p.vx * deltaTime,
+        y: p.y + p.vy * deltaTime,
+        vx: p.vx * 0.95,
+        vy: p.vy * 0.95,
+        life: p.life - deltaTime / p.maxLife
+      }))
+      .filter(p => p.life > 0);
+  }, []);
+  
   const castCurrentSpell = useCallback(() => {
     const idx = selectedSpellRef.current;
   
@@ -705,11 +774,17 @@ const WizardDungeonCrawler = () => {
     // Generate enemies
     const newEnemies = [];
     const isBossLevel = level % 5 === 0;
-
-    if (isBossLevel) {
+      
       // Spawn boss
       const bossTypes = ['boss_necromancer', 'boss_dragon', 'boss_lich'];
       const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+
+      if (isBossLevel) {
+      setBossIntro({
+        name: bossType.replace('boss_', '').toUpperCase(),
+        timer: 3.0
+      });
+        
       const stats = ENEMY_TYPES[bossType];
 
       let x, y;
@@ -812,7 +887,10 @@ const WizardDungeonCrawler = () => {
     const itemTypes = [
       { type: 'health', amount: 30, color: '#ff0000' },
       { type: 'mana', amount: 40, color: '#0000ff' },
-      { type: 'gold', amount: 25, color: '#ffff00' }
+      { type: 'gold', amount: 25, color: '#ffff00' },
+      { type: 'powerup_damage', duration: 10, multiplier: 1.5, color: '#ff6600' },
+      { type: 'powerup_speed', duration: 10, multiplier: 1.5, color: '#00ff00' },
+      { type: 'powerup_invincible', duration: 5, color: '#ffff00' }
     ];
 
     for (let i = 0; i < itemCount; i++) {
@@ -1250,7 +1328,7 @@ const WizardDungeonCrawler = () => {
   
     // Mouth
     const mouthWidth = headWidth * 0.5;
-    const mouthHeight = state === 'attacking'
+    const mouthHeight = sprite.state === 'attacking'
       ? headHeight * 0.3
       : headHeight * 0.18;
     const mouthY = headTop + headHeight * 0.65;
@@ -1261,7 +1339,8 @@ const WizardDungeonCrawler = () => {
       mouthWidth,
       mouthHeight
     );
-  
+
+    ctx.globalAlpha = 1;
     ctx.restore();
   };
   
@@ -2090,6 +2169,12 @@ const WizardDungeonCrawler = () => {
 
     const time = performance.now() / 1000;
 
+    ctx.save();
+    const shake = screenShakeRef.current;
+    if (shake.intensity > 0.01) {
+      ctx.translate(shake.x, shake.y);
+    }
+
     // Enable smoothing for crisp rendering
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
@@ -2279,33 +2364,48 @@ const WizardDungeonCrawler = () => {
       const dx = sprite.x - player.x;
       const dy = sprite.y - player.y;
       const distance = Math.hypot(dx, dy);
-
-      if (distance < 0.1 || distance > RENDER_DISTANCE) return;
-
+    
+      // Skip anything weird so it can't blow up the frame
+      if (!Number.isFinite(distance) || distance < 0.1 || distance > RENDER_DISTANCE) {
+        return;
+      }
+    
       let angleToSprite = Math.atan2(dy, dx) - player.angle;
+    
+      if (!Number.isFinite(angleToSprite)) return;
+    
       while (angleToSprite > Math.PI) angleToSprite -= Math.PI * 2;
       while (angleToSprite < -Math.PI) angleToSprite += Math.PI * 2;
-
+    
       const halfFov = (FOV * Math.PI / 180) / 2;
       if (Math.abs(angleToSprite) > halfFov) return;
-
+    
       const screenX = (angleToSprite / (FOV * Math.PI / 180) + 0.5) * width;
+      if (!Number.isFinite(screenX)) return;
+    
       const spriteHeightRaw = height / distance;
+      if (!Number.isFinite(spriteHeightRaw) || spriteHeightRaw <= 0) return;
+    
       const spriteHeight = Math.max(
         PIXEL_STEP,
         Math.floor(spriteHeightRaw / PIXEL_STEP) * PIXEL_STEP
       );
-      const spriteWidthRaw = spriteHeight * (sprite.spriteType === 'projectile' ? 0.3 : sprite.isBoss ? 1.2 : 0.8);
+      const spriteWidthRaw =
+        spriteHeight * (sprite.spriteType === 'projectile'
+          ? 0.3
+          : sprite.isBoss
+          ? 1.2
+          : 0.8);
       const spriteWidth = Math.max(
         PIXEL_STEP,
         Math.floor(spriteWidthRaw / PIXEL_STEP) * PIXEL_STEP
       );
-
+    
       const x = Math.floor((screenX - spriteWidth / 2) / PIXEL_STEP) * PIXEL_STEP;
-
+    
       const yRawSprite = horizon - spriteHeight / 2;
-      const y = Math.floor((yRawSprite) / PIXEL_STEP) * PIXEL_STEP;
-
+      const y = Math.floor(yRawSprite / PIXEL_STEP) * PIXEL_STEP;
+    
       const screenSlice = Math.floor(screenX / (width / RESOLUTION));
       if (
         screenSlice >= 0 &&
@@ -2314,34 +2414,34 @@ const WizardDungeonCrawler = () => {
       ) {
         let brightness = 1.0 - (distance / RENDER_DISTANCE) * 0.5;
         brightness = Math.max(0.2, Math.min(1.0, brightness));
-
+    
         if (sprite.spriteType === 'enemy') {
           drawMonsterSprite(ctx, sprite, x, y, spriteWidth, spriteHeight, brightness, time);
-
+    
+          // health bar + shadow remains the same...
           const healthPercent = sprite.health / sprite.maxHealth;
           const barWidth = spriteWidth;
           const barHeight = Math.max(2, Math.floor(PIXEL_STEP / 2));
           const barX = x;
           const barY = y - PIXEL_STEP;
-
+    
           ctx.globalAlpha = 0.9;
           ctx.fillStyle = '#3f0b0b';
           ctx.fillRect(barX, barY, barWidth, barHeight);
           ctx.fillStyle = sprite.isBoss ? '#ffff00' : '#00ff00';
           ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
           ctx.globalAlpha = 1;
-          
+    
           const shadowY = y + spriteHeight + PIXEL_STEP;
           const shadowWidth = spriteWidth * 0.8;
           const shadowHeight = PIXEL_STEP * 2;
-          
+    
           const shadowGrad = ctx.createRadialGradient(
             screenX, shadowY, 0,
             screenX, shadowY, shadowWidth / 2
           );
           shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
           shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          
           ctx.fillStyle = shadowGrad;
           ctx.beginPath();
           ctx.ellipse(
@@ -2350,7 +2450,7 @@ const WizardDungeonCrawler = () => {
             0, 0, Math.PI * 2
           );
           ctx.fill();
-          
+    
         } else if (sprite.spriteType === 'item') {
           ctx.globalAlpha = brightness * 0.9;
           ctx.fillStyle = sprite.color;
@@ -2364,11 +2464,12 @@ const WizardDungeonCrawler = () => {
           );
           ctx.fill();
           ctx.globalAlpha = 1;
+    
         } else if (sprite.spriteType === 'projectile') {
           const centerX = screenX;
           const centerY = y + spriteHeight / 2;
           const size = spriteWidth * 0.5;
-
+    
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
           for (let t = 1; t <= 4; t++) {
@@ -2377,7 +2478,7 @@ const WizardDungeonCrawler = () => {
             const trailY = centerY - Math.sin(sprite.angle) * trailDist * height * 0.015;
             const trailSize = size * (1 - t * 0.15);
             const trailAlpha = brightness * (1 - t * 0.2) * 0.4;
-            
+    
             ctx.globalAlpha = trailAlpha;
             ctx.fillStyle = sprite.color;
             ctx.beginPath();
@@ -2385,38 +2486,51 @@ const WizardDungeonCrawler = () => {
             ctx.fill();
           }
           ctx.restore();
-
+    
           drawProjectileSprite(ctx, sprite, centerX, centerY, size, brightness);
         }
       }
     });
 
-    if (particlesRef.current.length) {
+    // Render game particles
+    if (gameParticlesRef.current.length > 0) {
       ctx.save();
-      particlesRef.current.forEach(p => {
-        const screenX = p.x * width;
-        const screenY = p.y * height;
-        const size = (1 - p.z) * 3 + 1;
-        const alpha = 0.12 + (1 - p.z) * 0.18;
+      gameParticlesRef.current.forEach(p => {
+        const worldToScreenX = (p.x - player.x) * 40 + width / 2;
+        const worldToScreenY = (p.y - player.y) * 40 + height / 2;
         
-        const glowGrad = ctx.createRadialGradient(
-          screenX, screenY, 0,
-          screenX, screenY, size * 2
-        );
-        glowGrad.addColorStop(0, `rgba(245, 235, 220, ${alpha})`);
-        glowGrad.addColorStop(1, 'rgba(245, 235, 220, 0)');
-        ctx.fillStyle = glowGrad;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, size * 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = `rgba(255, 245, 235, ${alpha * 1.5})`;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, size * 0.6, 0, Math.PI * 2);
-        ctx.fill();
+        if (worldToScreenX > -50 && worldToScreenX < width + 50 &&
+            worldToScreenY > -50 && worldToScreenY < height + 50) {
+          
+          const alpha = p.life;
+          ctx.globalAlpha = alpha;
+          
+          if (p.type === 'explosion') {
+            const grad = ctx.createRadialGradient(
+              worldToScreenX, worldToScreenY, 0,
+              worldToScreenX, worldToScreenY, p.size
+            );
+            grad.addColorStop(0, p.color);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(worldToScreenX, worldToScreenY, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (p.type === 'hit') {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(
+              worldToScreenX - p.size / 2,
+              worldToScreenY - p.size / 2,
+              p.size,
+              p.size
+            );
+          }
+        }
       });
       ctx.restore();
     }
+    
+    ctx.restore(); // Restore screen shake transform
 
     const centerX = width / 2;
     const centerY = horizon;
@@ -2543,6 +2657,32 @@ const WizardDungeonCrawler = () => {
     const gameLoop = () => {
       const now = Date.now();
       const deltaTime = (now - lastTime.current) / 1000;
+
+      setScreenShake(prev => ({
+        x: prev.x * 0.85,
+        y: prev.y * 0.85,
+        intensity: prev.intensity * 0.9
+      }));
+
+      if (bossIntro && bossIntro.timer > 0) {
+        setBossIntro(prev => ({
+          ...prev,
+          timer: prev.timer - deltaTime
+        }));
+        if (bossIntro.timer - deltaTime <= 0) {
+          setBossIntro(null);
+        }
+      }
+
+      // Update combo timer
+      setCombo(prev => {
+        const newTimer = Math.max(0, prev.timer - deltaTime);
+        if (newTimer <= 0 && prev.count > 0) {
+          return { count: 0, multiplier: 1.0, timer: 0 };
+        }
+        return { ...prev, timer: newTimer };
+      });
+      
       lastTime.current = now;
 
       const dust = particlesRef.current;
@@ -2556,6 +2696,8 @@ const WizardDungeonCrawler = () => {
         if (p.y < 0) p.y += 1;
         if (p.y > 1) p.y -= 1;
       }
+
+      updateGameParticles(deltaTime);
 
       const gamepadState = gamepadStateRef.current || ZERO_GAMEPAD;
 
@@ -2724,6 +2866,23 @@ const WizardDungeonCrawler = () => {
       setProjectiles(prev => {
         const remaining = [];
         prev.forEach(proj => {
+          // Handle enemy projectiles hitting player
+          if (proj.isEnemyProjectile) {
+            const distToPlayer = Math.hypot(proj.x - player.x, proj.y - player.y);
+            if (distToPlayer < 0.5) {
+              setPlayer(p => ({
+                ...p,
+                health: Math.max(0, p.health - proj.damage)
+              }));
+              createParticleEffect(proj.x, proj.y, proj.color, 12, 'explosion');
+              addScreenShake(0.4);
+              return; // Don't add to remaining
+            }
+            remaining.push(proj);
+            return;
+          }
+      
+          // Player projectiles hitting enemies
           let hit = false;
           setEnemies(prevEnemies =>
             prevEnemies
@@ -2733,13 +2892,28 @@ const WizardDungeonCrawler = () => {
                 if (dist < 0.5) {
                   hit = true;
                   const newHealth = enemy.health - proj.damage;
+                  
+                  // Create hit particles
+                  createParticleEffect(proj.x, proj.y, enemy.color, 8, 'hit');
+                  addScreenShake(0.2);
+                  
                   if (newHealth <= 0) {
+                    // Death particles
+                    createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
+                    addScreenShake(enemy.isBoss ? 0.8 : 0.3);
+
+                    const newCombo = comboRef.current.count + 1;
+                    const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
+                    setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
+                    
+                    const comboBonus = comboRef.current.multiplier;
                     setPlayer(p => ({
                       ...p,
-                      xp: p.xp + enemy.xp,
-                      gold: p.gold + enemy.gold,
+                      xp: p.xp + Math.floor(enemy.xp * comboBonus),
+                      gold: p.gold + Math.floor(enemy.gold * comboBonus),
                       kills: p.kills + 1
                     }));
+                    
                     setEssence(prev => prev + enemy.essence);
                     return { ...enemy, health: 0, dead: true };
                   }
@@ -2823,50 +2997,53 @@ const WizardDungeonCrawler = () => {
           let newX = enemy.x;
           let newY = enemy.y;
           let newAngle = enemy.angle;
-          let newAttackCooldown = Math.max(
-            0,
-            enemy.attackCooldown - deltaTime
-          );
+          let newAttackCooldown = Math.max(0, enemy.attackCooldown - deltaTime);
       
           const canSeePlayer = distance < 12;
       
           if (canSeePlayer) {
             newState = 'chasing';
       
-            // Use distance field to move around walls
+            // Boss special attacks
+            if (enemy.isBoss && distance < 8 && newAttackCooldown <= 0) {
+              // Shoot projectile at player
+              setProjectiles(projs => [
+                ...projs,
+                {
+                  id: Math.random(),
+                  x: enemy.x,
+                  y: enemy.y,
+                  angle: Math.atan2(dy, dx),
+                  speed: 6,
+                  damage: enemy.damage * 0.5,
+                  color: enemy.color,
+                  lifetime: 4,
+                  dead: false,
+                  spellType: 'enemy',
+                  isEnemyProjectile: true
+                }
+              ]);
+              newAttackCooldown = 2.0;
+              addScreenShake(0.3);
+            }
+      
             const ex = Math.floor(enemy.x);
             const ey = Math.floor(enemy.y);
       
-            if (
-              ex >= 0 &&
-              ex < DUNGEON_SIZE &&
-              ey >= 0 &&
-              ey < DUNGEON_SIZE
-            ) {
+            if (ex >= 0 && ex < DUNGEON_SIZE && ey >= 0 && ey < DUNGEON_SIZE) {
               const hereDist =
                 distField[ey] && distField[ey][ex] !== undefined
                   ? distField[ey][ex]
                   : Infinity;
       
-              const dirs = [
-                [1, 0],
-                [-1, 0],
-                [0, 1],
-                [0, -1]
-              ];
-      
+              const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
               let bestTile = null;
               let bestDist = hereDist;
       
               for (const [ox, oy] of dirs) {
                 const nx = ex + ox;
                 const ny = ey + oy;
-                if (
-                  nx < 0 ||
-                  nx >= DUNGEON_SIZE ||
-                  ny < 0 ||
-                  ny >= DUNGEON_SIZE
-                )
+                if (nx < 0 || nx >= DUNGEON_SIZE || ny < 0 || ny >= DUNGEON_SIZE)
                   continue;
       
                 const d = distField[ny][nx];
@@ -2876,7 +3053,6 @@ const WizardDungeonCrawler = () => {
                 }
               }
       
-              // Only move if we have a better tile to go to
               if (bestTile && bestDist < Infinity) {
                 const targetX = bestTile.x + 0.5;
                 const targetY = bestTile.y + 0.5;
@@ -2892,13 +3068,10 @@ const WizardDungeonCrawler = () => {
                 const tileX = Math.floor(newX);
                 const tileY = Math.floor(newY);
                 if (
-                  tileX < 0 ||
-                  tileX >= DUNGEON_SIZE ||
-                  tileY < 0 ||
-                  tileY >= DUNGEON_SIZE ||
+                  tileX < 0 || tileX >= DUNGEON_SIZE || 
+                  tileY < 0 || tileY >= DUNGEON_SIZE ||
                   dungeon[tileY][tileX] > 0
                 ) {
-                  // If tile blocked, fall back to the old direct chase step
                   const fallbackMove = enemy.speed * deltaTime * 0.6;
                   const fallbackAngle = Math.atan2(dy, dx);
                   const fx = enemy.x + Math.cos(fallbackAngle) * fallbackMove;
@@ -2907,10 +3080,8 @@ const WizardDungeonCrawler = () => {
                   const ftx = Math.floor(fx);
                   const fty = Math.floor(fy);
                   if (
-                    ftx >= 0 &&
-                    ftx < DUNGEON_SIZE &&
-                    fty >= 0 &&
-                    fty < DUNGEON_SIZE &&
+                    ftx >= 0 && ftx < DUNGEON_SIZE && 
+                    fty >= 0 && fty < DUNGEON_SIZE &&
                     dungeon[fty][ftx] === 0
                   ) {
                     newX = fx;
@@ -2924,7 +3095,6 @@ const WizardDungeonCrawler = () => {
               }
             }
       
-            // Attack if close enough
             if (distance < 1.5 && newAttackCooldown <= 0) {
               newState = 'attacking';
               setPlayer(p => ({
@@ -2932,7 +3102,9 @@ const WizardDungeonCrawler = () => {
                 health: Math.max(0, p.health - enemy.damage)
               }));
       
-              // === VIBRATION ON HIT (step 3 as well) ===
+              addScreenShake(0.5);
+              createParticleEffect(player.x, player.y, '#ff0000', 15, 'hit');
+      
               try {
                 if (typeof navigator !== 'undefined' && navigator.vibrate) {
                   navigator.vibrate(60);
@@ -2958,7 +3130,6 @@ const WizardDungeonCrawler = () => {
               } catch (err) {
                 console.log('Haptics not supported', err);
               }
-              // === /VIBRATION ===
       
               newAttackCooldown = 1.5;
             }
@@ -2976,13 +3147,35 @@ const WizardDungeonCrawler = () => {
           };
         })
       );
-
+      
+      // Update buff timers in game loop:
+      setPlayerBuffs(prev => ({
+        damageBoost: {
+          ...prev.damageBoost,
+          timeLeft: Math.max(0, prev.damageBoost.timeLeft - deltaTime),
+          active: prev.damageBoost.timeLeft > deltaTime
+        },
+        speedBoost: {
+          ...prev.speedBoost,
+          timeLeft: Math.max(0, prev.speedBoost.timeLeft - deltaTime),
+          active: prev.speedBoost.timeLeft > deltaTime
+        },
+        invincible: {
+          ...prev.invincible,
+          timeLeft: Math.max(0, prev.invincible.timeLeft - deltaTime),
+          active: prev.invincible.timeLeft > deltaTime
+        }
+      }));
+      
+      // Update item pickup (around line 1885):
       setItems(prev =>
         prev.map(item => {
           if (item.collected) return item;
-
+      
           const dist = Math.hypot(item.x - player.x, item.y - player.y);
           if (dist < 0.7) {
+            createParticleEffect(item.x, item.y, item.color, 15, 'explosion');
+            
             setPlayer(p => {
               if (item.type === 'health') {
                 return {
@@ -2999,6 +3192,24 @@ const WizardDungeonCrawler = () => {
               }
               return p;
             });
+            
+            if (item.type === 'powerup_damage') {
+              setPlayerBuffs(prev => ({
+                ...prev,
+                damageBoost: { active: true, multiplier: item.multiplier, timeLeft: item.duration }
+              }));
+            } else if (item.type === 'powerup_speed') {
+              setPlayerBuffs(prev => ({
+                ...prev,
+                speedBoost: { active: true, multiplier: item.multiplier, timeLeft: item.duration }
+              }));
+            } else if (item.type === 'powerup_invincible') {
+              setPlayerBuffs(prev => ({
+                ...prev,
+                invincible: { active: true, timeLeft: item.duration }
+              }));
+            }
+            
             return { ...item, collected: true };
           }
           return item;
@@ -3790,6 +4001,44 @@ const WizardDungeonCrawler = () => {
             )}
           </div>
 
+          {/* Combo Display */}
+          {combo.count > 1 && (
+            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 pointer-events-none">
+              <div 
+                className="text-center animate-pulse"
+                style={{
+                  textShadow: '0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.5)'
+                }}
+              >
+                <div className="text-6xl font-bold text-yellow-400">
+                  {combo.count}x COMBO!
+                </div>
+                <div className="text-2xl text-yellow-300">
+                  {combo.multiplier.toFixed(1)}x Multiplier
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Active Buffs Display */}
+          <div className="absolute top-20 right-4 space-y-2">
+            {playerBuffs.damageBoost.active && (
+              <div className="bg-orange-600 bg-opacity-80 px-3 py-2 rounded-lg text-white text-sm">
+                🔥 Damage Boost: {playerBuffs.damageBoost.timeLeft.toFixed(1)}s
+              </div>
+            )}
+            {playerBuffs.speedBoost.active && (
+              <div className="bg-green-600 bg-opacity-80 px-3 py-2 rounded-lg text-white text-sm">
+                ⚡ Speed Boost: {playerBuffs.speedBoost.timeLeft.toFixed(1)}s
+              </div>
+            )}
+            {playerBuffs.invincible.active && (
+              <div className="bg-yellow-600 bg-opacity-80 px-3 py-2 rounded-lg text-white text-sm animate-pulse">
+                ✨ Invincible: {playerBuffs.invincible.timeLeft.toFixed(1)}s
+              </div>
+            )}
+          </div>
+
           {!isMobile && (
             <div className="bg-black bg-opacity-60 p-3 md:p-4 rounded-lg">
               <div className="text-white text-xs md:text-sm text-right space-y-1">
@@ -3859,6 +4108,22 @@ const WizardDungeonCrawler = () => {
         </div>
       </div>
 
+      {bossIntro && bossIntro.timer > 0 && (
+        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center pointer-events-none z-50">
+          <div className="text-center animate-pulse">
+            <div className="text-8xl mb-4">⚔️</div>
+            <div className="text-6xl font-bold text-red-500 mb-4" style={{
+              textShadow: '0 0 30px rgba(255,0,0,0.8), 0 0 60px rgba(255,0,0,0.5)'
+            }}>
+              BOSS FIGHT
+            </div>
+            <div className="text-4xl text-red-300">
+              {bossIntro.name}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {isMobile && (
         <>
           <div className="pointer-events-none absolute bottom-24 left-4 w-24 h-24 rounded-full border border-purple-400/50 bg-purple-500/10" />
