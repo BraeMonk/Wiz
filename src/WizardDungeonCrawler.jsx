@@ -92,6 +92,22 @@ const WizardDungeonCrawler = () => {
     return saved ? parseInt(saved) : 0;
   });
 
+  // Add these state declarations near the top with your other useState hooks (around line 50-100)
+  const [highestLevel, setHighestLevel] = useState(() => {
+    const saved = localStorage.getItem('wizardHighestLevel');
+    return saved ? parseInt(saved) : 1;
+  });
+
+  const [totalKills, setTotalKills] = useState(() => {
+    const saved = localStorage.getItem('wizardTotalKills');
+    return saved ? parseInt(saved) : 0;
+  });
+
+  const [totalGold, setTotalGold] = useState(() => {
+    const saved = localStorage.getItem('wizardTotalGold');
+    return saved ? parseInt(saved) : 0;
+  });
+
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
@@ -490,7 +506,18 @@ const WizardDungeonCrawler = () => {
     selectedSpellRef.current = selectedSpell;
   }, [selectedSpell]);
 
-  // Music setup
+  useEffect(() => {
+    localStorage.setItem('wizardHighestLevel', highestLevel.toString());
+  }, [highestLevel]);
+
+  useEffect(() => {
+    localStorage.setItem('wizardTotalKills', totalKills.toString());
+  }, [totalKills]);
+
+  useEffect(() => {
+    localStorage.setItem('wizardTotalGold', totalGold.toString());
+  }, [totalGold]);
+
   // Music setup – create audio ONCE
   useEffect(() => {
     if (musicTracks.length === 0) return;
@@ -3246,6 +3273,7 @@ const WizardDungeonCrawler = () => {
                   mana: Math.min(p.maxMana, p.mana + item.amount)
                 };
               } else if (item.type === 'gold') {
+                setTotalGold(prev => prev + item.amount);
                 return { ...p, gold: p.gold + item.amount };
               }
               return p;
@@ -3381,6 +3409,7 @@ const WizardDungeonCrawler = () => {
   
   const continueToNextLevel = () => {
     levelStartTimeRef.current = Date.now();
+    setHighestLevel(prev => Math.max(prev, nextLevel));
     setCurrentLevel(prev => prev + 1);
     setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
     setPitch(0);
