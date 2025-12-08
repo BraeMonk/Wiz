@@ -1304,394 +1304,658 @@ const WizardDungeonCrawler = () => {
     ctx.fill();
   };
   
-  // =============== SKELETON - Enhanced N64 Style ===============
   const drawSkeletonSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
-    const baseColor = '#dcdcdc';
+    const baseColor = '#e2dfd7'; // warmer bone tone
     const { band1, band2, band3 } = getBands(baseColor, brightness, -0.05);
   
-    const phase = time * 1.0 + sprite.id * 0.73;
-    const bobAmount = sprite.state === 'chasing' ? h * 0.03 : h * 0.015;
+    // Animation personality
+    const phase = time * 1.3 + sprite.id * 0.67;
+    const jitter = Math.sin(phase * 4) * (h * 0.01); // undead trembling
+    const bob = Math.sin(phase) * (h * 0.015);
   
-    const bodyWidth = w * 0.45;
-    const bodyHeight = h * 0.9;
     const cx = x + w / 2;
-    const cy = y + h / 2 + Math.sin(phase) * bobAmount;
+    const cy = y + h / 2 + bob + jitter;
   
+    const bodyHeight = h * 0.9;
     const bodyTop = cy - bodyHeight * 0.5;
     const bodyBottom = cy + bodyHeight * 0.5;
   
     ctx.globalAlpha = brightness;
-    drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
   
-    // Spine with vertebrae detail
-    const spineWidth = bodyWidth * 0.18;
-    const spineTop = bodyTop + bodyHeight * 0.2;
-    const spineHeight = bodyHeight * 0.45;
+    // Ground shadow
+    drawFeetShadow(ctx, cx, w * 0.4, bodyBottom, h, brightness);
   
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(cx - spineWidth / 2, spineTop, spineWidth, spineHeight);
+    // --------------------------------------------
+    // ✦ SKULL (smooth rounded shape + shading)
+    // --------------------------------------------
+    const skullW = w * 0.45;
+    const skullH = h * 0.22;
+    const skullX = cx - skullW / 2;
+    const skullY = bodyTop;
   
-    // Vertebrae bumps
+    // Skull main form (rounded)
     ctx.fillStyle = rgbToCss(band1);
-    for (let i = 0; i < 5; i++) {
-      const vy = spineTop + (spineHeight * (i + 0.5)) / 5;
-      ctx.fillRect(cx - spineWidth * 0.7, vy - 1, spineWidth * 1.4, 3);
-    }
+    ctx.beginPath();
+    ctx.ellipse(cx, skullY + skullH * 0.45, skullW * 0.5, skullH * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
   
-    // Enhanced ribcage with depth
-    ctx.strokeStyle = rgbToCss(band1);
-    ctx.lineWidth = 2;
-    const ribCount = 4;
-    for (let i = 0; i < ribCount; i++) {
-      const ry = spineTop + (spineHeight * (i + 0.5)) / ribCount;
-      const ribLen = bodyWidth * 0.5;
-      const curve = bodyWidth * 0.08;
-      
-      // Left rib
-      ctx.beginPath();
-      ctx.moveTo(cx, ry);
-      ctx.quadraticCurveTo(cx - ribLen * 0.5, ry + curve, cx - ribLen, ry);
-      ctx.stroke();
-      
-      // Right rib
-      ctx.beginPath();
-      ctx.moveTo(cx, ry);
-      ctx.quadraticCurveTo(cx + ribLen * 0.5, ry + curve, cx + ribLen, ry);
-      ctx.stroke();
-    }
-  
-    // Pelvis with detail
-    const pelvisWidth = bodyWidth * 0.6;
-    const pelvisHeight = bodyHeight * 0.12;
-    const pelvisY = spineTop + spineHeight + pelvisHeight * 0.2;
-    
-    ctx.fillStyle = rgbToCss(band3);
-    ctx.fillRect(cx - pelvisWidth / 2, pelvisY, pelvisWidth, pelvisHeight);
-    
-    // Pelvis socket holes
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(cx - pelvisWidth * 0.3, pelvisY + pelvisHeight * 0.3, pelvisWidth * 0.15, pelvisHeight * 0.4);
-    ctx.fillRect(cx + pelvisWidth * 0.15, pelvisY + pelvisHeight * 0.3, pelvisWidth * 0.15, pelvisHeight * 0.4);
-  
-    // Legs with knee joints
-    const legHeight = bodyHeight * 0.25;
-    const legWidth = bodyWidth * 0.12;
-    const legOffsetX = bodyWidth * 0.18;
-    const legsTop = pelvisY + pelvisHeight;
-  
+    // Lower jaw
     ctx.fillStyle = rgbToCss(band2);
-    [{ offset: -legOffsetX, phase: 0 }, { offset: legOffsetX, phase: Math.PI }].forEach(({ offset, phase: legPhase }) => {
-      const legBob = sprite.state === 'chasing' ? Math.sin(phase + legPhase) * legHeight * 0.15 : 0;
-      
-      // Thigh
-      ctx.fillRect(cx + offset - legWidth / 2, legsTop, legWidth, legHeight * 0.55);
-      
-      // Knee joint
-      ctx.fillStyle = rgbToCss(band1);
-      ctx.fillRect(cx + offset - legWidth * 0.6, legsTop + legHeight * 0.5, legWidth * 1.2, legHeight * 0.1);
-      
-      // Shin
-      ctx.fillStyle = rgbToCss(band3);
-      ctx.fillRect(cx + offset - legWidth / 2, legsTop + legHeight * 0.6 + legBob, legWidth, legHeight * 0.4);
-    });
+    ctx.beginPath();
+    ctx.ellipse(cx, skullY + skullH * 0.9, skullW * 0.36, skullH * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
   
-    // Skull head with enhanced detail
-    const headHeight = bodyHeight * 0.22;
-    const headWidth = bodyWidth * 0.65;
-    const headTop = bodyTop;
-    const headLeft = cx - headWidth / 2;
+    // Eye sockets (deep, circular cavities)
+    const eyeR = skullW * 0.14;
+    const eyeY = skullY + skullH * 0.45;
+    const eyeOff = skullW * 0.22;
   
-    // Cranium
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight * 0.6);
-    
-    // Cranium highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(headLeft + headWidth * 0.1, headTop + headHeight * 0.05, headWidth * 0.8, headHeight * 0.2);
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.beginPath();
+    ctx.arc(cx - eyeOff, eyeY, eyeR, 0, Math.PI * 2);
+    ctx.arc(cx + eyeOff, eyeY, eyeR, 0, Math.PI * 2);
+    ctx.fill();
   
-    // Jaw
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(headLeft + headWidth * 0.08, headTop + headHeight * 0.55, headWidth * 0.84, headHeight * 0.35);
+    // Red glow pupils (tiny, eerie)
+    const pupilR = skullW * 0.06;
+    const glowStrength = 0.35 + Math.sin(time * 3) * 0.25;
   
-    // Eye sockets with depth
-    const eyeWidth = headWidth * 0.2;
-    const eyeHeight = headHeight * 0.25;
-    const eyeY = headTop + headHeight * 0.28;
-    const eyeOffsetX = headWidth * 0.25;
+    ctx.fillStyle = `rgba(255,70,70,${glowStrength})`;
+    ctx.beginPath();
+    ctx.arc(cx - eyeOff, eyeY, pupilR, 0, Math.PI * 2);
+    ctx.arc(cx + eyeOff, eyeY, pupilR, 0, Math.PI * 2);
+    ctx.fill();
   
-    ctx.fillStyle = '#050608';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(ex - eyeWidth / 2, eyeY, eyeWidth, eyeHeight);
-      
-      // Socket shadow depth
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(ex - eyeWidth / 2, eyeY, eyeWidth, eyeHeight * 0.3);
-      ctx.fillStyle = '#050608';
-    });
-  
-    // Glowing red pupils
-    const pupilWidth = eyeWidth * 0.45;
-    const pupilHeight = eyeHeight * 0.45;
-    const glowIntensity = 0.3 + Math.sin(time * 3) * 0.15;
-    
-    ctx.fillStyle = `rgba(255, 85, 85, ${glowIntensity})`;
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      // Glow
-      ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight * 0.4, pupilWidth * 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Pupil
-      ctx.fillStyle = '#ff5555';
-      ctx.fillRect(ex - pupilWidth / 2, eyeY + eyeHeight * 0.25, pupilWidth, pupilHeight);
-      ctx.fillStyle = `rgba(255, 85, 85, ${glowIntensity})`;
-    });
-  
-    // Detailed teeth
-    ctx.strokeStyle = 'rgba(5,5,5,0.7)';
-    ctx.lineWidth = 2;
-    const teethCount = 5;
-    const mouthTop = headTop + headHeight * 0.68;
-    const mouthBottom = headTop + headHeight * 0.9;
-    
-    for (let i = 0; i < teethCount; i++) {
-      const tx = headLeft + (headWidth * (i + 0.5)) / teethCount;
-      const teethHeight = i % 2 === 0 ? mouthBottom : mouthBottom - 2;
-      ctx.beginPath();
-      ctx.moveTo(tx, mouthTop);
-      ctx.lineTo(tx, teethHeight);
-      ctx.stroke();
-    }
-  
-    // Nasal cavity
+    // Nose cavity (triangle)
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
-    ctx.moveTo(cx, headTop + headHeight * 0.5);
-    ctx.lineTo(cx - headWidth * 0.08, headTop + headHeight * 0.6);
-    ctx.lineTo(cx + headWidth * 0.08, headTop + headHeight * 0.6);
+    ctx.moveTo(cx, skullY + skullH * 0.55);
+    ctx.lineTo(cx - skullW * 0.07, skullY + skullH * 0.72);
+    ctx.lineTo(cx + skullW * 0.07, skullY + skullH * 0.72);
     ctx.closePath();
     ctx.fill();
+  
+  
+    // --------------------------------------------
+    // ✦ RIBCAGE (full rounded form, not rectangles)
+    // --------------------------------------------
+    const ribW = w * 0.48;
+    const ribH = h * 0.32;
+    const ribX = cx - ribW / 2;
+    const ribY = skullY + skullH * 1.1;
+  
+    // Ribcage oval body
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.ellipse(cx, ribY + ribH * 0.55, ribW * 0.5, ribH * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  
+    // Rib arcs (curved horizontal ribs)
+    ctx.strokeStyle = rgbToCss(band1);
+    ctx.lineWidth = 2;
+    const ribCount = 5;
+  
+    for (let i = 0; i < ribCount; i++) {
+      const t = (i + 1) / (ribCount + 1);
+      const yy = ribY + ribH * t;
+  
+      ctx.beginPath();
+      ctx.ellipse(cx, yy, ribW * (0.5 - t * 0.1), ribH * 0.12, 0, Math.PI * 0.1, Math.PI * 0.9);
+      ctx.stroke();
+    }
+  
+  
+    // --------------------------------------------
+    // ✦ SPINE (smooth vertical segments)
+    // --------------------------------------------
+    const spineTop = ribY + ribH * 0.2;
+    const spineBottom = bodyBottom - h * 0.28;
+  
+    const spineSegH = (spineBottom - spineTop) / 7;
+    const spineR = w * 0.05;
+  
+    ctx.fillStyle = rgbToCss(band3);
+    for (let i = 0; i < 7; i++) {
+      const sy = spineTop + spineSegH * i;
+      ctx.beginPath();
+      ctx.ellipse(cx, sy, spineR, spineSegH * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  
+  
+    // --------------------------------------------
+    // ✦ PELVIS (anatomical shape)
+    // --------------------------------------------
+    const pelW = w * 0.42;
+    const pelH = h * 0.18;
+    const pelY = spineBottom;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.ellipse(cx, pelY + pelH * 0.4, pelW * 0.5, pelH * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+  
+    // Pelvis holes
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.arc(cx - pelW * 0.22, pelY + pelH * 0.42, pelW * 0.15, 0, Math.PI * 2);
+    ctx.arc(cx + pelW * 0.22, pelY + pelH * 0.42, pelW * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+  
+  
+    // --------------------------------------------
+    // ✦ LEGS (joints + bone segments)
+    // --------------------------------------------
+    const legH = h * 0.26;
+    const upperH = legH * 0.55;
+    const lowerH = legH * 0.45;
+    const legOff = w * 0.18;
+  
+    const drawLeg = (side) => {
+      const lx = cx + legOff * side;
+  
+      // Upper leg
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - w * 0.04,
+        pelY + pelH * 0.6,
+        w * 0.08,
+        upperH,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Knee
+      ctx.fillStyle = rgbToCss(band1);
+      ctx.beginPath();
+      ctx.arc(lx, pelY + pelH * 0.6 + upperH, w * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Lower leg
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - w * 0.035,
+        pelY + pelH * 0.6 + upperH + w * 0.045,
+        w * 0.07,
+        lowerH,
+        w * 0.03
+      );
+      ctx.fill();
+    };
+  
+    drawLeg(-1);
+    drawLeg(1);
+  
+  
+    // --------------------------------------------
+    // ✦ ARMS (NEW — wasn’t in old version at all)
+    // --------------------------------------------
+    const armH = h * 0.28;
+    const upperAH = armH * 0.55;
+    const lowerAH = armH * 0.45;
+    const armOff = w * 0.32;
+  
+    const drawArm = (side) => {
+      const ax = cx + armOff * side;
+      const ay = ribY + ribH * 0.3;
+  
+      // Upper arm
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.03,
+        ay,
+        w * 0.06,
+        upperAH,
+        w * 0.025
+      );
+      ctx.fill();
+  
+      // Elbow
+      ctx.fillStyle = rgbToCss(band1);
+      ctx.beginPath();
+      ctx.arc(ax, ay + upperAH, w * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Lower arm
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.028,
+        ay + upperAH + w * 0.03,
+        w * 0.056,
+        lowerAH,
+        w * 0.025
+      );
+      ctx.fill();
+    };
+  
+    drawArm(-1);
+    drawArm(1);
   
     ctx.restore();
   };
   
-  // =============== DEMON - Enhanced N64 Style ===============
   const drawDemonSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
-    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#b03030';
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#b1342e';
     const { band1, band2, band3 } = getBands(baseColor, brightness, 0);
   
-    const phase = time * 1.2 + sprite.id * 0.9;
-    const breathe = Math.sin(phase * 0.5) * 0.02;
+    // Animation: breathing + subtle sway
+    const phase = time * 1.1 + sprite.id * 0.8;
+    const breathe = Math.sin(phase * 0.7) * (h * 0.015);
+    const sway = Math.sin(phase * 0.4) * (w * 0.02);
+    const attackOpen = sprite.state === 'attacking' ? 1 : 0;
   
-    const bodyWidth = w * 0.6;
-    const bodyHeight = h * 0.9;
-    const cx = x + w / 2 + Math.sin(phase * 0.7) * (w * 0.02);
-    const cy = y + h / 2 + Math.sin(phase) * (h * 0.02);
+    const cx = x + w / 2 + sway;
+    const cy = y + h / 2 + breathe;
   
-    const bodyTop = cy - bodyHeight * 0.45;
-    const bodyBottom = cy + bodyHeight * 0.45;
-    
+    const bodyHeight = h * 0.95;
+    const bodyTop = cy - bodyHeight * 0.5;
+    const bodyBottom = cy + bodyHeight * 0.5;
+  
     ctx.globalAlpha = brightness;
-    drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
+    drawFeetShadow(ctx, cx, w * 0.6, bodyBottom, h, brightness);
   
-    // Muscular torso with segments
-    const torsoHeight = bodyHeight * 0.6;
-    const torsoTop = bodyTop + bodyHeight * 0.15;
-    const torsoBottom = torsoTop + torsoHeight;
-    const torsoLeft = cx - bodyWidth / 2;
-    const torsoRight = cx + bodyWidth / 2;
+    // --------------------------------------------
+    // ✦ LEGS (digitigrade, chunky)
+    // --------------------------------------------
+    const legH = h * 0.3;
+    const thighH = legH * 0.55;
+    const shinH = legH * 0.45;
+    const legOff = w * 0.22;
+    const legsTop = bodyBottom - legH * 1.1;
   
-    // Base torso
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(torsoLeft, torsoTop, bodyWidth, torsoHeight);
+    const drawLeg = (side) => {
+      const lx = cx + legOff * side;
   
-    // Muscular chest plates
-    ctx.fillStyle = rgbToCss(band1);
-    const chestWidth = bodyWidth * 0.35;
-    [torsoLeft + bodyWidth * 0.15, torsoLeft + bodyWidth * 0.5].forEach(chestX => {
-      ctx.fillRect(chestX, torsoTop + torsoHeight * 0.1, chestWidth, torsoHeight * 0.28);
-      
-      // Chest highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      ctx.fillRect(chestX + chestWidth * 0.2, torsoTop + torsoHeight * 0.12, chestWidth * 0.6, torsoHeight * 0.1);
+      // Thigh
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - w * 0.05,
+        legsTop,
+        w * 0.1,
+        thighH,
+        w * 0.035
+      );
+      ctx.fill();
+  
+      // Knee
       ctx.fillStyle = rgbToCss(band1);
+      ctx.beginPath();
+      ctx.arc(lx, legsTop + thighH, w * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Shin
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - w * 0.045,
+        legsTop + thighH + w * 0.02,
+        w * 0.09,
+        shinH,
+        w * 0.035
+      );
+      ctx.fill();
+  
+      // Clawed foot
+      const footY = legsTop + thighH + shinH + w * 0.02;
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.ellipse(lx, footY, w * 0.07, h * 0.035, 0, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Toe claws
+      ctx.fillStyle = '#f6e3c8';
+      const clawSpread = w * 0.04;
+      [ -clawSpread, 0, clawSpread ].forEach(offset => {
+        ctx.beginPath();
+        ctx.moveTo(lx + offset - w * 0.014, footY);
+        ctx.lineTo(lx + offset, footY + h * 0.035);
+        ctx.lineTo(lx + offset + w * 0.014, footY);
+        ctx.closePath();
+        ctx.fill();
+      });
+    };
+  
+    drawLeg(-1);
+    drawLeg(1);
+  
+    // --------------------------------------------
+    // ✦ TORSO (triangular, muscular)
+    // --------------------------------------------
+    const torsoH = bodyHeight * 0.55;
+    const torsoTop = bodyTop + bodyHeight * 0.2;
+    const torsoBottom = torsoTop + torsoH;
+    const torsoW = w * 0.6;
+    const torsoLeft = cx - torsoW / 2;
+    const torsoRight = cx + torsoW / 2;
+  
+    // Torso base
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.moveTo(torsoLeft, torsoBottom);
+    ctx.lineTo(torsoLeft + torsoW * 0.1, torsoTop);
+    ctx.lineTo(torsoRight - torsoW * 0.1, torsoTop);
+    ctx.lineTo(torsoRight, torsoBottom);
+    ctx.closePath();
+    ctx.fill();
+  
+    // Chest plates
+    ctx.fillStyle = rgbToCss(band1);
+    const chestH = torsoH * 0.3;
+    const chestY = torsoTop + torsoH * 0.12;
+    const chestW = torsoW * 0.32;
+  
+    [ -1, 1 ].forEach(side => {
+      const ccx = cx + side * torsoW * 0.16;
+      ctx.beginPath();
+      ctx.roundRect(
+        ccx - chestW / 2,
+        chestY,
+        chestW,
+        chestH,
+        w * 0.03
+      );
+      ctx.fill();
     });
   
-    // Segmented abdomen
+    // Abs
     ctx.fillStyle = rgbToCss(band3);
-    const abHeight = torsoHeight * 0.15;
+    const absW = torsoW * 0.34;
+    const absX = cx - absW / 2;
+    const absTop = chestY + chestH * 1.1;
+    const absSegH = torsoH * 0.12;
+  
     for (let i = 0; i < 3; i++) {
-      const abY = torsoTop + torsoHeight * 0.5 + i * abHeight;
-      ctx.fillRect(torsoLeft + bodyWidth * 0.15, abY, bodyWidth * 0.7, abHeight * 0.85);
+      const ay = absTop + absSegH * i;
+      ctx.beginPath();
+      ctx.roundRect(
+        absX,
+        ay,
+        absW,
+        absSegH * 0.9,
+        w * 0.02
+      );
+      ctx.fill();
     }
   
-    // Battle scars
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    // Scar
+    ctx.strokeStyle = 'rgba(20,0,0,0.75)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(torsoLeft + bodyWidth * 0.3, torsoTop + torsoHeight * 0.2);
-    ctx.lineTo(torsoLeft + bodyWidth * 0.6, torsoTop + torsoHeight * 0.35);
+    ctx.moveTo(cx - torsoW * 0.18, torsoTop + torsoH * 0.22);
+    ctx.lineTo(cx - torsoW * 0.02, torsoTop + torsoH * 0.32);
+    ctx.lineTo(cx + torsoW * 0.18, torsoTop + torsoH * 0.28);
     ctx.stroke();
   
-    // Massive shoulder spikes
-    ctx.fillStyle = rgbToCss(band1);
-    [
-      { x: torsoLeft, dir: -1 },
-      { x: torsoRight, dir: 1 }
-    ].forEach(({ x, dir }) => {
-      ctx.beginPath();
-      ctx.moveTo(x, torsoTop + torsoHeight * 0.25);
-      ctx.lineTo(x + dir * bodyWidth * 0.25, torsoTop + torsoHeight * 0.05);
-      ctx.lineTo(x, torsoTop + torsoHeight * 0.05);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Spike highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.beginPath();
-      ctx.moveTo(x, torsoTop + torsoHeight * 0.15);
-      ctx.lineTo(x + dir * bodyWidth * 0.15, torsoTop + torsoHeight * 0.08);
-      ctx.lineTo(x, torsoTop + torsoHeight * 0.08);
-      ctx.closePath();
-      ctx.fill();
+    // --------------------------------------------
+    // ✦ ARMS (brawler build)
+    // --------------------------------------------
+    const armH = bodyHeight * 0.4;
+    const upperAH = armH * 0.55;
+    const lowerAH = armH * 0.45;
+    const armOff = torsoW * 0.55;
+    const shoulderY = torsoTop + torsoH * 0.15;
+  
+    const drawArm = (side) => {
+      const ax = cx + armOff * side;
+      const punchPhase = sprite.state === 'attacking'
+        ? Math.sin(time * 18 + side * Math.PI) * 0.4
+        : 0;
+  
+      // Shoulder
       ctx.fillStyle = rgbToCss(band1);
-    });
-  
-    // Powerful legs with muscle definition
-    const legHeight = bodyHeight * 0.3;
-    const legWidth = bodyWidth * 0.25;
-    const legsTop = torsoBottom - legHeight * 0.25;
-    
-    ctx.fillStyle = rgbToCss(band3);
-    [{ offset: -legWidth * 0.7, phase: 0 }, { offset: legWidth * 0.7, phase: Math.PI }].forEach(({ offset, phase: legPhase }) => {
-      const legBob = sprite.state === 'chasing' ? Math.sin(phase + legPhase) * legHeight * 0.12 : 0;
-      
-      // Thigh
-      ctx.fillRect(cx + offset - legWidth / 2, legsTop + legBob, legWidth, legHeight);
-      
-      // Muscle highlight
-      ctx.fillStyle = rgbToCss(band2);
-      ctx.fillRect(cx + offset - legWidth * 0.3, legsTop + legBob + legHeight * 0.2, legWidth * 0.6, legHeight * 0.3);
-      ctx.fillStyle = rgbToCss(band3);
-    });
-  
-    // Fearsome head with detailed horns
-    const headHeight = bodyHeight * 0.22;
-    const headWidth = bodyWidth * 0.7;
-    const headTop = bodyTop;
-    const headLeft = cx - headWidth / 2;
-  
-    // Head base
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
-  
-    // Detailed horns with curvature
-    ctx.fillStyle = rgbToCss(band3);
-    const hornHeight = headHeight * 0.7;
-    const hornWidth = headWidth * 0.25;
-  
-    [
-      { x: headLeft + headWidth * 0.1, dir: -1 },
-      { x: headLeft + headWidth * 0.9, dir: 1 }
-    ].forEach(({ x, dir }) => {
-      // Main horn
       ctx.beginPath();
-      ctx.moveTo(x, headTop);
-      ctx.quadraticCurveTo(
-        x + dir * hornWidth * 0.3,
-        headTop - hornHeight * 0.5,
-        x + dir * hornWidth * 0.2,
-        headTop - hornHeight
+      ctx.arc(ax, shoulderY, w * 0.055, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Upper arm
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.04,
+        shoulderY + h * 0.01,
+        w * 0.08,
+        upperAH,
+        w * 0.035
       );
-      ctx.lineTo(x + dir * hornWidth, headTop);
+      ctx.fill();
+  
+      // Elbow
+      const elbowY = shoulderY + h * 0.01 + upperAH;
+      ctx.fillStyle = rgbToCss(band1);
+      ctx.beginPath();
+      ctx.arc(ax, elbowY, w * 0.04, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Forearm + fist (slightly forward if attacking)
+      const forearmTilt = punchPhase * h * 0.08;
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.035 + forearmTilt * side * 0.4,
+        elbowY + w * 0.02,
+        w * 0.07,
+        lowerAH,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Fist
+      const fistY = elbowY + w * 0.02 + lowerAH + h * 0.01;
+      const fistX = ax + forearmTilt * side * 0.5;
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.ellipse(fistX, fistY, w * 0.05, h * 0.035, 0, 0, Math.PI * 2);
+      ctx.fill();
+    };
+  
+    drawArm(-1);
+    drawArm(1);
+  
+    // --------------------------------------------
+    // ✦ WINGS (behind body)
+    // --------------------------------------------
+    const wingSpan = w * 1.6;
+    const wingH = h * 0.45;
+    const wingY = torsoTop + torsoH * 0.25;
+    const flap = Math.sin(phase * 1.2) * (h * 0.02);
+  
+    const drawWing = (side) => {
+      const rootX = cx + side * torsoW * 0.25;
+  
+      ctx.fillStyle = `rgba(30,0,0,${0.55 * brightness})`;
+      ctx.beginPath();
+      ctx.moveTo(rootX, wingY);
+  
+      const tipX = rootX + side * wingSpan * 0.5;
+      const tipY = wingY - wingH * 0.4 + flap * side;
+  
+      ctx.quadraticCurveTo(
+        (rootX + tipX) / 2,
+        wingY - wingH * 0.8,
+        tipX,
+        tipY
+      );
+      ctx.lineTo(
+        tipX - side * wingSpan * 0.08,
+        tipY + wingH * 0.8
+      );
+      ctx.quadraticCurveTo(
+        (rootX + tipX) / 2,
+        wingY + wingH * 0.5,
+        rootX,
+        wingY
+      );
       ctx.closePath();
       ctx.fill();
-      
-      // Horn rings/segments
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    };
+  
+    drawWing(-1);
+    drawWing(1);
+  
+    // --------------------------------------------
+    // ✦ HEAD (horned, expressive)
+    // --------------------------------------------
+    const headH = bodyHeight * 0.22;
+    const headW = w * 0.5;
+    const headTop = bodyTop;
+    const headLeft = cx - headW / 2;
+  
+    // Head shape
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft,
+      headTop,
+      headW,
+      headH,
+      w * 0.04
+    );
+    ctx.fill();
+  
+    // Horns
+    ctx.fillStyle = rgbToCss(band3);
+    const hornH = headH * 0.9;
+    const hornW = headW * 0.26;
+  
+    [ -1, 1 ].forEach(side => {
+      const baseX = cx + side * headW * 0.32;
+      const baseY = headTop + headH * 0.25;
+  
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.quadraticCurveTo(
+        baseX + side * hornW * 0.6,
+        baseY - hornH * 0.4,
+        baseX + side * hornW * 0.4,
+        baseY - hornH
+      );
+      ctx.lineTo(baseX + side * hornW * 0.05, baseY - hornH * 0.7);
+      ctx.quadraticCurveTo(
+        baseX + side * hornW * 0.45,
+        baseY - hornH * 0.35,
+        baseX,
+        baseY
+      );
+      ctx.closePath();
+      ctx.fill();
+  
+      // Rings
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
       ctx.lineWidth = 2;
-      for (let i = 0; i < 3; i++) {
-        const ringY = headTop - hornHeight * (i + 1) / 4;
+      for (let i = 1; i <= 3; i++) {
+        const t = i / 4;
+        const ry = baseY - hornH * t;
         ctx.beginPath();
-        ctx.moveTo(x, ringY);
-        ctx.lineTo(x + dir * hornWidth * 0.15, ringY);
+        ctx.moveTo(baseX + side * hornW * 0.05, ry);
+        ctx.lineTo(baseX + side * hornW * 0.3, ry - hornH * 0.05);
         ctx.stroke();
       }
     });
   
-    // Menacing eyes
-    const eyeWidth = headWidth * 0.2;
-    const eyeHeight = headHeight * 0.2;
-    const eyeY = headTop + headHeight * 0.35;
-    const eyeOffsetX = headWidth * 0.25;
-    
-    // Eye sockets (darker)
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(ex - eyeWidth * 0.6, eyeY - eyeHeight * 0.1, eyeWidth * 1.2, eyeHeight * 1.2);
-    });
-    
-    // Glowing eyes
-    const eyeGlow = 0.6 + Math.sin(time * 4) * 0.3;
-    ctx.fillStyle = '#fff187';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(ex - eyeWidth / 2, eyeY, eyeWidth, eyeHeight);
-      
-      // Eye glow
-      const glowGrad = ctx.createRadialGradient(ex, eyeY + eyeHeight / 2, 0, ex, eyeY + eyeHeight / 2, eyeWidth);
-      glowGrad.addColorStop(0, `rgba(255, 241, 135, ${eyeGlow})`);
-      glowGrad.addColorStop(1, 'rgba(255, 241, 135, 0)');
-      ctx.fillStyle = glowGrad;
+    // Eyes
+    const eyeW = headW * 0.18;
+    const eyeH = headH * 0.24;
+    const eyeY = headTop + headH * 0.45;
+    const eyeOff = headW * 0.22;
+  
+    // Sockets
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
       ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight / 2, eyeWidth, 0, Math.PI * 2);
+      ctx.roundRect(
+        ex - eyeW * 0.6,
+        eyeY - eyeH * 0.35,
+        eyeW * 1.2,
+        eyeH * 1.4,
+        w * 0.02
+      );
       ctx.fill();
     });
   
-    // Fierce pupils
-    const irisWidth = eyeWidth * 0.4;
-    const irisHeight = eyeHeight * 0.6;
-    ctx.fillStyle = '#ff6b1c';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(ex - irisWidth / 2, eyeY + eyeHeight * 0.2, irisWidth, irisHeight);
-      
+    // Glowing eyes
+    const eyeGlow = 0.5 + Math.sin(time * 4) * 0.3;
+    ctx.fillStyle = '#fff6b0';
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW / 2,
+        eyeY - eyeH * 0.1,
+        eyeW,
+        eyeH,
+        w * 0.015
+      );
+      ctx.fill();
+  
+      const irisW = eyeW * 0.4;
+      const irisH = eyeH * 0.7;
+      ctx.fillStyle = '#ff7c2a';
+      ctx.fillRect(
+        ex - irisW / 2,
+        eyeY - irisH * 0.1,
+        irisW,
+        irisH
+      );
+  
       // Vertical slit
       ctx.fillStyle = '#000';
-      ctx.fillRect(ex - 1, eyeY + eyeHeight * 0.2, 2, irisHeight);
-      ctx.fillStyle = '#ff6b1c';
+      ctx.fillRect(
+        ex - w * 0.007,
+        eyeY - irisH * 0.1,
+        w * 0.014,
+        irisH
+      );
+  
+      // Radial glow
+      const grad = ctx.createRadialGradient(
+        ex, eyeY, 0, ex, eyeY, eyeW * 1.2
+      );
+      grad.addColorStop(0, `rgba(255,246,176,${eyeGlow * brightness})`);
+      grad.addColorStop(1, 'rgba(255,246,176,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(ex, eyeY, eyeW * 1.2, 0, Math.PI * 2);
+      ctx.fill();
     });
   
-    // Savage mouth
-    const mouthWidth = headWidth * 0.5;
-    const isAttacking = sprite.state === 'attacking';
-    const mouthHeight = isAttacking ? headHeight * 0.35 : headHeight * 0.18;
-    const mouthY = headTop + headHeight * 0.65;
-    
-    ctx.fillStyle = '#551010';
-    ctx.fillRect(cx - mouthWidth / 2, mouthY, mouthWidth, mouthHeight);
-    
-    // Fangs
-    if (isAttacking) {
-      ctx.fillStyle = '#ddd';
-      const fangWidth = mouthWidth * 0.1;
-      const fangHeight = mouthHeight * 0.4;
-      [
-        cx - mouthWidth * 0.3,
-        cx - mouthWidth * 0.1,
-        cx + mouthWidth * 0.1,
-        cx + mouthWidth * 0.3
-      ].forEach(fx => {
-        ctx.beginPath();
-        ctx.moveTo(fx - fangWidth / 2, mouthY);
-        ctx.lineTo(fx, mouthY + fangHeight);
-        ctx.lineTo(fx + fangWidth / 2, mouthY);
-        ctx.closePath();
-        ctx.fill();
-      });
-    }
+    // Mouth
+    const mouthW = headW * 0.56;
+    const mouthTop = headTop + headH * 0.72;
+    const mouthH = headH * (0.16 + 0.15 * attackOpen);
+    ctx.fillStyle = '#3a0505';
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - mouthW / 2,
+      mouthTop,
+      mouthW,
+      mouthH,
+      w * 0.015
+    );
+    ctx.fill();
+  
+    // Fangs (bigger in attack)
+    const fangH = mouthH * (0.65 + 0.3 * attackOpen);
+    ctx.fillStyle = '#f3e9d4';
+    const fangPositions = [ -0.3, -0.1, 0.1, 0.3 ];
+    fangPositions.forEach(p => {
+      const fx = cx + mouthW * p;
+      ctx.beginPath();
+      ctx.moveTo(fx - w * 0.014, mouthTop);
+      ctx.lineTo(fx, mouthTop + fangH);
+      ctx.lineTo(fx + w * 0.014, mouthTop);
+      ctx.closePath();
+      ctx.fill();
+    });
   
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -1704,245 +1968,313 @@ const WizardDungeonCrawler = () => {
     const baseColor = '#dce8ff';
     const { band1, band2, band3 } = getBands(baseColor, brightness, 0.05);
   
+    // Ghost personality: smooth float + sideways sway
     const phase = time * 0.9 + sprite.id * 1.31;
-    const float = Math.sin(phase) * (h * 0.06);
+    const float = Math.sin(phase) * (h * 0.05);
     const sway = Math.sin(phase * 0.7) * (w * 0.04);
   
-    const bodyWidth = w * 0.5;
-    const bodyHeight = h * 0.9;
     const cx = x + w / 2 + sway;
     const cy = y + h / 2 + float;
   
-    const bodyTop = cy - bodyHeight * 0.5;
-    const bodyBottom = cy + bodyHeight * 0.3;
+    const bodyHeight = h * 0.95;
+    const bodyTop = cy - bodyHeight * 0.55;
+    const bodyBottom = cy + bodyHeight * 0.4;
   
-    ctx.globalAlpha = brightness * 0.85;
-    // No feet shadow: floating look
+    ctx.globalAlpha = brightness * 0.95;
   
-    // Upper ethereal robe with layered bands
-    const robeTopHeight = bodyHeight * 0.45;
-    const robeTop = bodyTop;
-    const robeBottom = robeTop + robeTopHeight;
-    const left = cx - bodyWidth / 2;
-    const right = cx + bodyWidth / 2;
-  
-    // Top robe layer (brightest)
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(left, robeTop, bodyWidth, robeTopHeight * 0.35);
-  
-    // Middle layer (mid tone, slightly inset)
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(
-      left * 0.95 + right * 0.05,
-      robeTop + robeTopHeight * 0.35,
-      bodyWidth,
-      robeTopHeight * 0.35
-    );
-  
-    // Inner layer (darkest, narrower)
-    ctx.fillStyle = rgbToCss(band3);
-    ctx.fillRect(
-      left * 0.9 + right * 0.1,
-      robeTop + robeTopHeight * 0.7,
-      bodyWidth * 0.8,
-      robeTopHeight * 0.3
-    );
-  
-    // Wispy, animated tattered tail
-    const tailHeight = bodyHeight * 0.55;
-    const tailTop = robeBottom - bodyHeight * 0.08;
-    const tailBottom = tailTop + tailHeight;
-  
-    const tailPoints = [];
-    const numWisps = 5;
-    for (let i = 0; i <= numWisps; i++) {
-      const t = i / numWisps;
-      const xOffset = Math.sin(phase * 1.5 + i * 0.8) * bodyWidth * 0.15;
-      const yPos = tailTop + tailHeight * t;
-      const widthSeg = bodyWidth * (1 - t * 0.7);
-  
-      tailPoints.push({
-        x: cx + xOffset,
-        y: yPos,
-        width: widthSeg
-      });
-    }
-  
-    // Draw tail polygon (left side down, right side up)
-    ctx.fillStyle = rgbToCss(band3);
-    ctx.beginPath();
-    ctx.moveTo(
-      tailPoints[0].x - tailPoints[0].width / 2,
-      tailPoints[0].y
-    );
-  
-    // Left edge downward
-    for (let i = 0; i < tailPoints.length; i++) {
-      const p = tailPoints[i];
-      ctx.lineTo(p.x - p.width / 2, p.y);
-    }
-  
-    // Right edge upward
-    for (let i = tailPoints.length - 1; i >= 0; i--) {
-      const p = tailPoints[i];
-      ctx.lineTo(p.x + p.width / 2, p.y);
-    }
-  
-    ctx.closePath();
-    ctx.fill();
-  
-    // Vertical spectral streaks on the tail
-    ctx.strokeStyle = `rgba(220,235,255,${0.5 * brightness})`;
-    ctx.lineWidth = 1;
-    const streakCount = 4;
-    for (let i = 0; i < streakCount; i++) {
-      const t = (i + 0.5) / streakCount;
-      const base = tailPoints[Math.floor((tailPoints.length - 1) * t)];
-      const sx = base.x + Math.sin(phase * 1.7 + i) * (base.width * 0.15);
-      ctx.beginPath();
-      ctx.moveTo(sx, tailTop + tailHeight * 0.05);
-      ctx.lineTo(sx, tailBottom - tailHeight * 0.05);
-      ctx.stroke();
-    }
-  
-    // Rounded head
-    const headHeight = bodyHeight * 0.23;
-    const headWidth = bodyWidth * 0.75;
-    const headTop = bodyTop - headHeight * 0.05;
-    const headLeft = cx - headWidth / 2;
-  
-    // Slightly rounded rect for head
-    ctx.fillStyle = rgbToCss(band1);
-    const radius = headWidth * 0.18;
-    ctx.beginPath();
-    ctx.moveTo(headLeft + radius, headTop);
-    ctx.lineTo(headLeft + headWidth - radius, headTop);
-    ctx.quadraticCurveTo(
-      headLeft + headWidth,
-      headTop,
-      headLeft + headWidth,
-      headTop + radius
-    );
-    ctx.lineTo(headLeft + headWidth, headTop + headHeight - radius);
-    ctx.quadraticCurveTo(
-      headLeft + headWidth,
-      headTop + headHeight,
-      headLeft + headWidth - radius,
-      headTop + headHeight
-    );
-    ctx.lineTo(headLeft + radius, headTop + headHeight);
-    ctx.quadraticCurveTo(
-      headLeft,
-      headTop + headHeight,
-      headLeft,
-      headTop + headHeight - radius
-    );
-    ctx.lineTo(headLeft, headTop + radius);
-    ctx.quadraticCurveTo(
-      headLeft,
-      headTop,
-      headLeft + radius,
-      headTop
-    );
-    ctx.closePath();
-    ctx.fill();
-  
-    // Soft top highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.16)';
-    ctx.fillRect(
-      headLeft + headWidth * 0.12,
-      headTop + headHeight * 0.08,
-      headWidth * 0.76,
-      headHeight * 0.18
-    );
-  
-    // Eyes: big spectral blocks with inner glow
-    const eyeWidth = headWidth * 0.24;
-    const eyeHeight = headHeight * 0.35;
-    const eyeY = headTop + headHeight * 0.38;
-    const eyeOffsetX = headWidth * 0.26;
-  
-    // Eye sockets
-    ctx.fillStyle = 'rgba(10,15,40,0.8)';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(
-        ex - eyeWidth / 2,
-        eyeY - eyeHeight * 0.15,
-        eyeWidth,
-        eyeHeight * 1.2
-      );
-    });
-  
-    // Inner eye light
-    const irisWidth = eyeWidth * 0.65;
-    const irisHeight = eyeHeight * 0.65;
-    const flicker = 0.65 + Math.sin(time * 4 + sprite.id) * 0.2;
-  
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillStyle = `rgba(190,220,255,${0.9 * brightness})`;
-      ctx.fillRect(
-        ex - irisWidth / 2,
-        eyeY + eyeHeight * 0.05,
-        irisWidth,
-        irisHeight
-      );
-  
-      // Radial glow
-      const glowR = irisWidth * 1.2;
-      const grad = ctx.createRadialGradient(
-        ex,
-        eyeY + eyeHeight * 0.35,
-        0,
-        ex,
-        eyeY + eyeHeight * 0.35,
-        glowR
-      );
-      grad.addColorStop(0, `rgba(200,230,255,${0.4 * flicker * brightness})`);
-      grad.addColorStop(1, 'rgba(200,230,255,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight * 0.35, glowR, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  
-    // Simple open mouth (optional wail animation)
-    const mouthWidth = headWidth * 0.35;
-    const mouthHeightBase = headHeight * 0.16;
-    const isWailing = sprite.state === 'attacking';
-    const mouthHeight = isWailing
-      ? mouthHeightBase * (1.7 + 0.2 * Math.sin(phase * 2))
-      : mouthHeightBase;
-    const mouthY = headTop + headHeight * 0.7;
-  
-    ctx.fillStyle = 'rgba(5,5,20,0.9)';
+    // --------------------------------------------
+    // ✦ Ground shadow (very faint to keep floaty)
+    // --------------------------------------------
+    const shadowY = bodyBottom + h * 0.03;
+    ctx.fillStyle = `rgba(0,0,0,${0.18 * brightness})`;
     ctx.beginPath();
     ctx.ellipse(
       cx,
-      mouthY,
-      mouthWidth / 2,
-      mouthHeight / 2,
+      shadowY,
+      w * 0.22,
+      h * 0.06,
       0,
       0,
       Math.PI * 2
     );
     ctx.fill();
   
-    // Overall ghost aura
-    const auraR = bodyWidth * 0.95;
-    const auraGrad = ctx.createRadialGradient(
+    // --------------------------------------------
+    // ✦ MAIN ROBE (layered, bell-shaped)
+    // --------------------------------------------
+    const robeW = w * 0.55;
+    const robeH = bodyHeight * 0.65;
+    const robeTop = bodyTop + bodyHeight * 0.1;
+    const robeMidY = robeTop + robeH * 0.45;
+    const robeBottom = robeTop + robeH;
+  
+    // Back layer
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.ellipse(
       cx,
-      (robeTop + bodyBottom) / 2,
+      robeMidY,
+      robeW * 0.55,
+      robeH * 0.55,
       0,
-      cx,
-      (robeTop + bodyBottom) / 2,
-      auraR
+      0,
+      Math.PI * 2
     );
-    auraGrad.addColorStop(0, `rgba(200,220,255,${0.25 * brightness})`);
+    ctx.fill();
+  
+    // Middle layer
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      robeMidY - robeH * 0.06,
+      robeW * 0.5,
+      robeH * 0.48,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Front highlight
+    ctx.fillStyle = rgbToCss(band1);
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      robeMidY - robeH * 0.12,
+      robeW * 0.38,
+      robeH * 0.32,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // --------------------------------------------
+    // ✦ TATTERED TAIL (smooth, flowing points)
+    // --------------------------------------------
+    const tailTop = robeBottom - bodyHeight * 0.1;
+    const tailHeight = bodyHeight * 0.45;
+    const tailBottom = tailTop + tailHeight;
+  
+    const tailPoints = [];
+    const wisps = 5;
+    for (let i = 0; i <= wisps; i++) {
+      const t = i / wisps;
+      const wobble = Math.sin(phase * 1.6 + i * 0.9) * (w * 0.03);
+      const width = robeW * (0.45 - t * 0.3);
+      const px = cx + wobble;
+      const py = tailTop + tailHeight * t;
+  
+      tailPoints.push({ x: px, y: py, w: width });
+    }
+  
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    // left edge top → bottom
+    ctx.moveTo(tailPoints[0].x - tailPoints[0].w / 2, tailPoints[0].y);
+    for (let i = 1; i < tailPoints.length; i++) {
+      const p = tailPoints[i];
+      ctx.lineTo(p.x - p.w / 2, p.y);
+    }
+    // right edge bottom → top
+    for (let i = tailPoints.length - 1; i >= 0; i--) {
+      const p = tailPoints[i];
+      ctx.lineTo(p.x + p.w / 2, p.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  
+    // Soft vertical fade lines
+    ctx.strokeStyle = 'rgba(215,230,255,0.5)';
+    ctx.lineWidth = 1;
+    const lineCount = 3;
+    for (let i = 0; i < lineCount; i++) {
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const lx = lerp(
+        cx - robeW * 0.18,
+        cx + robeW * 0.18,
+        i / (lineCount - 1 || 1)
+      );
+      ctx.beginPath();
+      ctx.moveTo(lx, tailTop + 3);
+      ctx.lineTo(lx, tailBottom - 3);
+      ctx.stroke();
+    }
+  
+    // --------------------------------------------
+    // ✦ LITTLE ARMS (cloak flaps)
+    // --------------------------------------------
+    const armH = bodyHeight * 0.18;
+    const armW = robeW * 0.55;
+    const armY = robeTop + robeH * 0.25;
+    const armOff = robeW * 0.6;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    [ -1, 1 ].forEach(side => {
+      const ax = cx + armOff * 0.4 * side;
+      ctx.beginPath();
+      ctx.moveTo(ax, armY);
+      ctx.quadraticCurveTo(
+        ax + side * armW * 0.5,
+        armY + armH * 0.1,
+        ax + side * armW * 0.5,
+        armY + armH
+      );
+      ctx.quadraticCurveTo(
+        ax + side * armW * 0.2,
+        armY + armH * 0.7,
+        ax,
+        armY + armH * 0.4
+      );
+      ctx.closePath();
+      ctx.fill();
+    });
+  
+    // --------------------------------------------
+    // ✦ HEAD / FACE
+    // --------------------------------------------
+    const headH = bodyHeight * 0.24;
+    const headW = robeW * 0.9;
+    const headTop = bodyTop;
+    const headLeft = cx - headW / 2;
+  
+    // Head bubble
+    ctx.fillStyle = rgbToCss(band1);
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      headTop + headH * 0.55,
+      headW * 0.5,
+      headH * 0.55,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Lower face shading
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      headTop + headH * 0.8,
+      headW * 0.5,
+      headH * 0.35,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Eyes (big, hollow, glowing)
+    const eyeW = headW * 0.24;
+    const eyeH = headH * 0.35;
+    const eyeY = headTop + headH * 0.55;
+    const eyeOff = headW * 0.24;
+    const isAttacking = sprite.state === 'attacking';
+  
+    // Sockets
+    ctx.fillStyle = 'rgba(0,0,20,0.8)';
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW * 0.6,
+        eyeY - eyeH * 0.5,
+        eyeW * 1.2,
+        eyeH * (isAttacking ? 1.2 : 1.0),
+        w * 0.02
+      );
+      ctx.fill();
+    });
+  
+    // Inner glow
+    const irisW = eyeW * 0.65;
+    const irisH = eyeH * 0.6;
+    const innerColor = '#90bffd';
+  
+    ctx.fillStyle = innerColor;
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - irisW / 2,
+        eyeY - irisH * 0.2,
+        irisW,
+        irisH,
+        w * 0.015
+      );
+      ctx.fill();
+    });
+  
+    // Tiny pupils (optional eerie dots)
+    const pupilR = eyeW * 0.12;
+    const pupilY = eyeY + irisH * 0.0;
+    ctx.fillStyle = 'rgba(10,20,50,0.9)';
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.arc(ex, pupilY, pupilR, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  
+    // Mouth (sad / open when attacking)
+    const mouthW = headW * 0.4;
+    const baseMouthH = headH * 0.12;
+    const mouthH = isAttacking ? baseMouthH * 2.4 : baseMouthH;
+    const mouthY = headTop + headH * (isAttacking ? 0.78 : 0.8);
+  
+    ctx.fillStyle = 'rgba(5,5,25,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      mouthY,
+      mouthW * 0.5,
+      mouthH * 0.6,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Inner spectral glow in mouth (when attacking)
+    if (isAttacking) {
+      const mGrad = ctx.createRadialGradient(
+        cx, mouthY, 0,
+        cx, mouthY, mouthW * 0.5
+      );
+      mGrad.addColorStop(0, 'rgba(150, 210, 255, 0.7)');
+      mGrad.addColorStop(1, 'rgba(150, 210, 255, 0)');
+      ctx.fillStyle = mGrad;
+      ctx.beginPath();
+      ctx.ellipse(
+        cx,
+        mouthY,
+        mouthW * 0.6,
+        mouthH * 0.85,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+  
+    // --------------------------------------------
+    // ✦ AURA / GLOW
+    // --------------------------------------------
+    const auraR = bodyHeight * 0.55;
+    const auraGrad = ctx.createRadialGradient(
+      cx, cy, 0,
+      cx, cy, auraR
+    );
+    const flicker = 0.3 + Math.sin(time * 2.7 + sprite.id) * 0.1;
+    auraGrad.addColorStop(0, `rgba(200,220,255,${flicker * brightness})`);
     auraGrad.addColorStop(1, 'rgba(200,220,255,0)');
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 1;
     ctx.fillStyle = auraGrad;
     ctx.beginPath();
-    ctx.arc(cx, (robeTop + bodyBottom) / 2, auraR, 0, Math.PI * 2);
+    ctx.arc(cx, cy, auraR, 0, Math.PI * 2);
     ctx.fill();
   
     ctx.restore();
@@ -1952,785 +2284,1318 @@ const WizardDungeonCrawler = () => {
   const drawGolemSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
-    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#b08b57';
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#b08b57'; // warm stone
     const { band1, band2, band3 } = getBands(baseColor, brightness, -0.05);
   
-    const phase = time * 0.7 + sprite.id * 0.53;
-    const stomp = sprite.state === 'chasing'
-      ? Math.sin(phase * 1.5) * (h * 0.01)
-      : 0;
+    // Heavy, slow animation
+    const phase = time * 0.6 + sprite.id * 0.5;
+    const stomp = Math.sin(phase) * (h * 0.01);
+    const sway = Math.sin(phase * 0.4) * (w * 0.015);
   
-    const bodyWidth = w * 0.7;
-    const bodyHeight = h * 0.95;
-    const cx = x + w / 2;
+    const cx = x + w / 2 + sway;
     const cy = y + h / 2 + stomp;
   
+    const bodyHeight = h * 0.95;
     const bodyTop = cy - bodyHeight * 0.5;
     const bodyBottom = cy + bodyHeight * 0.5;
   
     ctx.globalAlpha = brightness;
-    drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
+    drawFeetShadow(ctx, cx, w * 0.8, bodyBottom, h, brightness);
   
-    // Torso: big stone block with inset layers
-    const torsoHeight = bodyHeight * 0.55;
-    const torsoTop = bodyTop + bodyHeight * 0.12;
-    const torsoLeft = cx - bodyWidth / 2;
+    // --------------------------------------------
+    // ✦ LEGS (huge stone columns)
+    // --------------------------------------------
+    const legH = bodyHeight * 0.3;
+    const legW = w * 0.22;
+    const legsTop = bodyBottom - legH * 1.05;
+    const legOff = w * 0.2;
   
-    // Base torso
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(torsoLeft, torsoTop, bodyWidth, torsoHeight);
-  
-    // Upper chest plate
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(
-      torsoLeft + bodyWidth * 0.08,
-      torsoTop + torsoHeight * 0.05,
-      bodyWidth * 0.84,
-      torsoHeight * 0.25
-    );
-  
-    // Lower belt / slab
     ctx.fillStyle = rgbToCss(band3);
-    ctx.fillRect(
-      torsoLeft + bodyWidth * 0.05,
-      torsoTop + torsoHeight * 0.68,
-      bodyWidth * 0.9,
-      torsoHeight * 0.2
-    );
   
-    // Cracks
+    const drawLeg = (side) => {
+      const lx = cx + legOff * side;
+  
+      // Upper leg block
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW / 2,
+        legsTop,
+        legW,
+        legH * 0.55,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Knee stone
+      ctx.fillStyle = rgbToCss(band2);
+      const kneeY = legsTop + legH * 0.55;
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW * 0.55,
+        kneeY,
+        legW * 1.1,
+        legH * 0.16,
+        w * 0.02
+      );
+      ctx.fill();
+  
+      // Lower leg
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW * 0.45,
+        kneeY + legH * 0.16,
+        legW * 0.9,
+        legH * 0.45,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Feet slab
+      const footY = legsTop + legH * 0.93;
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW * 0.7,
+        footY,
+        legW * 1.4,
+        legH * 0.12,
+        w * 0.02
+      );
+      ctx.fill();
+    };
+  
+    drawLeg(-1);
+    drawLeg(1);
+  
+    // --------------------------------------------
+    // ✦ HIP / PELVIS SLAB
+    // --------------------------------------------
+    const hipH = bodyHeight * 0.16;
+    const hipW = w * 0.6;
+    const hipTop = legsTop - hipH * 0.7;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - hipW / 2,
+      hipTop,
+      hipW,
+      hipH,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    // Cracks on hip
+    ctx.strokeStyle = 'rgba(40,25,15,0.8)';
+    ctx.lineWidth = Math.max(2, w * 0.018);
+    ctx.beginPath();
+    ctx.moveTo(cx - hipW * 0.3, hipTop + hipH * 0.2);
+    ctx.lineTo(cx - hipW * 0.05, hipTop + hipH * 0.55);
+    ctx.lineTo(cx + hipW * 0.25, hipTop + hipH * 0.4);
+    ctx.stroke();
+  
+    // --------------------------------------------
+    // ✦ TORSO (stacked stone plates + chest core)
+    // --------------------------------------------
+    const torsoH = bodyHeight * 0.45;
+    const torsoTop = bodyTop + bodyHeight * 0.18;
+    const torsoW = w * 0.7;
+    const torsoLeft = cx - torsoW / 2;
+  
+    // Main block
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft,
+      torsoTop,
+      torsoW,
+      torsoH,
+      w * 0.04
+    );
+    ctx.fill();
+  
+    // Upper plate
+    const plateH = torsoH * 0.28;
+    ctx.fillStyle = rgbToCss(band1);
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft + torsoW * 0.06,
+      torsoTop - plateH * 0.4,
+      torsoW * 0.88,
+      plateH,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    // Lower band
+    ctx.fillStyle = rgbToCss(band3);
+    const lowerBandH = torsoH * 0.22;
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft + torsoW * 0.08,
+      torsoTop + torsoH * 0.6,
+      torsoW * 0.84,
+      lowerBandH,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    // Chest core gem
+    const coreR = w * 0.05;
+    const coreY = torsoTop + torsoH * 0.42;
+    const coreColor = sprite.element === 'ice'
+      ? '#a5e8ff'
+      : sprite.element === 'lava'
+      ? '#ffb347'
+      : '#ffd86b';
+  
+    ctx.fillStyle = coreColor;
+    ctx.beginPath();
+    ctx.arc(cx, coreY, coreR, 0, Math.PI * 2);
+    ctx.fill();
+  
+    const coreGlow = ctx.createRadialGradient(
+      cx, coreY, 0,
+      cx, coreY, coreR * 2.4
+    );
+    coreGlow.addColorStop(0, `${coreColor}bb`.replace('#', '#'));
+    coreGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(cx, coreY, coreR * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  
+    // Torso cracks
     ctx.strokeStyle = 'rgba(35,20,10,0.85)';
     ctx.lineWidth = Math.max(2, w * 0.018);
-  
     ctx.beginPath();
-    ctx.moveTo(cx - bodyWidth * 0.3, torsoTop + torsoHeight * 0.22);
-    ctx.lineTo(cx - bodyWidth * 0.12, torsoTop + torsoHeight * 0.45);
-    ctx.lineTo(cx + bodyWidth * 0.26, torsoTop + torsoHeight * 0.35);
+    ctx.moveTo(torsoLeft + torsoW * 0.18, torsoTop + torsoH * 0.18);
+    ctx.lineTo(torsoLeft + torsoW * 0.35, torsoTop + torsoH * 0.4);
+    ctx.lineTo(torsoLeft + torsoW * 0.6, torsoTop + torsoH * 0.3);
     ctx.stroke();
   
     ctx.beginPath();
-    ctx.moveTo(cx + bodyWidth * 0.28, torsoTop + torsoHeight * 0.12);
-    ctx.lineTo(cx + bodyWidth * 0.16, torsoTop + torsoHeight * 0.25);
+    ctx.moveTo(torsoLeft + torsoW * 0.68, torsoTop + torsoH * 0.16);
+    ctx.lineTo(torsoLeft + torsoW * 0.52, torsoTop + torsoH * 0.32);
     ctx.stroke();
   
-    // Shoulders / arms as stone chunks
-    const armHeight = torsoHeight * 0.55;
-    const armWidth = bodyWidth * 0.22;
-    const armsTop = torsoTop + torsoHeight * 0.05;
+    // --------------------------------------------
+    // ✦ SHOULDERS / ARMS (big brawler stone arms)
+    // --------------------------------------------
+    const armH = bodyHeight * 0.38;
+    const upperAH = armH * 0.5;
+    const lowerAH = armH * 0.5;
+    const shoulderY = torsoTop + torsoH * 0.15;
+    const shoulderOff = torsoW * 0.55;
   
-    ctx.fillStyle = rgbToCss(band3);
-    [
-      { side: -1, bob: Math.sin(phase) * armHeight * 0.05 },
-      { side: 1, bob: Math.sin(phase + Math.PI) * armHeight * 0.05 }
-    ].forEach(({ side, bob }) => {
-      const ax = cx + side * (bodyWidth * 0.5);
-      ctx.fillRect(
-        ax - armWidth / 2,
-        armsTop + bob,
-        armWidth,
-        armHeight
-      );
-    });
+    const isAttacking = sprite.state === 'attacking';
   
-    // Legs: chunky, slightly separated blocks
-    const legHeight = bodyHeight * 0.28;
-    const legWidth = bodyWidth * 0.28;
-    const legsTop = torsoTop + torsoHeight - legHeight * 0.1;
-    ctx.fillStyle = rgbToCss(band3);
-    [
-      { side: -1, phaseOffset: 0 },
-      { side: 1, phaseOffset: Math.PI }
-    ].forEach(({ side, phaseOffset }) => {
-      const lbob = sprite.state === 'chasing'
-        ? Math.sin(phase + phaseOffset) * legHeight * 0.08
+    const drawArm = (side) => {
+      const ax = cx + shoulderOff * side;
+      const punch = isAttacking
+        ? Math.sin(time * 16 + side * Math.PI) * (w * 0.03)
         : 0;
-      const lx = cx + side * legWidth * 0.8;
-      ctx.fillRect(
-        lx - legWidth / 2,
-        legsTop + lbob,
-        legWidth,
-        legHeight
-      );
-    });
   
-    // Head: stone chunk with glowing eye slits
-    const headHeight = bodyHeight * 0.22;
-    const headWidth = bodyWidth * 0.6;
+      // Shoulder chunk
+      ctx.fillStyle = rgbToCss(band1);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.06,
+        shoulderY - h * 0.01,
+        w * 0.12,
+        upperAH * 0.55,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Upper arm
+      const upperY = shoulderY + upperAH * 0.2;
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.05,
+        upperY,
+        w * 0.1,
+        upperAH,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Elbow block
+      const elbowY = upperY + upperAH;
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        ax - w * 0.055,
+        elbowY,
+        w * 0.11,
+        h * 0.05,
+        w * 0.02
+      );
+      ctx.fill();
+  
+      // Forearm + fist
+      const forearmX = ax + punch * side;
+      const forearmY = elbowY + h * 0.03;
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        forearmX - w * 0.05,
+        forearmY,
+        w * 0.1,
+        lowerAH * 0.75,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Fist = front slab
+      const fistY = forearmY + lowerAH * 0.75;
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        forearmX - w * 0.06,
+        fistY,
+        w * 0.12,
+        h * 0.06,
+        w * 0.025
+      );
+      ctx.fill();
+  
+      // Knuckle highlights
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(forearmX - w * 0.05, fistY + h * 0.02);
+      ctx.lineTo(forearmX + w * 0.05, fistY + h * 0.02);
+      ctx.stroke();
+    };
+  
+    drawArm(-1);
+    drawArm(1);
+  
+    // --------------------------------------------
+    // ✦ HEAD (stone block with slitted eyes)
+    // --------------------------------------------
+    const headH = bodyHeight * 0.18;
+    const headW = w * 0.5;
     const headTop = bodyTop;
-    const headLeft = cx - headWidth / 2;
+    const headLeft = cx - headW / 2;
+  
+    // Head block
     ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
-  
-    // Top bevel
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(
-      headLeft + headWidth * 0.06,
-      headTop + headHeight * 0.05,
-      headWidth * 0.88,
-      headHeight * 0.2
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft,
+      headTop,
+      headW,
+      headH,
+      w * 0.03
     );
+    ctx.fill();
   
-    // Eyes: narrow glowing slits
-    const eyeWidth = headWidth * 0.18;
-    const eyeHeight = headHeight * 0.18;
-    const eyeY = headTop + headHeight * 0.45;
-    const eyeOffsetX = headWidth * 0.22;
-    const eyeGlow = 0.4 + 0.3 * Math.sin(time * 3 + sprite.id);
+    // Brow ridge
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft + headW * 0.05,
+      headTop + headH * 0.35,
+      headW * 0.9,
+      headH * 0.22,
+      w * 0.02
+    );
+    ctx.fill();
   
-    ctx.fillStyle = '#ffcf69';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(
-        ex - eyeWidth / 2,
+    // Eyes
+    const eyeW = headW * 0.18;
+    const eyeH = headH * 0.22;
+    const eyeY = headTop + headH * 0.5;
+    const eyeOff = headW * 0.2;
+  
+    const eyeColor = sprite.element === 'ice'
+      ? '#c8f3ff'
+      : sprite.element === 'lava'
+      ? '#ffb35c'
+      : '#ffe18a';
+  
+    ctx.fillStyle = eyeColor;
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW / 2,
         eyeY,
-        eyeWidth,
-        eyeHeight
+        eyeW,
+        eyeH,
+        w * 0.01
+      );
+      ctx.fill();
+  
+      // Dark slit
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(
+        ex - eyeW * 0.45,
+        eyeY + eyeH * 0.35,
+        eyeW * 0.9,
+        eyeH * 0.3
       );
   
+      // Small inner glow
       const grad = ctx.createRadialGradient(
-        ex,
-        eyeY + eyeHeight / 2,
-        0,
-        ex,
-        eyeY + eyeHeight / 2,
-        eyeWidth
+        ex, eyeY + eyeH * 0.3, 0,
+        ex, eyeY + eyeH * 0.3, eyeW
       );
-      grad.addColorStop(0, `rgba(255,207,105,${eyeGlow * brightness})`);
-      grad.addColorStop(1, 'rgba(255,207,105,0)');
+      grad.addColorStop(0, `${eyeColor}cc`.replace('#', '#'));
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight / 2, eyeWidth, 0, Math.PI * 2);
+      ctx.arc(ex, eyeY + eyeH * 0.3, eyeW, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#ffcf69';
     });
   
+    // Forehead crack
+    ctx.strokeStyle = 'rgba(20,10,5,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(headLeft + headW * 0.3, headTop + headH * 0.15);
+    ctx.lineTo(headLeft + headW * 0.45, headTop + headH * 0.35);
+    ctx.lineTo(headLeft + headW * 0.65, headTop + headH * 0.22);
+    ctx.stroke();
+  
+    ctx.globalAlpha = 1;
     ctx.restore();
   };
-  
-  // =============== NECROMANCER (BOSS) - Enhanced N64 Style ===============
+
+  // =============== NECROMANCER (BOSS) ===============
   const drawNecromancerSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
-    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#aa00ff';
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#9b3dff';
     const { band1, band2, band3 } = getBands(baseColor, brightness, 0.05);
   
     const phase = time * 0.9 + sprite.id * 1.11;
+    const float = Math.sin(phase * 0.7) * (h * 0.02);
+    const sway = Math.sin(phase * 0.4) * (w * 0.015);
   
-    const bodyWidth = w * 0.5;
+    const casting = sprite.state === 'attacking' || sprite.state === 'casting';
+  
+    const cx = x + w / 2 + sway;
+    const cy = y + h / 2 + float;
+  
     const bodyHeight = h * 1.0;
-    const cx = x + w / 2 + Math.sin(phase * 0.5) * (w * 0.015);
-    const cy = y + h / 2;
-  
     const bodyTop = cy - bodyHeight * 0.5;
     const bodyBottom = cy + bodyHeight * 0.5;
   
     ctx.globalAlpha = brightness;
-    drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
+    drawFeetShadow(ctx, cx, w * 0.45, bodyBottom, h, brightness);
   
-    // Flowing robe with inner panels
-    const robeTop = bodyTop + bodyHeight * 0.18;
-    const robeHeight = bodyHeight * 0.65;
-    const robeLeft = cx - bodyWidth / 2;
+    // ----- Robe -----
+    const robeW = w * 0.5;
+    const robeH = bodyHeight * 0.7;
+    const robeTop = bodyTop + bodyHeight * 0.2;
+    const robeLeft = cx - robeW / 2;
   
-    // Outer dark robe
+    // Back robe
     ctx.fillStyle = rgbToCss(band3);
-    ctx.fillRect(robeLeft, robeTop, bodyWidth, robeHeight);
+    ctx.beginPath();
+    ctx.roundRect(robeLeft, robeTop, robeW, robeH, w * 0.04);
+    ctx.fill();
   
-    // Inner stripe
+    // Front stripe
     ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(
-      cx - bodyWidth * 0.18,
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - robeW * 0.13,
       robeTop,
-      bodyWidth * 0.36,
-      robeHeight
+      robeW * 0.26,
+      robeH,
+      w * 0.02
     );
+    ctx.fill();
   
-    // Magical runes on the front
-    ctx.fillStyle = `rgba(230,210,255,${0.7 * brightness})`;
-    const runeCount = 4;
-    for (let i = 0; i < runeCount; i++) {
-      const ry = robeTop + robeHeight * (0.1 + 0.18 * i);
-      const rw = bodyWidth * 0.08;
-      ctx.fillRect(cx - rw / 2, ry, rw, 3);
-    }
-  
-    // Head with hood
-    const headHeight = bodyHeight * 0.24;
-    const headWidth = bodyWidth * 0.75;
-    const headTop = bodyTop;
-    const headLeft = cx - headWidth / 2;
-  
-    // Hood outer
+    // Lower tattered hem
+    const hemY = robeTop + robeH;
     ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
+    ctx.beginPath();
+    ctx.moveTo(robeLeft, hemY);
+    ctx.lineTo(robeLeft + robeW * 0.2, hemY + h * 0.04);
+    ctx.lineTo(cx, hemY + h * 0.02);
+    ctx.lineTo(robeLeft + robeW * 0.8, hemY + h * 0.05);
+    ctx.lineTo(robeLeft + robeW, hemY);
+    ctx.closePath();
+    ctx.fill();
   
-    // Hood rim
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(
-      headLeft,
-      headTop + headHeight * 0.62,
-      headWidth,
-      headHeight * 0.38
-    );
+    // ----- Shoulders / Sleeves -----
+    const shoulderY = robeTop + robeH * 0.15;
+    const shoulderOff = robeW * 0.6;
+    const sleeveH = bodyHeight * 0.22;
   
-    // Shadowed face
-    const faceHeight = headHeight * 0.55;
-    const faceWidth = headWidth * 0.7;
-    const faceLeft = cx - faceWidth / 2;
-    const faceTop = headTop + headHeight * 0.2;
-    ctx.fillStyle = 'rgba(5,0,15,0.9)';
-    ctx.fillRect(faceLeft, faceTop, faceWidth, faceHeight);
-  
-    // Eyes: thin, sinister purple lights
-    const eyeWidth = faceWidth * 0.28;
-    const eyeHeight = faceHeight * 0.22;
-    const eyeY = faceTop + faceHeight * 0.32;
-    const eyeOffsetX = faceWidth * 0.3;
-    const eyePulse = 0.6 + 0.3 * Math.sin(time * 3.5 + sprite.id);
-  
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillStyle = '#e9c0ff';
-      ctx.fillRect(
-        ex - eyeWidth / 2,
-        eyeY,
-        eyeWidth,
-        eyeHeight
-      );
-  
-      // Dark inner iris
-      ctx.fillStyle = '#441066';
-      const irisWidth = eyeWidth * 0.55;
-      const irisHeight = eyeHeight * 0.6;
-      ctx.fillRect(
-        ex - irisWidth / 2,
-        eyeY + eyeHeight * 0.15,
-        irisWidth,
-        irisHeight
-      );
-  
-      // Soft glow
-      const grad = ctx.createRadialGradient(
-        ex,
-        eyeY + eyeHeight / 2,
-        0,
-        ex,
-        eyeY + eyeHeight / 2,
-        eyeWidth
-      );
-      grad.addColorStop(0, `rgba(233,192,255,${eyePulse * brightness})`);
-      grad.addColorStop(1, 'rgba(233,192,255,0)');
-      ctx.fillStyle = grad;
+    ctx.fillStyle = rgbToCss(band2);
+    [ -1, 1 ].forEach(side => {
+      const sx = cx + shoulderOff * 0.3 * side;
       ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight / 2, eyeWidth, 0, Math.PI * 2);
+      ctx.ellipse(
+        sx,
+        shoulderY,
+        w * 0.07,
+        h * 0.06,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+  
+      // Hanging sleeve
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.moveTo(sx, shoulderY);
+      ctx.quadraticCurveTo(
+        sx + side * w * 0.12,
+        shoulderY + sleeveH * 0.2,
+        sx + side * w * 0.12,
+        shoulderY + sleeveH
+      );
+      ctx.quadraticCurveTo(
+        sx + side * w * 0.06,
+        shoulderY + sleeveH * 0.8,
+        sx,
+        shoulderY + sleeveH * 0.6
+      );
+      ctx.closePath();
       ctx.fill();
     });
   
-    // Staff with animated orb
-    const staffX = cx - bodyWidth * 0.9;
-    const staffTop = robeTop - headHeight * 0.2;
-    const staffBottom = robeTop + robeHeight + bodyHeight * 0.15;
+    // ----- Staff (left side) -----
+    const staffX = cx - robeW * 0.7;
+    const staffTop = bodyTop + bodyHeight * 0.12;
+    const staffBottom = hemY + h * 0.08;
   
-    ctx.strokeStyle = 'rgba(40,15,70,0.95)';
+    ctx.strokeStyle = 'rgba(40,10,80,0.95)';
     ctx.lineWidth = Math.max(2, w * 0.02);
     ctx.beginPath();
     ctx.moveTo(staffX, staffTop);
     ctx.lineTo(staffX, staffBottom);
     ctx.stroke();
   
-    // Staff top claw
-    ctx.fillStyle = 'rgba(40,15,70,0.9)';
-    ctx.beginPath();
-    ctx.moveTo(staffX - 6, staffTop + 4);
-    ctx.lineTo(staffX - 2, staffTop - 8);
-    ctx.lineTo(staffX + 2, staffTop - 8);
-    ctx.lineTo(staffX + 6, staffTop + 4);
-    ctx.closePath();
-    ctx.fill();
-  
-    // Orb and aura
-    const orbR = headHeight * 0.22;
+    // Orb with casting pulse
+    const orbR = h * 0.09;
     const orbY = staffTop - orbR * 0.2;
-    const orbPulse = 0.4 + 0.3 * Math.sin(time * 4 + sprite.id);
+    const pulse = 0.6 + Math.sin(time * 4 + sprite.id) * 0.3;
   
-    ctx.fillStyle = '#d78bff';
+    ctx.fillStyle = '#e8b5ff';
     ctx.beginPath();
     ctx.arc(staffX, orbY, orbR, 0, Math.PI * 2);
     ctx.fill();
   
     const orbGrad = ctx.createRadialGradient(
-      staffX,
-      orbY,
-      0,
-      staffX,
-      orbY,
-      orbR * 2.3
+      staffX, orbY, 0,
+      staffX, orbY, orbR * 2.7
     );
-    orbGrad.addColorStop(0, `rgba(215,139,255,${orbPulse * brightness})`);
-    orbGrad.addColorStop(1, 'rgba(215,139,255,0)');
-    ctx.globalCompositeOperation = 'lighter';
+    orbGrad.addColorStop(0, `rgba(232,181,255,${pulse * brightness})`);
+    orbGrad.addColorStop(1, 'rgba(232,181,255,0)');
     ctx.fillStyle = orbGrad;
     ctx.beginPath();
-    ctx.arc(staffX, orbY, orbR * 2.3, 0, Math.PI * 2);
+    ctx.arc(staffX, orbY, orbR * 2.7, 0, Math.PI * 2);
     ctx.fill();
   
-    ctx.restore();
-  };
-  
-  // =============== DRAGON (BOSS) - Enhanced N64 Style ===============
-  const drawDragonSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
-    ctx.save();
-  
-    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#ff0000';
-    const { band1, band2, band3 } = getBands(baseColor, brightness, 0);
-  
-    const phase = time * 1.0 + sprite.id * 0.79;
-    const breathe = Math.sin(phase * 0.8) * 0.02;
-  
-    const bodyWidth = w * 0.8;
-    const bodyHeight = h * 0.9;
-    const cx = x + w / 2 + Math.sin(phase * 0.6) * (w * 0.02);
-    const cy = y + h / 2 + Math.sin(phase) * (h * 0.015);
-  
-    const bodyTop = cy - bodyHeight * 0.4;
-    const bodyBottom = cy + bodyHeight * 0.5;
-  
-    ctx.globalAlpha = brightness;
-    drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
-  
-    // Wings behind body
-    const wingsSpan = bodyWidth * 1.7;
-    const wingsHeight = bodyHeight * 0.75;
-    const wingsY = bodyTop + bodyHeight * 0.3;
-  
-    ctx.fillStyle = `rgba(40,0,0,${0.55 * brightness})`;
-    ctx.beginPath();
-    ctx.moveTo(cx - wingsSpan / 2, wingsY);
-    ctx.quadraticCurveTo(
-      cx,
-      wingsY - wingsHeight * (0.9 + breathe),
-      cx + wingsSpan / 2,
-      wingsY
-    );
-    ctx.lineTo(cx + wingsSpan * 0.35, wingsY + wingsHeight * 0.3);
-    ctx.quadraticCurveTo(
-      cx,
-      wingsY + wingsHeight * 0.15,
-      cx - wingsSpan * 0.35,
-      wingsY + wingsHeight * 0.3
-    );
-    ctx.closePath();
-    ctx.fill();
-  
-    // Body
-    const torsoHeight = bodyHeight * 0.5;
-    const torsoTop = bodyTop + bodyHeight * 0.25;
-    const torsoLeft = cx - bodyWidth / 2;
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(torsoLeft, torsoTop, bodyWidth, torsoHeight);
-  
-    // Chest scales / patch
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(
-      cx - bodyWidth * 0.18,
-      torsoTop + torsoHeight * 0.1,
-      bodyWidth * 0.36,
-      torsoHeight * 0.5
-    );
-  
-    // Horizontal ribs on chest patch
-    ctx.strokeStyle = 'rgba(255,230,190,0.7)';
-    ctx.lineWidth = 1;
-    const ribCount = 4;
-    for (let i = 0; i < ribCount; i++) {
-      const ry = torsoTop + torsoHeight * (0.15 + 0.08 * i);
+    // Extra casting swirl
+    if (casting) {
+      ctx.strokeStyle = `rgba(200,180,255,${0.8 * brightness})`;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(cx - bodyWidth * 0.16, ry);
-      ctx.lineTo(cx + bodyWidth * 0.16, ry);
+      ctx.arc(staffX, orbY, orbR * 1.6, 0, Math.PI * 2);
       ctx.stroke();
     }
   
-    // Legs
-    const legHeight = bodyHeight * 0.25;
-    const legWidth = bodyWidth * 0.25;
-    const legsTop = torsoTop + torsoHeight - legHeight * 0.1;
-    ctx.fillStyle = rgbToCss(band3);
-    [
-      { side: -1, phaseOffset: 0 },
-      { side: 1, phaseOffset: Math.PI }
-    ].forEach(({ side, phaseOffset }) => {
-      const lbob = sprite.state === 'chasing'
-        ? Math.sin(phase + phaseOffset) * legHeight * 0.1
-        : 0;
-      const lx = cx + side * legWidth * 0.9;
-      ctx.fillRect(
-        lx - legWidth / 2,
-        legsTop + lbob,
-        legWidth,
-        legHeight
-      );
-    });
-  
-    // Head with snout and horns
-    const headHeight = bodyHeight * 0.25;
-    const headWidth = bodyWidth * 0.7;
+    // ----- Head / Hood -----
+    const headH = bodyHeight * 0.22;
+    const headW = robeW * 0.9;
     const headTop = bodyTop;
-    const headLeft = cx - headWidth * 0.45;
+    const headLeft = cx - headW / 2;
   
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
-  
-    // Snout
+    // Hood outer
     ctx.fillStyle = rgbToCss(band3);
-    const snoutHeight = headHeight * 0.55;
-    const snoutWidth = headWidth * 0.45;
-    const snoutLeft = headLeft + headWidth * 0.4;
-    const snoutTop = headTop + headHeight * 0.3;
-  
-    ctx.fillRect(snoutLeft, snoutTop, snoutWidth, snoutHeight);
-  
-    // Nostrils
-    ctx.fillStyle = 'rgba(20,0,0,0.8)';
-    const nostrilSize = snoutWidth * 0.16;
-    ctx.fillRect(
-      snoutLeft + snoutWidth * 0.15,
-      snoutTop + snoutHeight * 0.15,
-      nostrilSize,
-      nostrilSize * 0.7
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft,
+      headTop,
+      headW,
+      headH,
+      w * 0.04
     );
-    ctx.fillRect(
-      snoutLeft + snoutWidth * 0.6,
-      snoutTop + snoutHeight * 0.15,
-      nostrilSize,
-      nostrilSize * 0.7
+    ctx.fill();
+  
+    // Inner hood shadow
+    ctx.fillStyle = 'rgba(10, 0, 20, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft + headW * 0.12,
+      headTop + headH * 0.25,
+      headW * 0.76,
+      headH * 0.6,
+      w * 0.03
     );
+    ctx.fill();
   
     // Eyes
-    const eyeWidth = headWidth * 0.15;
-    const eyeHeight = headHeight * 0.22;
-    const eyeY = headTop + headHeight * 0.32;
-    const leftEyeX = headLeft + headWidth * 0.25;
-    const rightEyeX = headLeft + headWidth * 0.5;
-    const eyePulse = 0.5 + 0.35 * Math.sin(time * 4 + sprite.id);
+    const eyeW = headW * 0.18;
+    const eyeH = headH * 0.22;
+    const eyeY = headTop + headH * 0.45;
+    const eyeOff = headW * 0.24;
   
-    ctx.fillStyle = '#fff7aa';
-    [leftEyeX, rightEyeX].forEach(ex => {
-      ctx.fillRect(
-        ex - eyeWidth / 2,
+    const eyeOuterColor = '#f3ddff';
+    const eyeInnerColor = '#6f20b3';
+  
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+  
+      // Glow plate
+      ctx.fillStyle = eyeOuterColor;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW / 2,
         eyeY,
-        eyeWidth,
-        eyeHeight
+        eyeW,
+        eyeH,
+        w * 0.015
       );
+      ctx.fill();
   
-      ctx.fillStyle = '#ff4b16';
-      const irisWidth = eyeWidth * 0.5;
-      const irisHeight = eyeHeight * 0.7;
+      // Inner iris
+      const irisW = eyeW * 0.55;
+      const irisH = eyeH * 0.6;
+      ctx.fillStyle = eyeInnerColor;
       ctx.fillRect(
-        ex - irisWidth / 2,
-        eyeY + eyeHeight * 0.15,
-        irisWidth,
-        irisHeight
+        ex - irisW / 2,
+        eyeY + eyeH * 0.15,
+        irisW,
+        irisH
       );
   
       // Vertical slit
       ctx.fillStyle = '#000';
       ctx.fillRect(
-        ex - 1,
-        eyeY + eyeHeight * 0.15,
-        2,
-        irisHeight
+        ex - irisW * 0.1,
+        eyeY + eyeH * 0.15,
+        irisW * 0.2,
+        irisH
       );
   
-      // Glow
-      const grad = ctx.createRadialGradient(
-        ex,
-        eyeY + eyeHeight / 2,
-        0,
-        ex,
-        eyeY + eyeHeight / 2,
-        eyeWidth
+      // Soft outward glow
+      const eg = ctx.createRadialGradient(
+        ex, eyeY + eyeH * 0.3, 0,
+        ex, eyeY + eyeH * 0.3, eyeW * 1.5
       );
-      grad.addColorStop(0, `rgba(255,120,40,${eyePulse * brightness})`);
-      grad.addColorStop(1, 'rgba(255,120,40,0)');
-      ctx.fillStyle = grad;
+      eg.addColorStop(0, `rgba(243,221,255,${0.6 * brightness})`);
+      eg.addColorStop(1, 'rgba(243,221,255,0)');
+      ctx.fillStyle = eg;
       ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight / 2, eyeWidth, 0, Math.PI * 2);
+      ctx.arc(ex, eyeY + eyeH * 0.3, eyeW * 1.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#fff7aa';
     });
   
-    // Jaw / mouth
-    const mouthWidth = snoutWidth * 0.85;
-    const mouthHeight = headHeight * 0.2;
-    const mouthY = snoutTop + snoutHeight * 0.65;
-    const mouthX = snoutLeft + snoutWidth * 0.5;
-  
-    ctx.fillStyle = '#440000';
-    ctx.fillRect(
-      mouthX - mouthWidth / 2,
-      mouthY,
-      mouthWidth,
-      mouthHeight
-    );
-  
-    // Fangs when attacking
-    if (sprite.state === 'attacking') {
-      ctx.fillStyle = '#f5f5f5';
-      const fangWidth = mouthWidth * 0.12;
-      const fangHeight = mouthHeight * 0.85;
-      const fangPositions = [-0.3, -0.1, 0.1, 0.3];
-      fangPositions.forEach(p => {
-        const fx = mouthX + p * mouthWidth;
-        ctx.beginPath();
-        ctx.moveTo(fx - fangWidth / 2, mouthY);
-        ctx.lineTo(fx, mouthY + fangHeight);
-        ctx.lineTo(fx + fangWidth / 2, mouthY);
-        ctx.closePath();
-        ctx.fill();
-      });
-    }
-  
-    // Subtle fire / breath hint
-    if (sprite.state === 'attacking') {
-      const breathLen = bodyHeight * 0.3;
-      const bx = snoutLeft + snoutWidth + bodyWidth * 0.02;
-      const by = mouthY + mouthHeight * 0.4;
-  
-      const breathGrad = ctx.createLinearGradient(
-        bx,
-        by,
-        bx + breathLen,
-        by
-      );
-      breathGrad.addColorStop(0, `rgba(255,200,120,${0.65 * brightness})`);
-      breathGrad.addColorStop(0.5, `rgba(255,120,40,${0.55 * brightness})`);
-      breathGrad.addColorStop(1, 'rgba(255,60,0,0)');
-      ctx.fillStyle = breathGrad;
-      ctx.beginPath();
-      ctx.moveTo(bx, by - 6);
-      ctx.lineTo(bx + breathLen, by);
-      ctx.lineTo(bx, by + 6);
-      ctx.closePath();
-      ctx.fill();
-    }
-  
+    ctx.globalAlpha = 1;
     ctx.restore();
   };
   
-  // =============== LICH (BOSS) - Enhanced N64 Style ===============
+  
+  // =============== DRAGON (BOSS) ===============
+  const drawDragonSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
+    ctx.save();
+  
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#e33426';
+    const { band1, band2, band3 } = getBands(baseColor, brightness, 0);
+  
+    const phase = time * 1.0 + sprite.id * 0.7;
+    const flap = Math.sin(phase * 1.2) * (h * 0.03);
+    const sway = Math.sin(phase * 0.6) * (w * 0.03);
+    const roar = sprite.state === 'attacking';
+  
+    const cx = x + w / 2 + sway;
+    const cy = y + h * 0.56 + flap * 0.4;
+  
+    const bodyHeight = h * 0.9;
+    const bodyTop = cy - bodyHeight * 0.5;
+    const bodyBottom = cy + bodyHeight * 0.5;
+  
+    ctx.globalAlpha = brightness;
+    drawFeetShadow(ctx, cx, w * 0.9, bodyBottom, h, brightness);
+  
+    // ----- Wings (behind body) -----
+    const wingSpan = w * 1.7;
+    const wingH = h * 0.55;
+    const wingY = bodyTop + bodyHeight * 0.35;
+  
+    const drawWing = (side) => {
+      const rootX = cx + side * w * 0.18;
+      const rootY = wingY;
+  
+      ctx.fillStyle = `rgba(40, 0, 0, ${0.6 * brightness})`;
+      ctx.beginPath();
+      ctx.moveTo(rootX, rootY);
+  
+      const tipX = rootX + side * wingSpan * 0.5;
+      const tipY = rootY - wingH * 0.4 + flap * side;
+  
+      ctx.quadraticCurveTo(
+        (rootX + tipX) / 2,
+        rootY - wingH * 0.9,
+        tipX,
+        tipY
+      );
+      ctx.lineTo(
+        tipX - side * wingSpan * 0.12,
+        tipY + wingH * 0.9
+      );
+      ctx.quadraticCurveTo(
+        (rootX + tipX) / 2,
+        rootY + wingH * 0.5,
+        rootX,
+        rootY
+      );
+      ctx.closePath();
+      ctx.fill();
+  
+      // Membrane veins
+      ctx.strokeStyle = `rgba(0,0,0,${0.5 * brightness})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(rootX, rootY);
+      ctx.lineTo(tipX - side * wingSpan * 0.06, tipY + wingH * 0.45);
+      ctx.stroke();
+    };
+  
+    drawWing(-1);
+    drawWing(1);
+  
+    // ----- Torso / Chest -----
+    const torsoH = bodyHeight * 0.5;
+    const torsoW = w * 0.7;
+    const torsoTop = bodyTop + bodyHeight * 0.25;
+    const torsoLeft = cx - torsoW / 2;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft,
+      torsoTop,
+      torsoW,
+      torsoH,
+      w * 0.05
+    );
+    ctx.fill();
+  
+    // Belly plates
+    ctx.fillStyle = rgbToCss(band1);
+    const bellyW = torsoW * 0.34;
+    const bellyX = cx - bellyW / 2;
+    const bellyTop = torsoTop + torsoH * 0.1;
+    const bellySegH = torsoH * 0.16;
+    for (let i = 0; i < 3; i++) {
+      const by = bellyTop + i * bellySegH;
+      ctx.beginPath();
+      ctx.roundRect(
+        bellyX,
+        by,
+        bellyW,
+        bellySegH * 0.9,
+        w * 0.025
+      );
+      ctx.fill();
+    }
+  
+    // ----- Legs / Claws -----
+    const legH = bodyHeight * 0.28;
+    const legW = w * 0.22;
+    const legsTop = torsoTop + torsoH - legH * 0.1;
+    const legOff = w * 0.26;
+  
+    const drawLeg = (side) => {
+      const lx = cx + legOff * side;
+  
+      // Thigh
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW / 2,
+        legsTop,
+        legW,
+        legH * 0.55,
+        w * 0.035
+      );
+      ctx.fill();
+  
+      // Shin
+      const shinTop = legsTop + legH * 0.5;
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW * 0.45,
+        shinTop,
+        legW * 0.9,
+        legH * 0.4,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Foot
+      const footY = legsTop + legH * 0.95;
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.ellipse(
+        lx,
+        footY,
+        legW * 0.7,
+        h * 0.045,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+  
+      // Claws
+      ctx.fillStyle = '#f6e0c0';
+      const spread = legW * 0.35;
+      [ -spread, 0, spread ].forEach(offset => {
+        ctx.beginPath();
+        ctx.moveTo(lx + offset - w * 0.016, footY);
+        ctx.lineTo(lx + offset, footY + h * 0.045);
+        ctx.lineTo(lx + offset + w * 0.016, footY);
+        ctx.closePath();
+        ctx.fill();
+      });
+    };
+  
+    drawLeg(-1);
+    drawLeg(1);
+  
+    // ----- Neck / Head -----
+    const neckH = bodyHeight * 0.22;
+    const neckW = w * 0.18;
+    const neckTop = bodyTop + bodyHeight * 0.1;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - neckW / 2,
+      neckTop,
+      neckW,
+      neckH,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    const headH = bodyHeight * 0.25;
+    const headW = w * 0.6;
+    const headTop = neckTop - headH * 0.1;
+    const headLeft = cx - headW * 0.35; // push snout right
+  
+    // Head bulk
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft,
+      headTop,
+      headW,
+      headH,
+      w * 0.04
+    );
+    ctx.fill();
+  
+    // Snout
+    const snoutH = headH * 0.55;
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft + headW * 0.45,
+      headTop + headH * 0.35,
+      headW * 0.38,
+      snoutH,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    // Eyes
+    const eyeW = headW * 0.16;
+    const eyeH = headH * 0.22;
+    const eyeY = headTop + headH * 0.35;
+    const eyeOff = headW * 0.2;
+    const eyeColor = '#ffeaa8';
+  
+    [ -1, 1 ].forEach(side => {
+      const ex = headLeft + headW * (side === -1 ? 0.25 : 0.5);
+      ctx.fillStyle = eyeColor;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW / 2,
+        eyeY,
+        eyeW,
+        eyeH,
+        w * 0.015
+      );
+      ctx.fill();
+  
+      // Iris and slit
+      const irisW = eyeW * 0.45;
+      const irisH = eyeH * 0.7;
+      ctx.fillStyle = '#ff7b24';
+      ctx.fillRect(
+        ex - irisW / 2,
+        eyeY + eyeH * 0.2,
+        irisW,
+        irisH
+      );
+  
+      ctx.fillStyle = '#000';
+      ctx.fillRect(
+        ex - irisW * 0.1,
+        eyeY + eyeH * 0.2,
+        irisW * 0.2,
+        irisH
+      );
+    });
+  
+    // Brows
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(headLeft + headW * 0.2, eyeY - eyeH * 0.2);
+    ctx.lineTo(headLeft + headW * 0.35, eyeY - eyeH * 0.1);
+    ctx.moveTo(headLeft + headW * 0.45, eyeY - eyeH * 0.2);
+    ctx.lineTo(headLeft + headW * 0.6, eyeY - eyeH * 0.1);
+    ctx.stroke();
+  
+    // Mouth (open wider when roaring)
+    const mouthW = headW * 0.38;
+    const mouthTop = headTop + headH * 0.7;
+    const baseMouthH = headH * 0.16;
+    const mouthH = roar ? baseMouthH * 1.8 : baseMouthH;
+    const mouthX = headLeft + headW * 0.6;
+  
+    ctx.fillStyle = '#3a0505';
+    ctx.beginPath();
+    ctx.roundRect(
+      mouthX - mouthW / 2,
+      mouthTop,
+      mouthW,
+      mouthH,
+      w * 0.02
+    );
+    ctx.fill();
+  
+    // Fangs
+    ctx.fillStyle = '#f6eae0';
+    const fangPositions = [ -0.35, -0.15, 0.15, 0.35 ];
+    const fangH = mouthH * (roar ? 0.7 : 0.5);
+    fangPositions.forEach(p => {
+      const fx = mouthX + mouthW * p;
+      ctx.beginPath();
+      ctx.moveTo(fx - w * 0.015, mouthTop);
+      ctx.lineTo(fx, mouthTop + fangH);
+      ctx.lineTo(fx + w * 0.015, mouthTop);
+      ctx.closePath();
+      ctx.fill();
+    });
+  
+    // Flame breath glow (when attacking)
+    if (roar) {
+      const flameX = mouthX + mouthW * 0.6;
+      const flameY = mouthTop + mouthH * 0.5;
+      const flameR = w * 0.4;
+      const fg = ctx.createRadialGradient(
+        flameX, flameY, 0,
+        flameX, flameY, flameR
+      );
+      fg.addColorStop(0, 'rgba(255, 200, 80, 0.9)');
+      fg.addColorStop(0.5, 'rgba(255, 120, 40, 0.5)');
+      fg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.arc(flameX, flameY, flameR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  };
+  
+  
+  // =============== LICH (BOSS) ===============
   const drawLichSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
     const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#00ffaa';
-    const { band1, band2, band3 } = getBands(baseColor, brightness, 0);
+    const { band1, band2, band3 } = getBands(baseColor, brightness, 0.05);
   
-    const phase = time * 1.0 + sprite.id * 0.61;
+    const phase = time * 1.0 + sprite.id * 0.6;
+    const float = Math.sin(phase * 0.8) * (h * 0.03);
+    const sway = Math.sin(phase * 0.5) * (w * 0.02);
+    const channeling = sprite.state === 'attacking' || sprite.state === 'casting';
   
-    const bodyWidth = w * 0.5;
-    const bodyHeight = h * 0.95;
-    const cx = x + w / 2;
-    const cy = y + h / 2;
+    const cx = x + w / 2 + sway;
+    const cy = y + h / 2 + float;
   
+    const bodyHeight = h * 0.98;
     const bodyTop = cy - bodyHeight * 0.5;
     const bodyBottom = cy + bodyHeight * 0.5;
-    ctx.globalAlpha = brightness;
-    drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
   
-    // Robe base
+    ctx.globalAlpha = brightness * 0.95;
+    drawFeetShadow(ctx, cx, w * 0.4, bodyBottom, h, brightness);
+  
+    // ----- Robe (tall, angular) -----
+    const robeW = w * 0.46;
+    const robeH = bodyHeight * 0.7;
     const robeTop = bodyTop + bodyHeight * 0.2;
-    const robeHeight = bodyHeight * 0.6;
-    const robeLeft = cx - bodyWidth / 2;
+    const robeLeft = cx - robeW / 2;
   
     ctx.fillStyle = rgbToCss(band3);
-    ctx.fillRect(robeLeft, robeTop, bodyWidth, robeHeight);
+    ctx.beginPath();
+    ctx.moveTo(robeLeft, robeTop);
+    ctx.lineTo(robeLeft + robeW, robeTop);
+    ctx.lineTo(robeLeft + robeW * 0.85, robeTop + robeH);
+    ctx.lineTo(robeLeft + robeW * 0.15, robeTop + robeH);
+    ctx.closePath();
+    ctx.fill();
   
-    // Inner glowing strip
+    // Inner robe
     ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(
-      robeLeft + bodyWidth * 0.18,
-      robeTop,
-      bodyWidth * 0.64,
-      robeHeight
-    );
+    ctx.beginPath();
+    ctx.moveTo(cx - robeW * 0.18, robeTop);
+    ctx.lineTo(cx + robeW * 0.18, robeTop);
+    ctx.lineTo(cx + robeW * 0.12, robeTop + robeH);
+    ctx.lineTo(cx - robeW * 0.12, robeTop + robeH);
+    ctx.closePath();
+    ctx.fill();
   
-    // Arcane sigils
-    ctx.fillStyle = `rgba(0,255,200,${0.7 * brightness})`;
-    const sigilCount = 3;
-    for (let i = 0; i < sigilCount; i++) {
-      const sy = robeTop + robeHeight * (0.2 + 0.22 * i);
-      ctx.fillRect(cx - 3, sy, 6, 3);
-    }
+    // Trim
+    ctx.strokeStyle = `rgba(200,255,230,${0.6 * brightness})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(robeLeft + robeW * 0.15, robeTop + robeH);
+    ctx.lineTo(robeLeft, robeTop);
+    ctx.lineTo(robeLeft + robeW, robeTop);
+    ctx.lineTo(robeLeft + robeW * 0.85, robeTop + robeH);
+    ctx.stroke();
   
-    // Head (skull in hood)
-    const headHeight = bodyHeight * 0.22;
-    const headWidth = bodyWidth * 0.7;
+    // ----- Arms (skeletal sleeves forward) -----
+    const armY = robeTop + robeH * 0.28;
+    const armLen = bodyHeight * 0.28;
+    const armOff = robeW * 0.7;
+  
+    const drawArm = (side) => {
+      const ax = cx + armOff * 0.35 * side;
+  
+      // Sleeve
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.moveTo(ax, armY);
+      ctx.quadraticCurveTo(
+        ax + side * w * 0.15,
+        armY + armLen * 0.2,
+        ax + side * w * 0.13,
+        armY + armLen
+      );
+      ctx.quadraticCurveTo(
+        ax + side * w * 0.06,
+        armY + armLen * 0.7,
+        ax,
+        armY + armLen * 0.5
+      );
+      ctx.closePath();
+      ctx.fill();
+  
+      // Skeletal hand
+      const handX = ax + side * w * 0.13;
+      const handY = armY + armLen;
+      ctx.fillStyle = '#e6fff4';
+      ctx.beginPath();
+      ctx.ellipse(
+        handX,
+        handY,
+        w * 0.035,
+        h * 0.025,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+  
+      // Fingers (simple lines)
+      ctx.strokeStyle = '#6ddfb7';
+      ctx.lineWidth = 2;
+      const fingerSpread = w * 0.02;
+      [ -fingerSpread, 0, fingerSpread ].forEach(offset => {
+        ctx.beginPath();
+        ctx.moveTo(handX, handY);
+        ctx.lineTo(handX + offset, handY + h * 0.04);
+        ctx.stroke();
+      });
+    };
+  
+    drawArm(-1);
+    drawArm(1);
+  
+    // ----- Head / Skull + Crown -----
+    const headH = bodyHeight * 0.2;
+    const headW = w * 0.38;
     const headTop = bodyTop;
-    const headLeft = cx - headWidth / 2;
+    const headLeft = cx - headW / 2;
   
-    // Hood outer
-    ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
+    ctx.fillStyle = '#e6fff4';
+    ctx.beginPath();
+    ctx.roundRect(
+      headLeft,
+      headTop,
+      headW,
+      headH,
+      w * 0.03
+    );
+    ctx.fill();
   
-    // Skull
-    const skullHeight = headHeight * 0.8;
-    const skullWidth = headWidth * 0.7;
-    const skullLeft = cx - skullWidth / 2;
-    const skullTop = headTop + headHeight * 0.15;
-  
-    ctx.fillStyle = '#ddeee4';
-    ctx.fillRect(skullLeft, skullTop, skullWidth, skullHeight);
+    // Crown
+    const crownH = headH * 0.35;
+    ctx.fillStyle = rgbToCss(band1);
+    ctx.beginPath();
+    ctx.moveTo(headLeft, headTop + crownH);
+    ctx.lineTo(headLeft + headW * 0.2, headTop);
+    ctx.lineTo(headLeft + headW * 0.4, headTop + crownH * 0.3);
+    ctx.lineTo(headLeft + headW * 0.6, headTop);
+    ctx.lineTo(headLeft + headW * 0.8, headTop + crownH * 0.3);
+    ctx.lineTo(headLeft + headW, headTop + crownH);
+    ctx.closePath();
+    ctx.fill();
   
     // Eye sockets
-    const eyeWidth = skullWidth * 0.22;
-    const eyeHeight = skullHeight * 0.32;
-    const eyeY = skullTop + skullHeight * 0.25;
-    const eyeOffsetX = skullWidth * 0.26;
-    ctx.fillStyle = '#013528';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(
-        ex - eyeWidth / 2,
+    const eyeW = headW * 0.18;
+    const eyeH = headH * 0.25;
+    const eyeY = headTop + headH * 0.4;
+    const eyeOff = headW * 0.22;
+  
+    ctx.fillStyle = '#00281e';
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW / 2,
         eyeY,
-        eyeWidth,
-        eyeHeight
+        eyeW,
+        eyeH,
+        w * 0.015
       );
+      ctx.fill();
     });
   
-    // Glowing pupils
-    const irisWidth = eyeWidth * 0.5;
-    const irisHeight = eyeHeight * 0.6;
-    const glowPulse = 0.7 + 0.25 * Math.sin(time * 4 + sprite.id);
-    ctx.fillStyle = '#19cfa0';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
+    // Inner necrotic glow
+    const innerColor = '#16dba0';
+    const irisW = eyeW * 0.55;
+    const irisH = eyeH * 0.6;
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.fillStyle = innerColor;
       ctx.fillRect(
-        ex - irisWidth / 2,
-        eyeY + eyeHeight * 0.2,
-        irisWidth,
-        irisHeight
+        ex - irisW / 2,
+        eyeY + eyeH * 0.2,
+        irisW,
+        irisH
       );
   
-      const grad = ctx.createRadialGradient(
-        ex,
-        eyeY + eyeHeight / 2,
-        0,
-        ex,
-        eyeY + eyeHeight / 2,
-        eyeWidth
+      const eg = ctx.createRadialGradient(
+        ex, eyeY + eyeH * 0.35, 0,
+        ex, eyeY + eyeH * 0.35, eyeW * 1.4
       );
-      grad.addColorStop(0, `rgba(25,207,160,${glowPulse * brightness})`);
-      grad.addColorStop(1, 'rgba(25,207,160,0)');
-      ctx.fillStyle = grad;
+      eg.addColorStop(0, `rgba(22,219,160,${0.8 * brightness})`);
+      eg.addColorStop(1, 'rgba(22,219,160,0)');
+      ctx.fillStyle = eg;
       ctx.beginPath();
-      ctx.arc(ex, eyeY + eyeHeight / 2, eyeWidth, 0, Math.PI * 2);
+      ctx.arc(ex, eyeY + eyeH * 0.35, eyeW * 1.4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#19cfa0';
     });
   
     // Teeth
-    ctx.strokeStyle = 'rgba(10,20,15,0.7)';
-    ctx.lineWidth = 1;
-    const mouthTop = skullTop + skullHeight * 0.7;
-    const mouthBottom = skullTop + skullHeight * 0.92;
+    ctx.strokeStyle = 'rgba(5,20,15,0.8)';
+    ctx.lineWidth = 1.5;
+    const mouthTop = headTop + headH * 0.75;
+    const mouthBottom = headTop + headH * 0.95;
     const teethCount = 5;
     for (let i = 1; i < teethCount; i++) {
-      const tx = skullLeft + (skullWidth * i) / teethCount;
+      const tx = headLeft + (headW * i) / teethCount;
       ctx.beginPath();
       ctx.moveTo(tx, mouthTop);
       ctx.lineTo(tx, mouthBottom);
       ctx.stroke();
     }
   
-    // Aura ellipse
-    const auraWidth = bodyWidth * 1.7;
-    const auraHeight = bodyHeight * 1.25;
-    const auraPulse = 0.4 + 0.25 * Math.sin(phase * 1.5);
-  
-    ctx.strokeStyle = `rgba(0,255,200,${auraPulse * brightness})`;
-    ctx.lineWidth = 2;
+    // ----- Aura / Phylactery halo -----
+    const auraW = robeW * 1.7;
+    const auraH = bodyHeight * 1.2;
+    const auraGrad = ctx.createRadialGradient(
+      cx, (robeTop + robeTop + robeH) / 2, 0,
+      cx, (robeTop + robeTop + robeH) / 2, auraH * 0.7
+    );
+    const baseAura = 0.4 + Math.sin(time * 1.8 + sprite.id) * 0.1;
+    auraGrad.addColorStop(0, `rgba(0,255,200,${baseAura * brightness})`);
+    auraGrad.addColorStop(1, 'rgba(0,255,200,0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = auraGrad;
     ctx.beginPath();
     ctx.ellipse(
       cx,
-      (robeTop + robeTop + robeHeight) / 2,
-      auraWidth / 2,
-      auraHeight / 2,
+      (robeTop + robeTop + robeH) / 2,
+      auraW * 0.6,
+      auraH * 0.6,
       0,
       0,
       Math.PI * 2
     );
-    ctx.stroke();
+    ctx.fill();
+  
+    // Channeling rings
+    if (channeling) {
+      ctx.strokeStyle = `rgba(120,255,220,${0.7 * brightness})`;
+      ctx.lineWidth = 2;
+      const ringR = robeW * 0.9;
+      const ringY = robeTop + robeH * 0.45;
+      ctx.beginPath();
+      ctx.ellipse(cx, ringY, ringR, ringR * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   
     ctx.restore();
   };
   
-  // =============== GENERIC FALLBACK - Enhanced N64 Style ===============
+  // =============== GENERIC FALLBACK ===============
   const drawGenericMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
   
-    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#b0b0b0';
-    const { band1, band2, band3 } = getBands(baseColor, brightness, 0);
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#8f8fb0';
+    const { band1, band2, band3 } = getBands(baseColor, brightness, 0.02);
   
-    const phase = time * 1.0 + sprite.id * 0.42;
+    const phase = time * 0.9 + sprite.id * 0.37;
+    const bob = Math.sin(phase) * (h * 0.02);
+    const squish = 1 + Math.sin(phase * 2) * 0.06;
   
-    const bodyWidth = w * 0.5;
-    const bodyHeight = h * 0.9;
     const cx = x + w / 2;
-    const cy = y + h / 2 + Math.sin(phase) * (h * 0.02);
+    const cy = y + h / 2 + bob;
   
-    const bodyTop = cy - bodyHeight * 0.5;
-    const bodyBottom = cy + bodyHeight * 0.5;
+    const bodyHeight = h * 0.85;
+    const bodyWidth = w * 0.55;
+    const bodyTop = cy - (bodyHeight * squish) / 2;
+    const bodyBottom = cy + (bodyHeight * squish) / 2;
   
     ctx.globalAlpha = brightness;
     drawFeetShadow(ctx, cx, bodyWidth, bodyBottom, h, brightness);
   
-    // Torso block
-    const torsoHeight = bodyHeight * 0.55;
-    const torsoTop = bodyTop + bodyHeight * 0.2;
-    const torsoLeft = cx - bodyWidth / 2;
-  
+    // Blob body (rounded, layered)
     ctx.fillStyle = rgbToCss(band2);
-    ctx.fillRect(torsoLeft, torsoTop, bodyWidth, torsoHeight);
-  
-    // Shoulder pads
-    ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(
-      torsoLeft,
-      torsoTop - torsoHeight * 0.18,
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - bodyWidth / 2,
+      bodyTop,
       bodyWidth,
-      torsoHeight * 0.2
+      bodyHeight * squish,
+      w * 0.08
     );
+    ctx.fill();
   
-    // Simple arms
-    const armHeight = torsoHeight * 0.6;
-    const armWidth = bodyWidth * 0.18;
-    ctx.fillStyle = rgbToCss(band3);
-    [-1, 1].forEach(side => {
-      const ax = cx + side * (bodyWidth * 0.5);
-      ctx.fillRect(ax - armWidth / 2, torsoTop, armWidth, armHeight);
-    });
-  
-    // Head block
-    const headHeight = bodyHeight * 0.22;
-    const headWidth = bodyWidth * 0.7;
-    const headTop = bodyTop;
-    const headLeft = cx - headWidth / 2;
+    // Inner core
     ctx.fillStyle = rgbToCss(band1);
-    ctx.fillRect(headLeft, headTop, headWidth, headHeight);
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - bodyWidth * 0.35,
+      bodyTop + bodyHeight * 0.2,
+      bodyWidth * 0.7,
+      bodyHeight * 0.45,
+      w * 0.05
+    );
+    ctx.fill();
   
-    // Simple eyes
-    const eyeWidth = headWidth * 0.18;
-    const eyeHeight = headHeight * 0.25;
-    const eyeY = headTop + headHeight * 0.35;
-    const eyeOffsetX = headWidth * 0.24;
-    ctx.fillStyle = '#222';
-    [cx - eyeOffsetX, cx + eyeOffsetX].forEach(ex => {
-      ctx.fillRect(
-        ex - eyeWidth / 2,
+    // Lower darker band
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.roundRect(
+      cx - bodyWidth * 0.4,
+      bodyTop + bodyHeight * 0.55,
+      bodyWidth * 0.8,
+      bodyHeight * 0.25,
+      w * 0.05
+    );
+    ctx.fill();
+  
+    // Eyes
+    const eyeW = bodyWidth * 0.22;
+    const eyeH = bodyHeight * 0.2;
+    const eyeY = bodyTop + bodyHeight * 0.35;
+    const eyeOff = bodyWidth * 0.22;
+  
+    [ -1, 1 ].forEach(side => {
+      const ex = cx + side * eyeOff;
+  
+      // Outer eye plate
+      ctx.fillStyle = '#f2f2ff';
+      ctx.beginPath();
+      ctx.roundRect(
+        ex - eyeW / 2,
         eyeY,
-        eyeWidth,
-        eyeHeight
+        eyeW,
+        eyeH,
+        w * 0.02
+      );
+      ctx.fill();
+  
+      // Iris
+      const irisW = eyeW * 0.55;
+      const irisH = eyeH * 0.6;
+      ctx.fillStyle = '#545488';
+      ctx.fillRect(
+        ex - irisW / 2,
+        eyeY + eyeH * 0.2,
+        irisW,
+        irisH
+      );
+  
+      // Pupil
+      ctx.fillStyle = '#151524';
+      ctx.fillRect(
+        ex - irisW * 0.15,
+        eyeY + eyeH * 0.22,
+        irisW * 0.3,
+        irisH * 0.7
       );
     });
   
+    // Simple mouth line
+    const mouthW = bodyWidth * 0.3;
+    const mouthY = bodyTop + bodyHeight * 0.65;
+    ctx.strokeStyle = 'rgba(10,10,30,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - mouthW / 2, mouthY);
+    ctx.quadraticCurveTo(
+      cx,
+      mouthY + bodyHeight * 0.08,
+      cx + mouthW / 2,
+      mouthY
+    );
+    ctx.stroke();
+  
+    // Soft aura so it doesn't look like a placeholder
+    const auraR = bodyWidth * 0.9;
+    const auraGrad = ctx.createRadialGradient(
+      cx, cy, 0,
+      cx, cy, auraR
+    );
+    auraGrad.addColorStop(0, `rgba(180,180,220,${0.3 * brightness})`);
+    auraGrad.addColorStop(1, 'rgba(180,180,220,0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, auraR, 0, Math.PI * 2);
+    ctx.fill();
+  
     ctx.restore();
   };
-
 
   const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
     ctx.save();
