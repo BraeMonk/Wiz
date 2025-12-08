@@ -71,7 +71,10 @@ const WizardDungeonCrawler = () => {
       damageBonus: 0,
       speedBonus: 0,
       manaRegenBonus: 0,
-      goldMultiplier: 0
+      goldMultiplier: 0,
+      criticalChance: 0,
+      lifeSteal: 0,
+      essenceGain: 0,        // ← important
     };
   });
 
@@ -3297,8 +3300,17 @@ const WizardDungeonCrawler = () => {
                       kills: p.kills + 1
                     }));
                     
-                    const essenceBonus = 1 + (permanentUpgrades.essenceGain * 0.2);
-                    setEssence(prev => prev + Math.floor(enemy.essence * essenceBonus));
+                    const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
+                    const baseEssence = Number(enemy?.essence ?? 0);
+
+                    const essenceBonus = 1 + essenceGainUpgrade * 0.2;
+                    const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
+
+                    setEssence(prev => {
+                      const safePrev = Number.isFinite(prev) ? prev : 0;
+                      return safePrev + gainedEssence;
+                    });
+                    
                     setTotalKills(prev => {
                       const newTotal = prev + 1;
                       if (newTotal % 100 === 0) {
@@ -4245,7 +4257,16 @@ const WizardDungeonCrawler = () => {
               <p className="text-lg text-red-200">Level Reached: {currentLevel}</p>
               <p className="text-lg text-red-200">Enemies Slain: {player.kills}</p>
               <p className="text-lg text-red-200">Gold Collected: {player.gold}</p>
-              <p className="text-xl text-yellow-400 font-bold">Essence Earned: ✨ {Math.floor(essence - essenceAtStart)}</p>
+              <p className="text-xl text-yellow-400 font-bold">
+                Essence Earned: ✨ {
+                  Math.max(
+                    0,
+                    Number.isFinite(essence - essenceAtStart)
+                    ? Math.floor(essence - essenceAtStart)
+                    : 0
+                  )
+                }
+              </p>
             </div>
           </div>
 
