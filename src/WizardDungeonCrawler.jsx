@@ -92,6 +92,20 @@ const WizardDungeonCrawler = () => {
     return saved ? parseInt(saved) : 0;
   });
 
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Then add this function to show achievements:
+  const showNotification = (text, color = 'yellow') => {
+    setNotification({ text, color });
+  };
+
   // Player stats
   const [player, setPlayer] = useState({
     x: 5,
@@ -674,22 +688,24 @@ const WizardDungeonCrawler = () => {
   
   const castCurrentSpell = useCallback(() => {
     const idx = selectedSpellRef.current;
-  
+
     setEquippedSpells(prev => {
       if (idx < 0 || idx >= prev.length) return prev;
       const spell = prev[idx];
-    
+  
       if (spell.cooldown > 0) {
         return prev;
       }
-    
+  
       const currentPlayer = playerRef.current;
       if (currentPlayer.mana < spell.manaCost) {
         return prev;
       }
-    
-      setPlayer(p => ({ ...p, mana: p.mana - spell.manaCost }));
-    
+  
+    // IMPORTANT: Move setPlayer OUTSIDE of setEquippedSpells
+    // Remove this line from here:
+    // setPlayer(p => ({ ...p, mana: p.mana - spell.manaCost }));
+  
       const bonusDamage = permanentUpgrades.damageBonus * 0.1;
       const finalDamage = spell.damage * (1 + bonusDamage);
 
@@ -708,10 +724,20 @@ const WizardDungeonCrawler = () => {
           spellType: spell.key
         }
       ]);
-    
+  
       return prev.map((s, i) =>
         i === idx ? { ...s, cooldown: s.maxCooldown } : s
       );
+    });
+
+    // ADD THIS OUTSIDE - deduct mana after spell is cast
+    setPlayer(p => {
+      const idx = selectedSpellRef.current;
+      const spell = equippedSpellsRef.current[idx];
+      if (spell && p.mana >= spell.manaCost) {
+        return { ...p, mana: p.mana - spell.manaCost };
+      }
+      return p;
     });
   }, [permanentUpgrades.damageBonus]);
 
@@ -804,7 +830,7 @@ const WizardDungeonCrawler = () => {
         speed: stats.speed,
         xp: stats.xp * level,
         gold: stats.gold * level,
-        essence: stats.essence,
+        essence: stats.essence * (1 + Math.floor(level / 5)), // <-- ADD THIS LINE (bosses give more essence based on depth)
         color: stats.color,
         angle: Math.random() * Math.PI * 2,
         state: 'idle',
@@ -2891,7 +2917,19 @@ const WizardDungeonCrawler = () => {
                 const dist = Math.hypot(enemy.x - proj.x, enemy.y - proj.y);
                 if (dist < 0.5) {
                   hit = true;
-                  const newHealth = enemy.health - proj.damage;
+                  // Inside setProjectiles where you handle enemy hits
+                  const bonusDamage = permanentUpgrades.damageBonus * 0.1;
+                  const critChance = permanentUpgrades.criticalChance * 0.05;
+                  const isCrit = Math.random() < critChance;
+                  const critMultiplier = isCrit ? 2.0 : 1.0;
+                  const finalDamage = proj.damage * (1 + bonusDamage) * critMultiplier;
+
+                  if (isCrit) {
+                    createParticleEffect(proj.x, proj.y, '#ffff00', 20, 'explosion');
+                    addScreenShake(0.5);
+                  }
+
+                  const newHealth = enemy.health - finalDamage;
                   
                   // Create hit particles
                   createParticleEffect(proj.x, proj.y, enemy.color, 8, 'hit');
@@ -2914,7 +2952,27 @@ const WizardDungeonCrawler = () => {
                       kills: p.kills + 1
                     }));
                     
-                    setEssence(prev => prev + enemy.essence);
+                    const essenceBonus = 1 + (permanentUpgrades.essenceGain * 0.2);
+                    setEssence(prev => prev + Math.floor(enemy.essence * essenceBonus));
+                    setTotalKills(prev => {
+                      const newTotal = prev + 1;
+                      if (newTotal % 100 === 0) {
+                        showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
+                      }
+                      return newTotal;
+                    });
+
+                    // Life steal
+                    const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
+                    const healAmount = finalDamage * lifeStealPercent;
+                    if (healAmount > 0) {
+                      setPlayer(p => ({
+                        ...p,
+                        health: Math.min(p.maxHealth, p.health + healAmount)
+                      }));
+                      createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
+                    }
+                    
                     return { ...enemy, health: 0, dead: true };
                   }
                   return { ...enemy, health: newHealth, state: 'chasing' };
@@ -3759,8 +3817,8 @@ const WizardDungeonCrawler = () => {
   
   if (gameState === 'menu') {
     return (
-      <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center">
-        <div className="text-center px-4">
+      <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center overflow-y-auto">
+        <div className="text-center px-4 py-8">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
             <Wand2 className="inline-block mb-2" size={64} />
             <br />
@@ -3769,9 +3827,28 @@ const WizardDungeonCrawler = () => {
           <p className="text-lg md:text-xl text-purple-200 mb-2">
             A Roguelite Dungeon Crawler
           </p>
-          <p className="text-sm text-purple-300 mb-8">
-            Essence: ✨ {essence} | Runs: {totalRuns}
-          </p>
+        
+          <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-6 max-w-md mx-auto">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-purple-300">Essence</p>
+                <p className="text-xl text-yellow-400">✨ {essence}</p>
+              </div>
+              <div>
+                <p className="text-purple-300">Total Runs</p>
+                <p className="text-xl text-white">{totalRuns}</p>
+              </div>
+              <div>
+                <p className="text-purple-300">Deepest Level</p>
+                <p className="text-xl text-white">{highestLevel}</p>
+              </div>
+              <div>
+                <p className="text-purple-300">Total Kills</p>
+                <p className="text-xl text-red-400">{totalKills}</p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-4">
             <button
               onClick={startGame}
@@ -3788,6 +3865,7 @@ const WizardDungeonCrawler = () => {
               Permanent Upgrades
             </button>
           </div>
+        
           <div className="mt-8 text-purple-200 text-sm space-y-1">
             <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
             <p>1/2/3 Spells · ESC Pause</p>
@@ -3802,24 +3880,34 @@ const WizardDungeonCrawler = () => {
 
   if (gameState === 'dead') {
     return (
-      <div className="w-full h-screen bg-gradient-to-b from-red-900 via-red-800 to-black flex items-center justify-center">
-        <div className="text-center px-4">
+      <div className="w-full h-screen bg-gradient-to-b from-red-900 via-red-800 to-black flex items-center justify-center overflow-y-auto">
+        <div className="text-center px-4 py-8">
           <Skull className="mx-auto mb-4 text-red-400" size={80} />
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
             You Have Fallen
           </h1>
-          <p className="text-lg md:text-xl text-red-200 mb-2">
-            Level Reached: {currentLevel}
-          </p>
-          <p className="text-lg md:text-xl text-red-200 mb-2">
-            Enemies Slain: {player.kills}
-          </p>
-          <p className="text-lg md:text-xl text-red-200 mb-2">
-            Gold Collected: {player.gold}
-          </p>
-          <p className="text-xl text-yellow-400 mb-8">
-            Essence Earned: ✨ {essence}
-          </p>
+        
+          <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-6 max-w-md mx-auto">
+            <h2 className="text-xl text-yellow-400 mb-3">This Run</h2>
+            <div className="space-y-2 text-left">
+              <p className="text-lg text-red-200">Level Reached: {currentLevel}</p>
+              <p className="text-lg text-red-200">Enemies Slain: {player.kills}</p>
+              <p className="text-lg text-red-200">Gold Collected: {player.gold}</p>
+              <p className="text-xl text-yellow-400 font-bold">Essence Earned: ✨ {Math.floor(essence - (parseInt(localStorage.getItem('wizardEssence')) || 0))}</p>
+            </div>
+          </div>
+
+          <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-6 max-w-md mx-auto">
+            <h2 className="text-xl text-purple-400 mb-3">Career Stats</h2>
+            <div className="space-y-2 text-left">
+              <p className="text-md text-purple-200">Total Runs: {totalRuns}</p>
+              <p className="text-md text-purple-200">Deepest Dungeon: {highestLevel}</p>
+              <p className="text-md text-purple-200">Total Kills: {totalKills}</p>
+              <p className="text-md text-purple-200">Total Gold: {totalGold}</p>
+              <p className="text-md text-purple-200">Total Essence: ✨ {essence}</p>
+            </div>
+          </div>
+        
           <button
             onClick={startGame}
             className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all"
@@ -3903,6 +3991,14 @@ const WizardDungeonCrawler = () => {
       </div>
     );
   }
+
+  {notification && (
+    <div className="absolute top-20 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
+      <div className={`bg-${notification.color}-600 bg-opacity-90 px-6 py-3 rounded-lg text-white font-bold text-lg animate-pulse`}>
+        {notification.text}
+      </div>
+    </div>
+  )}
 
   // MAIN GAME VIEW
   return (
