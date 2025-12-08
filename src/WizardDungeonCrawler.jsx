@@ -84,31 +84,39 @@ const WizardDungeonCrawler = () => {
 
   const [essence, setEssence] = useState(() => {
     const saved = localStorage.getItem('wizardEssence');
-    return saved ? parseInt(saved) : 0;
+    const parsed = saved ? parseInt(saved, 10) : 0;
+    return isNaN(parsed) ? 0 : parsed;
   });
+
 
   const [essenceAtStart, setEssenceAtStart] = useState(0);
 
   const [totalRuns, setTotalRuns] = useState(() => {
     const saved = localStorage.getItem('wizardRuns');
-    return saved ? parseInt(saved) : 0;
+    const parsed = saved ? parseInt(saved, 10) : 0;
+    return isNaN(parsed) ? 0 : parsed;
   });
 
   // Add these state declarations near the top with your other useState hooks (around line 50-100)
   const [highestLevel, setHighestLevel] = useState(() => {
     const saved = localStorage.getItem('wizardHighestLevel');
-    return saved ? parseInt(saved) : 1;
+    const parsed = saved ? parseInt(saved, 10) : 1;
+    return isNaN(parsed) ? 1 : parsed;
   });
 
   const [totalKills, setTotalKills] = useState(() => {
     const saved = localStorage.getItem('wizardTotalKills');
-    return saved ? parseInt(saved) : 0;
+    const parsed = saved ? parseInt(saved, 10) : 0;
+    return isNaN(parsed) ? 0 : parsed;
   });
+
 
   const [totalGold, setTotalGold] = useState(() => {
     const saved = localStorage.getItem('wizardTotalGold');
-    return saved ? parseInt(saved) : 0;
+    const parsed = saved ? parseInt(saved, 10) : 0;
+    return isNaN(parsed) ? 0 : parsed;
   });
+
 
   const [notification, setNotification] = useState(null);
 
