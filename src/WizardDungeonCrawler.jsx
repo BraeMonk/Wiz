@@ -85,6 +85,23 @@ const WizardDungeonCrawler = () => {
     invincible: { active: false, timeLeft: 0 }
   });
 
+  const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(true);
+  const [sfxVolume, setSfxVolume] = useState(0.7);
+  const soundEffectsRef = useRef({
+    cast: null,
+    hit: null,
+    playerHit: null,
+    death: null,
+    pickup: null
+  });
+
+  const [damageVignette, setDamageVignette] = useState(0);
+  const damageVignetteRef = useRef(0);
+  
+  useEffect(() => {
+    damageVignetteRef.current = damageVignette;
+  }, [damageVignette]);
+  
   const [essence, setEssence] = useState(() => {
     const saved = localStorage.getItem('wizardEssence');
     const parsed = saved ? parseInt(saved, 10) : 0;
@@ -396,7 +413,8 @@ const WizardDungeonCrawler = () => {
   const bgmRef = useRef(null);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [musicVolume, setMusicVolume] = useState(0.5); // 50% default
+  const [musicVolume, setMusicVolume] = useState(0.5);
+  const musicInitializedRef = useRef(false);
 
   // Constants
   const DUNGEON_SIZE = 30;
@@ -613,64 +631,155 @@ const WizardDungeonCrawler = () => {
     localStorage.setItem('wizardTotalGold', totalGold.toString());
   }, [totalGold]);
 
-  // Music setup – create audio ONCE
+  // Music setup – create audio ONCE and keep playing
   useEffect(() => {
     if (musicTracks.length === 0) return;
-
+  
     const audio = new Audio();
     audio.loop = false;
     audio.volume = musicVolume;
     bgmRef.current = audio;
-
+  
     const handleEnded = () => {
       setCurrentTrackIndex(prev => (prev + 1) % musicTracks.length);
     };
-
+  
     audio.addEventListener('ended', handleEnded);
-
+  
     return () => {
       audio.removeEventListener('ended', handleEnded);
       audio.pause();
       audio.src = '';
       bgmRef.current = null;
     };
-  }, []); // <- no deps, runs once
-
+  }, []);
+  
+  // Handle track changes and initial play
   useEffect(() => {
     const audio = bgmRef.current;
     if (!audio || musicTracks.length === 0) return;
-
+  
     audio.src = musicTracks[currentTrackIndex];
     audio.load();
-
-    if (gameState === 'playing' && musicEnabled) {
-      audio.volume = 0; // start quiet
+  
+    if (musicEnabled && musicInitializedRef.current) {
+      audio.volume = 0;
       audio.play().catch(() => {});
-      fadeVolume(audio, musicVolume, 0.02); // fade up to target volume
+      fadeVolume(audio, musicVolume, 0.02);
     }
-  }, [currentTrackIndex, gameState, musicEnabled]); // <- no musicVolume
-
+  }, [currentTrackIndex]);
+  
+  // Handle play/pause based on musicEnabled only
   useEffect(() => {
     const audio = bgmRef.current;
     if (!audio) return;
-
-    if (!musicEnabled || gameState !== 'playing') {
-      audio.pause();
+  
+    if (!musicEnabled) {
+      fadeVolume(audio, 0, 0.05);
+      setTimeout(() => audio.pause(), 300);
       return;
     }
-
-    if (audio.paused && audio.readyState >= 2) {
+  
+    if (musicEnabled && audio.paused && audio.readyState >= 2) {
+      audio.volume = 0;
       audio.play().catch(() => {});
+      fadeVolume(audio, musicVolume, 0.02);
     }
-  }, [gameState, musicEnabled]);
-
+  }, [musicEnabled]);
+  
+  // Handle volume changes
   useEffect(() => {
     const audio = bgmRef.current;
-    if (!audio) return;
-
-    // Fade to new volume whenever musicVolume changes
+    if (!audio || !musicEnabled) return;
     fadeVolume(audio, musicVolume, 0.05);
   }, [musicVolume]);
+
+  // Sound effects setup
+  useEffect(() => {
+    // Create simple synth sounds using Web Audio API
+    const createSound = (frequency, duration, type = 'sine') => {
+      return () => {
+        if (!soundEffectsEnabled) return;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        
+        gainNode.gain.setValueAtTime(sfxVolume, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + duration);
+      };
+    };
+  
+    soundEffectsRef.current = {
+      cast: () => {
+        if (!soundEffectsEnabled) return;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(sfxVolume * 0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      },
+      hit: createSound(200, 0.15, 'sawtooth'),
+      playerHit: () => {
+        if (!soundEffectsEnabled) return;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+        
+        gainNode.gain.setValueAtTime(sfxVolume * 0.5, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      },
+      death: createSound(100, 0.5, 'sawtooth'),
+      pickup: () => {
+        if (!soundEffectsEnabled) return;
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.15);
+        
+        gainNode.gain.setValueAtTime(sfxVolume * 0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+      }
+    };
+  }, [soundEffectsEnabled, sfxVolume]);
   
   // Detect mobile
   useEffect(() => {
@@ -810,7 +919,7 @@ const WizardDungeonCrawler = () => {
   
   const castCurrentSpell = useCallback(() => {
     const idx = selectedSpellRef.current;
-
+  
     setEquippedSpells(prev => {
       if (idx < 0 || idx >= prev.length) return prev;
       const spell = prev[idx];
@@ -824,13 +933,12 @@ const WizardDungeonCrawler = () => {
         return prev;
       }
   
-    // IMPORTANT: Move setPlayer OUTSIDE of setEquippedSpells
-    // Remove this line from here:
-    // setPlayer(p => ({ ...p, mana: p.mana - spell.manaCost }));
+      // PLAY CAST SOUND
+      soundEffectsRef.current?.cast?.();
   
       const bonusDamage = permanentUpgrades.damageBonus * 0.1;
       const finalDamage = spell.damage * (1 + bonusDamage);
-
+  
       setProjectiles(projs => [
         ...projs,
         {
@@ -851,8 +959,7 @@ const WizardDungeonCrawler = () => {
         i === idx ? { ...s, cooldown: s.maxCooldown } : s
       );
     });
-
-    // ADD THIS OUTSIDE - deduct mana after spell is cast
+  
     setPlayer(p => {
       const idx = selectedSpellRef.current;
       const spell = equippedSpellsRef.current[idx];
@@ -2906,6 +3013,32 @@ const WizardDungeonCrawler = () => {
     
     ctx.restore(); // Restore screen shake transform
 
+    // Damage vignette overlay (light at low damage, solid at high damage)
+    if (damageVignette > 0.01) {
+      const t = Math.max(0, Math.min(1, damageVignette)); // clamp 0–1
+      const minDim = Math.min(width, height);
+    
+      // As damage increases:
+      // - inner radius shrinks (vignette creeps inward)
+      // - outer radius grows slightly
+      const innerRadius = minDim * (0.55 - 0.35 * t); // 0.55 → 0.20
+      const outerRadius = minDim * (0.75 + 0.15 * t); // 0.75 → 0.90
+    
+      // Start very light, get more solid with damage
+      const alpha = 0.12 + 0.45 * Math.pow(t, 1.2); // gentle at first, steeper near 1
+    
+      const vignetteGrad = ctx.createRadialGradient(
+        width / 2, height / 2, innerRadius,
+        width / 2, height / 2, outerRadius
+      );
+    
+      vignetteGrad.addColorStop(0, 'rgba(255, 0, 0, 0)');
+      vignetteGrad.addColorStop(1, `rgba(255, 0, 0, ${alpha})`);
+    
+      ctx.fillStyle = vignetteGrad;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
     const centerX = width / 2;
     const centerY = horizon;
     const crossSize = 15;
@@ -3031,6 +3164,9 @@ const WizardDungeonCrawler = () => {
     const gameLoop = () => {
       const now = Date.now();
       const deltaTime = (now - lastTime.current) / 1000;
+
+      // Fade damage vignette
+      setDamageVignette(prev => Math.max(0, prev - deltaTime * 2));
 
       setScreenShake(prev => ({
         x: prev.x * 0.85,
@@ -3244,6 +3380,12 @@ const WizardDungeonCrawler = () => {
           if (proj.isEnemyProjectile) {
             const distToPlayer = Math.hypot(proj.x - player.x, proj.y - player.y);
             if (distToPlayer < 0.5) {
+
+              soundEffectsRef.current?.playerHit?.();
+  
+              // TRIGGER DAMAGE VIGNETTE
+              setDamageVignette(1.0);
+              
               setPlayer(p => ({
                 ...p,
                 health: Math.max(0, p.health - proj.damage)
@@ -3265,6 +3407,9 @@ const WizardDungeonCrawler = () => {
                 const dist = Math.hypot(enemy.x - proj.x, enemy.y - proj.y);
                 if (dist < 0.5) {
                   hit = true;
+
+                  soundEffectsRef.current?.hit?.();
+                  
                   // Inside setProjectiles where you handle enemy hits
                   const bonusDamage = permanentUpgrades.damageBonus * 0.1;
                   const critChance = permanentUpgrades.criticalChance * 0.05;
@@ -3284,6 +3429,9 @@ const WizardDungeonCrawler = () => {
                   addScreenShake(0.2);
                   
                   if (newHealth <= 0) {
+
+                    soundEffectsRef.current?.death?.();
+                    
                     // Death particles
                     createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
                     addScreenShake(enemy.isBoss ? 0.8 : 0.3);
@@ -3516,6 +3664,10 @@ const WizardDungeonCrawler = () => {
                 ...p,
                 health: Math.max(0, p.health - enemy.damage)
               }));
+
+              soundEffectsRef.current?.playerHit?.();
+
+              setDamageVignette(1.0);
       
               addScreenShake(0.5);
               createParticleEffect(player.x, player.y, '#ff0000', 15, 'hit');
@@ -3589,6 +3741,9 @@ const WizardDungeonCrawler = () => {
       
           const dist = Math.hypot(item.x - player.x, item.y - player.y);
           if (dist < 0.7) {
+
+            soundEffectsRef.current?.pickup?.();
+            
             createParticleEffect(item.x, item.y, item.color, 15, 'explosion');
             
             setPlayer(p => {
@@ -3698,7 +3853,6 @@ const WizardDungeonCrawler = () => {
   const startGame = () => {
     levelStartTimeRef.current = Date.now();
     
-    // Track essence at the start of this run
     setEssenceAtStart(essence);
   
     setGameState('playing');
@@ -3725,7 +3879,9 @@ const WizardDungeonCrawler = () => {
     leftTouchId.current = null;
     rightTouchId.current = null;
   
-    if (bgmRef.current && musicEnabled) {
+    // Start music on first game start
+    if (!musicInitializedRef.current && bgmRef.current && musicEnabled) {
+      musicInitializedRef.current = true;
       const audio = bgmRef.current;
       audio.src = musicTracks[0];
       audio.load();
@@ -4324,30 +4480,57 @@ const WizardDungeonCrawler = () => {
   if (gameState === 'paused') {
     return (
       <div className="w-full h-screen bg-black bg-opacity-80 flex items-center justify-center">
-        <div className="text-center bg-gray-800 p-6 md:p-8 rounded-lg mx-4">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+        <div className="text-center bg-gray-800 p-6 md:p-8 rounded-lg mx-4 max-w-md">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Paused
           </h1>
-
-          <button
-            onClick={() => setMusicEnabled(prev => !prev)}
-            className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg text-sm mb-4 w-full"
-          >
-            {musicEnabled ? '🔊 Music: On' : '🔇 Music: Off'}
-          </button>
-
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={musicVolume}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setMusicVolume(v);
-            }}
-          />
-
+  
+          <div className="space-y-4 mb-6">
+            <div>
+              <button
+                onClick={() => setMusicEnabled(prev => !prev)}
+                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg text-sm mb-2 w-full"
+              >
+                {musicEnabled ? '🔊 Music: On' : '🔇 Music: Off'}
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-white text-xs">Volume:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={musicVolume}
+                  onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-white text-xs">{Math.round(musicVolume * 100)}%</span>
+              </div>
+            </div>
+  
+            <div>
+              <button
+                onClick={() => setSoundEffectsEnabled(prev => !prev)}
+                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg text-sm mb-2 w-full"
+              >
+                {soundEffectsEnabled ? '🔊 SFX: On' : '🔇 SFX: Off'}
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-white text-xs">Volume:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={sfxVolume}
+                  onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-white text-xs">{Math.round(sfxVolume * 100)}%</span>
+              </div>
+            </div>
+          </div>
+  
           <button
             onClick={() => setGameState('playing')}
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg mb-4 w-full"
