@@ -1186,8 +1186,34 @@ const WizardDungeonCrawler = () => {
       map.push(row);
     }
   
-    // 2) Carve rooms and remember their centers
+    // 2) Rooms list
     const rooms = [];
+  
+    // 2a) Guaranteed start room around (5,5)
+    const startRoomSize = 8; // 8x8 start room
+    const half = Math.floor(startRoomSize / 2);
+  
+    const startX = Math.max(1, 5 - half);
+    const startY = Math.max(1, 5 - half);
+    const endX = Math.min(size - 2, startX + startRoomSize - 1);
+    const endY = Math.min(size - 2, startY + startRoomSize - 1);
+  
+    for (let y = startY; y <= endY; y++) {
+      for (let x = startX; x <= endX; x++) {
+        map[y][x] = TILE_FLOOR;
+      }
+    }
+  
+    rooms.push({
+      x: startX,
+      y: startY,
+      w: endX - startX + 1,
+      h: endY - startY + 1,
+      centerX: 5,   // we know spawn is here
+      centerY: 5
+    });
+  
+    // 2b) Carve additional random rooms and remember their centers
     const numRooms = 5 + level * 2;
   
     for (let i = 0; i < numRooms; i++) {
@@ -1247,16 +1273,7 @@ const WizardDungeonCrawler = () => {
       }
     }
   
-    // 4) Clear spawn area around (5,5) so start is safe
-    for (let dy = -2; dy <= 2; dy++) {
-      for (let dx = -2; dx <= 2; dx++) {
-        const x = 5 + dx;
-        const y = 5 + dy;
-        if (x > 0 && x < size - 1 && y > 0 && y < size - 1) {
-          map[y][x] = TILE_FLOOR;
-        }
-      }
-    }
+    // ❌ 4) REMOVE your old "clear spawn area around (5,5)" block entirely
   
     // 5) Decorate walls with themed variants (2–7) near floors
     for (let y = 1; y < size - 1; y++) {
