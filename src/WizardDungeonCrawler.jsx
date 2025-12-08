@@ -2472,7 +2472,6 @@ const WizardDungeonCrawler = () => {
 
     // N64-style environmental details per theme
     const theme = getCurrentTheme(currentLevel);
-    const themeName = THEME_ORDER[(currentLevel - 1) % THEME_ORDER.length];
     
     // Draw atmospheric particles/effects based on theme
     ctx.save();
@@ -2609,7 +2608,6 @@ const WizardDungeonCrawler = () => {
     
     // Floor/ceiling atmospheric effects
     ctx.save();
-    const floorStart = Math.max(0, Math.min(height, horizon));
     
     if (themeName === 'lava') {
       // Lava glow on floor
