@@ -87,6 +87,8 @@ const WizardDungeonCrawler = () => {
     return saved ? parseInt(saved) : 0;
   });
 
+  const [essenceAtStart, setEssenceAtStart] = useState(0);
+
   const [totalRuns, setTotalRuns] = useState(() => {
     const saved = localStorage.getItem('wizardRuns');
     return saved ? parseInt(saved) : 0;
@@ -3675,6 +3677,9 @@ const WizardDungeonCrawler = () => {
 
   const startGame = () => {
     levelStartTimeRef.current = Date.now();
+    
+    // Track essence at the start of this run
+    setEssenceAtStart(essence);
   
     setGameState('playing');
     setCurrentLevel(1);
@@ -3704,10 +3709,9 @@ const WizardDungeonCrawler = () => {
       const audio = bgmRef.current;
       audio.src = musicTracks[0];
       audio.load();
-      audio.volume = 0; // start silent
+      audio.volume = 0;
       audio.play().catch(err => console.log('Audio play blocked:', err));
-
-      fadeVolume(audio, musicVolume, 0.02); // fade 0 -> musicVolume
+      fadeVolume(audio, musicVolume, 0.02);
     }
   };
 
@@ -3717,8 +3721,9 @@ const WizardDungeonCrawler = () => {
   
   const continueToNextLevel = () => {
     levelStartTimeRef.current = Date.now();
-    setHighestLevel(prev => Math.max(prev, nextLevel));
-    setCurrentLevel(prev => prev + 1);
+    const nextLevelNum = currentLevel + 1;
+    setHighestLevel(prev => Math.max(prev, nextLevelNum));
+    setCurrentLevel(nextLevelNum);
     setPlayer(prev => ({ ...prev, x: 5, y: 5, angle: 0 }));
     setPitch(0);
     mobileMoveRef.current = { x: 0, y: 0 };
@@ -4232,7 +4237,7 @@ const WizardDungeonCrawler = () => {
               <p className="text-lg text-red-200">Level Reached: {currentLevel}</p>
               <p className="text-lg text-red-200">Enemies Slain: {player.kills}</p>
               <p className="text-lg text-red-200">Gold Collected: {player.gold}</p>
-              <p className="text-xl text-yellow-400 font-bold">Essence Earned: ✨ {Math.floor(essence - (parseInt(localStorage.getItem('wizardEssence')) || 0))}</p>
+              <p className="text-xl text-yellow-400 font-bold">Essence Earned: ✨ {Math.floor(essence - essenceAtStart)}</p>
             </div>
           </div>
 
