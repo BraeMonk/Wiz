@@ -3846,61 +3846,63 @@ const WizardDungeonCrawler = () => {
   
   if (gameState === 'menu') {
     return (
-      <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center overflow-y-auto">
-        <div className="text-center px-4 py-8">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
-            <Wand2 className="inline-block mb-2" size={64} />
-            <br />
-            WIZARD&apos;S DESCENT
-          </h1>
-          <p className="text-lg md:text-xl text-purple-200 mb-2">
-            A Roguelite Dungeon Crawler
-          </p>
+      <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 overflow-y-auto">
+        <div className="min-h-screen flex flex-col justify-center px-4 py-8">
+          <div className="text-center max-w-2xl mx-auto w-full">
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
+              <Wand2 className="inline-block mb-2" size={64} />
+              <br />
+              WIZARD&apos;S DESCENT
+            </h1>
+            <p className="text-lg md:text-xl text-purple-200 mb-2">
+              A Roguelite Dungeon Crawler
+            </p>
         
-          <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-6 max-w-md mx-auto">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-purple-300">Essence</p>
-                <p className="text-xl text-yellow-400">✨ {essence}</p>
-              </div>
-              <div>
-                <p className="text-purple-300">Total Runs</p>
-                <p className="text-xl text-white">{totalRuns}</p>
-              </div>
-              <div>
-                <p className="text-purple-300">Deepest Level</p>
-                <p className="text-xl text-white">{highestLevel}</p>
-              </div>
-              <div>
-                <p className="text-purple-300">Total Kills</p>
-                <p className="text-xl text-red-400">{totalKills}</p>
+            <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-6">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-purple-300">Essence</p>
+                  <p className="text-xl text-yellow-400">✨ {essence || 0}</p>
+                </div>
+                <div>
+                  <p className="text-purple-300">Total Runs</p>
+                  <p className="text-xl text-white">{totalRuns || 0}</p>
+                </div>
+                <div>
+                  <p className="text-purple-300">Deepest Level</p>
+                  <p className="text-xl text-white">{highestLevel || 1}</p>
+                </div>
+                <div>
+                  <p className="text-purple-300">Total Kills</p>
+                  <p className="text-xl text-red-400">{totalKills || 0}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            <button
-              onClick={startGame}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all transform hover:scale-105 w-full md:w-auto"
-            >
-              Begin Your Journey
-            </button>
-            <br />
-            <button
-              onClick={() => setShowUpgradeMenu(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all transform hover:scale-105 w-full md:w-auto"
-            >
-              <TrendingUp className="inline-block mr-2" size={24} />
-              Permanent Upgrades
-            </button>
-          </div>
+            <div className="space-y-4">
+              <button
+                onClick={startGame}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all transform hover:scale-105 w-full md:w-auto"
+              >
+                Begin Your Journey
+              </button>
+              <br />
+              <button
+                onClick={() => setShowUpgradeMenu(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 md:py-4 md:px-8 rounded-lg text-lg md:text-xl transition-all transform hover:scale-105 w-full md:w-auto"
+              >
+                <TrendingUp className="inline-block mr-2" size={24} />
+                Permanent Upgrades
+              </button>
+            </div>
         
-          <div className="mt-8 text-purple-200 text-sm space-y-1">
-            <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
-            <p>1/2/3 Spells · ESC Pause</p>
-            <p>Mobile: Left Thumb Move · Right Thumb Look · Tap to Cast</p>
-            <p>Controller: Left Stick Move · Right Stick Look · RB Cast · LB Cycle</p>
-            <p className="text-yellow-400 mt-4">Bosses every 5 levels!</p>
+            <div className="mt-8 text-purple-200 text-sm space-y-1">
+              <p>Desktop: WASD Move · Mouse Look · Click Cast</p>
+              <p>1/2/3 Spells · ESC Pause</p>
+              <p>Mobile: Left Thumb Move · Right Thumb Look · Tap to Cast</p>
+              <p>Controller: Left Stick Move · Right Stick Look · RB Cast · LB Cycle</p>
+              <p className="text-yellow-400 mt-4">Bosses every 5 levels!</p>
+            </div>
           </div>
         </div>
       </div>
