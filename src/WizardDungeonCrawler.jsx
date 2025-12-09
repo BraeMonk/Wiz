@@ -382,7 +382,11 @@ const WizardDungeonCrawler = () => {
     'inferno',
     'blizzard',
     'storm',
-    'shadow'
+    'shadow',
+    'dash',
+    'pushback',
+    'arcaneward',
+    'gravitychoke'
     // you can tweak this list however you want
   ];
 
@@ -1219,69 +1223,107 @@ const WizardDungeonCrawler = () => {
   function addSecretRoomsToDungeon(map, level) {
     const size = map.length;
     const chests = [];
-
-    const numRooms = Math.min(3, 1 + Math.floor(level / 3)); // up to 3 secret rooms
-
+  
+    // Up to 3 secret rooms, scaling a bit with level
+    const numRooms = Math.min(3, 1 + Math.floor(level / 3));
+  
+    const dirs = [
+      { dx: 0, dy: -1 }, // up
+      { dx: 1, dy: 0 },  // right
+      { dx: 0, dy: 1 },  // down
+      { dx: -1, dy: 0 }  // left
+    ];
+  
     for (let n = 0; n < numRooms; n++) {
-      let roomX = null;
-      let roomY = null;
+      let doorX = null;
+      let doorY = null;
+      let intoRoomDir = null;
       let attempts = 0;
-
-      // find a floor tile away from spawn
-      while (attempts < 200 && roomX === null) {
-        const x = Math.floor(Math.random() * size);
-        const y = Math.floor(Math.random() * size);
-        if (map[y][x] === TILE_FLOOR && Math.hypot(x - 5, y - 5) > 8) {
-          roomX = x;
-          roomY = y;
-        }
+  
+      // Find a wall tile that:
+      //  - is not too close to spawn
+      //  - has a FLOOR neighbour on one side (corridor)
+      //  - has space on the opposite side to carve a room
+      while (attempts < 400 && doorX === null) {
+        const x = 1 + Math.floor(Math.random() * (size - 2));
+        const y = 1 + Math.floor(Math.random() * (size - 2));
         attempts++;
+  
+        if (Math.hypot(x - 5, y - 5) <= 8) continue;    // keep secrets away from spawn
+        if (map[y][x] === TILE_FLOOR) continue;         // we want a WALL tile
+  
+        // Look for any neighbour that is FLOOR (corridor side)
+        const floorNeighbours = dirs
+          .map(d => ({ d, nx: x + d.dx, ny: y + d.dy }))
+          .filter(({ nx, ny }) =>
+            nx > 0 && ny > 0 && nx < size - 1 && ny < size - 1 &&
+            map[ny][nx] === TILE_FLOOR
+          );
+  
+        if (floorNeighbours.length === 0) continue;
+  
+        // Pick one corridor side at random
+        const { d } = floorNeighbours[Math.floor(Math.random() * floorNeighbours.length)];
+  
+        // The room will be carved "behind" the wall, opposite the corridor
+        const rxCenter = x - d.dx * 2;
+        const ryCenter = y - d.dy * 2;
+  
+        // Make sure the 3×3 pocket fits inside the map
+        if (
+          rxCenter - 1 <= 0 || ryCenter - 1 <= 0 ||
+          rxCenter + 1 >= size - 1 || ryCenter + 1 >= size - 1
+        ) {
+          continue;
+        }
+  
+        doorX = x;
+        doorY = y;
+        intoRoomDir = { dx: -d.dx, dy: -d.dy }; // direction from door into the room
+  
+        // We have a valid spot
+        break;
       }
-
-      if (roomX === null) continue;
-
-      // carve a tiny 3x3 pocket room around (roomX, roomY)
+  
+      if (doorX === null) {
+        // Could not find a valid secret for this slot, move on
+        continue;
+      }
+  
+      // 1) Mark the door tile as a secret door
+      map[doorY][doorX] = TILE_SECRET_DOOR;
+  
+      // 2) Carve a 3×3 pocket room behind the door
+      const roomCenterX = doorX + intoRoomDir.dx * 2;
+      const roomCenterY = doorY + intoRoomDir.dy * 2;
+  
       for (let oy = -1; oy <= 1; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
-          const tx = roomX + ox;
-          const ty = roomY + oy;
+          const tx = roomCenterX + ox;
+          const ty = roomCenterY + oy;
+  
           if (tx <= 0 || ty <= 0 || tx >= size - 1 || ty >= size - 1) continue;
-
+  
           if (ox === -1 || ox === 1 || oy === -1 || oy === 1) {
-            // walls around
+            // outer ring walls
             map[ty][tx] = TILE_WALL;
           } else {
-            // center floor
+            // inner floor
             map[ty][tx] = TILE_FLOOR;
           }
         }
       }
-
-      // pick one wall as a secret door
-      const candidates = [
-        [roomX, roomY - 2],
-        [roomX + 2, roomY],
-        [roomX, roomY + 2],
-        [roomX - 2, roomY]
-      ].filter(([x, y]) =>
-        x > 0 && y > 0 && x < size - 1 && y < size - 1 && map[y][x] !== TILE_FLOOR
-      );
-
-      if (candidates.length > 0) {
-        const [sx, sy] = candidates[Math.floor(Math.random() * candidates.length)];
-        map[sy][sx] = TILE_SECRET_DOOR;
-      }
-
-      // chest in center of room
+  
+      // 3) Place chest in the center of the pocket
       chests.push({
         id: `secret-${n}-${Date.now()}`,
-        x: roomX + 0.5,
-        y: roomY + 0.5,
+        x: roomCenterX + 0.5,
+        y: roomCenterY + 0.5,
         opened: false,
         inSecretRoom: true
       });
     }
-
+  
     return { mapWithSecrets: map, chests };
   }
 
