@@ -1143,7 +1143,8 @@ const WizardDungeonCrawler = () => {
               return { ...enemy, health: newHealth };
             }
             return enemy;
-          }).filter(e => !e.dead)
+          })
+          .filter(e => !e.dead)
         );
       } else if (spell.key === 'arcaneward') {
         // Activate shield
@@ -1178,10 +1179,8 @@ const WizardDungeonCrawler = () => {
             return enemy;
           })
         );
-        
         setGravitySuspendedEnemies(suspendedIds);
         addScreenShake(0.4);
-        
       } else {
         // Normal projectile spell
         setProjectiles(projs => [
