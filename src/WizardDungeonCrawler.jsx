@@ -1225,7 +1225,7 @@ const WizardDungeonCrawler = () => {
     const chests = [];
   
     // 30% chance for a secret room to spawn at all
-    if (Math.random() > 0.3) {
+    if (Math.random() > 0.45) {
       return { mapWithSecrets: map, chests: [] };
     }
   
@@ -1435,7 +1435,7 @@ const WizardDungeonCrawler = () => {
       };
 
       const label = prettyNameMap[chosenKey] || chosenKey;
-    showNotification?.(`Secret power: +1 ${label}`, 'green');
+      showNotification?.(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
 
       return next;
     });
@@ -1449,8 +1449,9 @@ const WizardDungeonCrawler = () => {
     const candidates = SECRET_SPELL_KEYS.filter(key => !ownedKeys.has(key));
 
     if (candidates.length === 0) {
-      // nothing left to unlock
-      showNotification?.('You have mastered all secret spells.', 'purple');
+      // nothing left to unlock, give a stat upgrade instead
+      showNotification?.('✨ All spells mastered! Granting upgrade...', 'purple');
+      upgradeRandomPermanentStat();
       return;
     }
 
@@ -1464,7 +1465,7 @@ const WizardDungeonCrawler = () => {
       return [...prev, { ...spell }];
     });
 
-    showNotification?.(`Secret spell unlocked: ${spell.name}!`, 'purple');
+    showNotification?.(`🔮 Secret Spell Unlocked: ${spell.name}!`, 'purple');
   };
 
   const revealNearbySecretDoors = (px, py, dungeon) => {
@@ -6583,17 +6584,18 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      // Check for chest opening - this doesn't interrupt gameplay flow
+      // Check for chest opening - debounced to prevent multiple triggers
       const nearbyChest = chests.find(chest => {
         if (chest.opened) return false;
         const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
         return dist < 0.7;
       });
 
-      if (nearbyChest) {
+      if (nearbyChest && !nearbyChest.opening) {
+        // Mark chest as opening to prevent re-triggering
         setChests(prev =>
           prev.map(chest => {
-            if (chest.id === nearbyChest.id) {
+            if (chest.id === nearbyChest.id && !chest.opening && !chest.opened) {
               // Open this chest
               createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
               addScreenShake(0.3);
@@ -6603,7 +6605,8 @@ const WizardDungeonCrawler = () => {
               // Show notification based on chest type
               if (chest.inSecretRoom) {
                 showNotification?.('🗝️ Secret Chest Opened!', 'yellow');
-                grantSecretChestReward();
+                // Delay the reward grant slightly to ensure state is stable
+                setTimeout(() => grantSecretChestReward(), 50);
               } else {
                 showNotification?.('💰 Chest Opened!', 'yellow');
                 // Regular chest rewards
@@ -6630,7 +6633,7 @@ const WizardDungeonCrawler = () => {
                 }
               }
               
-              return { ...chest, opened: true };
+              return { ...chest, opened: true, opening: true };
             }
             return chest;
           })
