@@ -6519,25 +6519,28 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      setChests(prev =>
-        prev.map(chest => {
-          if (chest.opened) return chest;
-
+      setChests(prev => {
+        let hasOpened = false;
+        const updated = prev.map(chest => {
+          if (chest.opened || hasOpened) return chest;
+      
           const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
           if (dist < 0.7) {
+            hasOpened = true;
             createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
             addScreenShake(0.3);
             showNotification?.('You opened a secret chest!', 'yellow');
-
+      
             grantSecretChestReward();
-
+      
             return { ...chest, opened: true };
           }
-
-          return chest;
-        })
-      );
       
+          return chest;
+        });
+        return updated;
+      });
+            
       setPlayer(prev => {
         if (prev.xp >= prev.xpToNext) {
           return {
