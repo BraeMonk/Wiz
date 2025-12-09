@@ -1231,9 +1231,11 @@ const WizardDungeonCrawler = () => {
       let roomY = null;
       let attempts = 0;
   
+      // Pick a floor tile not too close to spawn
       while (attempts < 200 && roomX === null) {
-        const x = Math.floor(Math.random() * (size - 6)) + 3;
+        const x = Math.floor(Math.random() * (size - 6)) + 3; // keep margin
         const y = Math.floor(Math.random() * (size - 6)) + 3;
+  
         if (map[y][x] === TILE_FLOOR && Math.hypot(x - 5, y - 5) > 8) {
           roomX = x;
           roomY = y;
@@ -1243,7 +1245,7 @@ const WizardDungeonCrawler = () => {
   
       if (roomX === null) continue;
   
-      // Carve 3x3 room with floors in all cells
+      // 1) Carve 3x3 room with floors in all cells (the pocket)
       for (let oy = -1; oy <= 1; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
           const tx = roomX + ox;
@@ -1253,47 +1255,65 @@ const WizardDungeonCrawler = () => {
         }
       }
   
-      // Add walls around the room (5x5 perimeter)
+      // 2) Add walls around the room (5x5 perimeter)
       for (let oy = -2; oy <= 2; oy++) {
         for (let ox = -2; ox <= 2; ox++) {
           const tx = roomX + ox;
           const ty = roomY + oy;
           if (tx <= 0 || ty <= 0 || tx >= size - 1 || ty >= size - 1) continue;
-          
-          // Only place wall if it's on the perimeter and not already floor from the 3x3 center
-          if ((Math.abs(ox) === 2 || Math.abs(oy) === 2) && map[ty][tx] !== TILE_FLOOR) {
+  
+          const onPerimeter = (Math.abs(ox) === 2 || Math.abs(oy) === 2);
+          if (onPerimeter && map[ty][tx] !== TILE_FLOOR) {
             map[ty][tx] = TILE_WALL;
           }
         }
       }
   
-      // Pick one wall as secret door - must be exactly 2 tiles away
-      const candidates = [
-        [roomX, roomY - 2],
-        [roomX + 2, roomY],
-        [roomX, roomY + 2],
-        [roomX - 2, roomY]
-      ].filter(([x, y]) =>
-        x > 0 && y > 0 && x < size - 1 && y < size - 1 && map[y][x] === TILE_WALL
-      );
+      // 3) Pick one wall as a secret door, BUT ensure the outside tile is floor
+      const doorCandidates = [];
   
-      if (candidates.length > 0) {
-        const [sx, sy] = candidates[Math.floor(Math.random() * candidates.length)];
+      const checkDoor = (sx, sy, outX, outY) => {
+        if (
+          sx > 0 && sy > 0 && sx < size - 1 && sy < size - 1 &&
+          outX > 0 && outY > 0 && outX < size - 1 && outY < size - 1 &&
+          map[sy][sx] === TILE_WALL &&          // wall here
+          map[outY][outX] === TILE_FLOOR        // corridor / floor outside
+        ) {
+          doorCandidates.push({ sx, sy });
+        }
+      };
+  
+      // top middle (+ outside above)
+      checkDoor(roomX, roomY - 2, roomX, roomY - 3);
+      // right middle (+ outside right)
+      checkDoor(roomX + 2, roomY, roomX + 3, roomY);
+      // bottom middle (+ outside below)
+      checkDoor(roomX, roomY + 2, roomX, roomY + 3);
+      // left middle (+ outside left)
+      checkDoor(roomX - 2, roomY, roomX - 3, roomY);
+  
+      if (doorCandidates.length > 0) {
+        const { sx, sy } = doorCandidates[Math.floor(Math.random() * doorCandidates.length)];
+  
+        // Mark this as secret door
         map[sy][sx] = TILE_SECRET_DOOR;
-        
-        // Also clear the tile directly adjacent to the door (towards the room center)
-        const dx = Math.sign(roomX - sx);
+  
+        // Clear the tile directly *inside* toward the room center
+        const dx = Math.sign(roomX - sx); // direction from door to center
         const dy = Math.sign(roomY - sy);
         if (dx !== 0 && dy === 0) {
-          // Horizontal door
+          // horizontal door
           map[sy][sx + dx] = TILE_FLOOR;
         } else if (dy !== 0 && dx === 0) {
-          // Vertical door
+          // vertical door
           map[sy + dy][sx] = TILE_FLOOR;
         }
+      } else {
+        // no valid door spot with a floor outside = skip this secret room
+        continue;
       }
   
-      // Chest in center
+      // 4) Chest in center of the secret room
       chests.push({
         id: `secret-${n}-${Date.now()}`,
         x: roomX + 0.5,
