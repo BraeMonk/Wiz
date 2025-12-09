@@ -5789,6 +5789,7 @@ const WizardDungeonCrawler = () => {
               addScreenShake(0.4);
               return;
             }
+          }
       
           // Player projectiles hitting enemies
           let hit = false;
