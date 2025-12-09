@@ -314,7 +314,33 @@ const WizardDungeonCrawler = () => {
       icon: Skull,
       price: 160,
       description: 'Dark magic missile'
-    }
+    },
+    dash: {
+      key: 'dash',
+      name: 'Teleport Dash',
+      damage: 0,
+      manaCost: 20,
+      cooldown: 0,
+      maxCooldown: 3.0,
+      color: '#00ffff',
+      icon: Wind,
+      price: 100,
+      description: 'Instant forward teleport',
+      isUtility: true
+    },
+    pushback: {
+      key: 'pushback',
+      name: 'Force Push',
+      damage: 10,
+      manaCost: 25,
+      cooldown: 0,
+      maxCooldown: 4.0,
+      color: '#88ff88',
+      icon: Wind,
+      price: 120,
+      description: 'Knockback enemies around you',
+      isUtility: true
+    },
   };
 
   // Spells that can be unlocked from secret chests
@@ -551,6 +577,7 @@ const WizardDungeonCrawler = () => {
     demon: { health: 50, damage: 15, speed: 1.0, xp: 25, color: '#ff3b3b', gold: 10, essence: 2 },
     ghost: { health: 20, damage: 8, speed: 2.0, xp: 20, color: '#b8c6ff', gold: 8, essence: 1 },
     golem: { health: 80, damage: 20, speed: 0.8, xp: 40, color: '#b08b57', gold: 15, essence: 3 },
+    archer: { health: 25, damage: 12, speed: 0.8, xp: 18, color: '#8b4513', gold: 7, essence: 1, isRanged: true, attackRange: 10, attackCooldown: 2.5 },
     // Bosses
     boss_necromancer: { health: 300, damage: 30, speed: 0.6, xp: 200, color: '#aa00ff', gold: 100, essence: 20, isBoss: true },
     boss_dragon: { health: 500, damage: 40, speed: 0.5, xp: 300, color: '#ff0000', gold: 150, essence: 30, isBoss: true },
@@ -963,27 +990,143 @@ const WizardDungeonCrawler = () => {
         return prev;
       }
   
-      // PLAY CAST SOUND
       soundEffectsRef.current?.cast?.();
   
       const bonusDamage = permanentUpgrades.damageBonus * 0.1;
       const finalDamage = spell.damage * (1 + bonusDamage);
   
-      setProjectiles(projs => [
-        ...projs,
-        {
-          id: Math.random(),
-          x: currentPlayer.x,
-          y: currentPlayer.y,
-          angle: currentPlayer.angle,
-          speed: 8,
-          damage: finalDamage,
-          color: spell.color,
-          lifetime: 3,
-          dead: false,
-          spellType: spell.key
+      // Handle utility spells
+      if (spell.key === 'dash') {
+        // Teleport forward
+        const dashDistance = 3;
+        const newX = currentPlayer.x + Math.cos(currentPlayer.angle) * dashDistance;
+        const newY = currentPlayer.y + Math.sin(currentPlayer.angle) * dashDistance;
+        
+        const tileX = Math.floor(newX);
+        const tileY = Math.floor(newY);
+        
+        if (
+          tileX >= 0 && tileX < DUNGEON_SIZE &&
+          tileY >= 0 && tileY < DUNGEON_SIZE &&
+          dungeon[tileY][tileX] === 0
+        ) {
+          setPlayer(p => ({ ...p, x: newX, y: newY }));
+          createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 20, 'explosion');
+          createParticleEffect(newX, newY, spell.color, 20, 'explosion');
+          addScreenShake(0.3);
         }
-      ]);
+
+        if (/* successful dash */) {
+          // Create trail effect between old and new position
+          const steps = 10;
+          for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const trailX = currentPlayer.x + (newX - currentPlayer.x) * t;
+            const trailY = currentPlayer.y + (newY - currentPlayer.y) * t;
+            setTimeout(() => {
+              createParticleEffect(trailX, trailY, spell.color, 5, 'explosion');
+            }, i * 20);
+          }
+          
+          setPlayer(p => ({ ...p, x: newX, y: newY }));
+          addScreenShake(0.3);
+        }
+      } else if (spell.key === 'pushback') {
+        // Push back all nearby enemies
+        createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 30, 'explosion');
+        addScreenShake(0.6);
+        
+        setEnemies(prevEnemies =>
+          prevEnemies.map(enemy => {
+            const dx = enemy.x - currentPlayer.x;
+            const dy = enemy.y - currentPlayer.y;
+            const distance = Math.hypot(dx, dy);
+            
+            if (distance < 3) {
+              // Apply damage
+              const newHealth = enemy.health - finalDamage;
+              
+              // Push enemy away
+              const pushDistance = 2;
+              const angle = Math.atan2(dy, dx);
+              const newX = enemy.x + Math.cos(angle) * pushDistance;
+              const newY = enemy.y + Math.sin(angle) * pushDistance;
+              
+              const tileX = Math.floor(newX);
+              const tileY = Math.floor(newY);
+              
+              if (
+                tileX >= 0 && tileX < DUNGEON_SIZE &&
+                tileY >= 0 && tileY < DUNGEON_SIZE &&
+                dungeon[tileY][tileX] === 0
+              ) {
+                createParticleEffect(enemy.x, enemy.y, spell.color, 10, 'hit');
+                
+                if (newHealth <= 0) {
+                  soundEffectsRef.current?.death?.();
+                  createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
+                  
+                  const newCombo = comboRef.current.count + 1;
+                  const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
+                  setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
+                  
+                  const comboBonus = comboRef.current.multiplier;
+                  setPlayer(p => ({
+                    ...p,
+                    xp: p.xp + Math.floor(enemy.xp * comboBonus),
+                    gold: p.gold + Math.floor(enemy.gold * comboBonus),
+                    kills: p.kills + 1
+                  }));
+                  
+                  const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
+                  const baseEssence = Number(enemy?.essence ?? 0);
+                  const essenceBonus = 1 + essenceGainUpgrade * 0.2;
+                  const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
+                  setEssence(prev => {
+                    const safePrev = Number.isFinite(prev) ? prev : 0;
+                    return safePrev + gainedEssence;
+                  });
+                  
+                  setTotalKills(prev => {
+                    const newTotal = prev + 1;
+                    if (newTotal % 100 === 0) {
+                      showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
+                    }
+                    return newTotal;
+                  });
+                  
+                  return { ...enemy, x: newX, y: newY, health: 0, dead: true };
+                }
+                
+                return { ...enemy, x: newX, y: newY, health: newHealth };
+              }
+              
+              if (newHealth <= 0) {
+                return { ...enemy, health: 0, dead: true };
+              }
+              return { ...enemy, health: newHealth };
+            }
+            return enemy;
+          }).filter(e => !e.dead)
+        );
+      } else {
+        // Normal projectile spell
+        setProjectiles(projs => [
+          ...projs,
+          {
+            id: Math.random(),
+            x: currentPlayer.x,
+            y: currentPlayer.y,
+            angle: currentPlayer.angle,
+            speed: 8,
+            damage: finalDamage,
+            color: spell.color,
+            lifetime: 3,
+            dead: false,
+            spellType: spell.key
+          }
+        ]);
+      }
   
       return prev.map((s, i) =>
         i === idx ? { ...s, cooldown: s.maxCooldown } : s
@@ -994,11 +1137,12 @@ const WizardDungeonCrawler = () => {
       const idx = selectedSpellRef.current;
       const spell = equippedSpellsRef.current[idx];
       if (spell && p.mana >= spell.manaCost) {
-        return { ...p, mana: p.mana - spell.manaCost };
+        const newMana = Math.max(0, p.mana - spell.manaCost);
+        return { ...p, mana: newMana };
       }
       return p;
     });
-  }, [permanentUpgrades.damageBonus]);
+  }, [permanentUpgrades.damageBonus, dungeon]);
 
   function addSecretRoomsToDungeon(map, level) {
     const size = map.length;
@@ -1348,7 +1492,7 @@ const WizardDungeonCrawler = () => {
   
       // minions
       const minionCount = 5 + level;
-      const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem'];
+      const enemyTypesList = ['skeleton', 'demon', 'ghost', 'golem', 'archer'];
   
       for (let i = 0; i < minionCount; i++) {
         let mx, my;
@@ -1531,6 +1675,8 @@ const WizardDungeonCrawler = () => {
         return drawGhostSprite(ctx, sprite, x, y, w, h, brightness, time);
       case 'golem':
         return drawGolemSprite(ctx, sprite, x, y, w, h, brightness, time);
+      case 'archer':
+        return drawArcherSprite(ctx, sprite, x, y, w, h, brightness, time);
       case 'boss_necromancer':
         return drawNecromancerSprite(ctx, sprite, x, y, w, h, brightness, time);
       case 'boss_dragon':
@@ -2947,6 +3093,324 @@ const WizardDungeonCrawler = () => {
     ctx.restore();
   };
 
+  const drawArcherSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
+    ctx.save();
+  
+    const baseColor = sprite.color?.startsWith('#') ? sprite.color : '#8b4513';
+    const { band1, band2, band3 } = getBands(baseColor, brightness, 0);
+  
+    const phase = time * 0.8 + sprite.id * 0.9;
+    const breathe = Math.sin(phase * 0.6) * (h * 0.012);
+    const readyBow = sprite.state === 'attacking' ? 1 : 0;
+  
+    const cx = x + w / 2;
+    const cy = y + h / 2 + breathe;
+  
+    const bodyHeight = h * 0.92;
+    const bodyTop = cy - bodyHeight * 0.5;
+    const bodyBottom = cy + bodyHeight * 0.5;
+  
+    ctx.globalAlpha = brightness;
+    drawFeetShadow(ctx, cx, w * 0.45, bodyBottom, h, brightness);
+  
+    // --------------------------------------------
+    // ✦ LEGS (archer stance - one forward)
+    // --------------------------------------------
+    const legH = bodyHeight * 0.28;
+    const legW = w * 0.18;
+    const legsTop = bodyBottom - legH * 1.05;
+    const legOff = w * 0.15;
+  
+    const drawLeg = (side, forward) => {
+      const lx = cx + legOff * side;
+      const legForward = forward ? legH * 0.15 : 0;
+  
+      // Upper leg
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW / 2,
+        legsTop - legForward,
+        legW,
+        legH * 0.55,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Knee
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.arc(lx, legsTop + legH * 0.55 - legForward, w * 0.04, 0, Math.PI * 2);
+      ctx.fill();
+  
+      // Lower leg
+      ctx.fillStyle = rgbToCss(band2);
+      ctx.beginPath();
+      ctx.roundRect(
+        lx - legW * 0.42,
+        legsTop + legH * 0.55 + w * 0.02 - legForward,
+        legW * 0.84,
+        legH * 0.4,
+        w * 0.03
+      );
+      ctx.fill();
+  
+      // Boot
+      const bootY = legsTop + legH * 0.95 - legForward;
+      ctx.fillStyle = rgbToCss(band3);
+      ctx.beginPath();
+      ctx.ellipse(lx, bootY, legW * 0.5, h * 0.03, 0, 0, Math.PI * 2);
+      ctx.fill();
+    };
+  
+    drawLeg(-1, true);  // Left leg forward
+    drawLeg(1, false);  // Right leg back
+  
+    // --------------------------------------------
+    // ✦ QUIVER (on back)
+    // --------------------------------------------
+    const quiverX = cx + w * 0.25;
+    const quiverY = bodyTop + bodyHeight * 0.35;
+    const quiverH = bodyHeight * 0.25;
+  
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.roundRect(
+      quiverX - w * 0.05,
+      quiverY,
+      w * 0.1,
+      quiverH,
+      w * 0.02
+    );
+    ctx.fill();
+  
+    // Arrow fletchings sticking out
+    ctx.fillStyle = '#ff6b6b';
+    for (let i = 0; i < 3; i++) {
+      const ay = quiverY + quiverH * (0.2 + i * 0.25);
+      ctx.beginPath();
+      ctx.moveTo(quiverX - w * 0.03, ay);
+      ctx.lineTo(quiverX + w * 0.02, ay - h * 0.02);
+      ctx.lineTo(quiverX + w * 0.02, ay + h * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+  
+    // --------------------------------------------
+    // ✦ TORSO (leather armor)
+    // --------------------------------------------
+    const torsoH = bodyHeight * 0.48;
+    const torsoW = w * 0.52;
+    const torsoTop = bodyTop + bodyHeight * 0.22;
+    const torsoLeft = cx - torsoW / 2;
+  
+    // Main torso
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft,
+      torsoTop,
+      torsoW,
+      torsoH,
+      w * 0.04
+    );
+    ctx.fill();
+  
+    // Leather strap across chest
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft + torsoW * 0.15,
+      torsoTop + torsoH * 0.25,
+      torsoW * 0.7,
+      torsoH * 0.12,
+      w * 0.02
+    );
+    ctx.fill();
+  
+    // Belt
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.roundRect(
+      torsoLeft + torsoW * 0.1,
+      torsoTop + torsoH * 0.75,
+      torsoW * 0.8,
+      torsoH * 0.15,
+      w * 0.02
+    );
+    ctx.fill();
+  
+    // --------------------------------------------
+    // ✦ BOW & ARMS (drawing animation)
+    // --------------------------------------------
+    const shoulderY = torsoTop + torsoH * 0.18;
+    const armH = bodyHeight * 0.35;
+  
+    // Left arm (bow hand) - extended
+    const leftArmX = cx - torsoW * 0.4;
+    const leftArmExtend = w * 0.3;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      leftArmX - w * 0.04,
+      shoulderY,
+      w * 0.08,
+      armH * 0.5,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    // Left forearm extending
+    ctx.beginPath();
+    ctx.roundRect(
+      leftArmX - leftArmExtend - w * 0.035,
+      shoulderY + armH * 0.5,
+      leftArmExtend + w * 0.07,
+      w * 0.07,
+      w * 0.025
+    );
+    ctx.fill();
+  
+    // Bow
+    const bowX = leftArmX - leftArmExtend;
+    const bowY = shoulderY + armH * 0.55;
+    const bowH = h * 0.35;
+  
+    ctx.strokeStyle = rgbToCss(band3);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(bowX, bowY, bowH * 0.5, -Math.PI * 0.6, Math.PI * 0.6);
+    ctx.stroke();
+  
+    // Bowstring
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bowX, bowY - bowH * 0.45);
+    if (readyBow > 0.5) {
+      // Pulled back
+      ctx.lineTo(cx + torsoW * 0.2, shoulderY + armH * 0.6);
+    } else {
+      // Relaxed
+      ctx.lineTo(bowX - w * 0.05, bowY);
+    }
+    ctx.lineTo(bowX, bowY + bowH * 0.45);
+    ctx.stroke();
+  
+    // Arrow when drawn
+    if (readyBow > 0.5) {
+      const arrowStartX = bowX;
+      const arrowStartY = bowY;
+      const arrowEndX = cx + torsoW * 0.2;
+      const arrowEndY = shoulderY + armH * 0.6;
+  
+      // Arrow shaft
+      ctx.strokeStyle = '#d4a574';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(arrowStartX, arrowStartY);
+      ctx.lineTo(arrowEndX, arrowEndY);
+      ctx.stroke();
+  
+      // Arrow head
+      ctx.fillStyle = '#888888';
+      ctx.beginPath();
+      ctx.moveTo(arrowStartX - w * 0.03, arrowStartY);
+      ctx.lineTo(arrowStartX, arrowStartY - h * 0.015);
+      ctx.lineTo(arrowStartX, arrowStartY + h * 0.015);
+      ctx.closePath();
+      ctx.fill();
+  
+      // Fletching
+      ctx.fillStyle = '#ff6b6b';
+      ctx.beginPath();
+      ctx.moveTo(arrowEndX, arrowEndY - h * 0.02);
+      ctx.lineTo(arrowEndX + w * 0.03, arrowEndY);
+      ctx.lineTo(arrowEndX, arrowEndY + h * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+  
+    // Right arm (drawing hand)
+    const rightArmX = cx + torsoW * 0.4;
+    const pullBack = readyBow * w * 0.15;
+  
+    ctx.fillStyle = rgbToCss(band2);
+    ctx.beginPath();
+    ctx.roundRect(
+      rightArmX - w * 0.04,
+      shoulderY,
+      w * 0.08,
+      armH * 0.5,
+      w * 0.03
+    );
+    ctx.fill();
+  
+    // Right forearm
+    ctx.beginPath();
+    ctx.roundRect(
+      rightArmX - w * 0.035 + pullBack,
+      shoulderY + armH * 0.5,
+      w * 0.07,
+      armH * 0.45,
+      w * 0.025
+    );
+    ctx.fill();
+  
+    // --------------------------------------------
+    // ✦ HEAD / HOOD
+    // --------------------------------------------
+    const headH = bodyHeight * 0.2;
+    const headW = w * 0.42;
+    const headTop = bodyTop;
+    const headLeft = cx - headW / 2;
+  
+    // Hood
+    ctx.fillStyle = rgbToCss(band3);
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      headTop + headH * 0.5,
+      headW * 0.55,
+      headH * 0.6,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Face (shadowed)
+    ctx.fillStyle = 'rgba(50, 40, 30, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      headTop + headH * 0.55,
+      headW * 0.4,
+      headH * 0.45,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  
+    // Eyes (focused)
+    const eyeW = headW * 0.12;
+    const eyeY = headTop + headH * 0.5;
+    const eyeOff = headW * 0.18;
+  
+    ctx.fillStyle = '#ffeb99';
+    [-1, 1].forEach(side => {
+      const ex = cx + side * eyeOff;
+      ctx.beginPath();
+      ctx.ellipse(ex, eyeY, eyeW * 0.3, eyeW * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  };
+
   // =============== NECROMANCER (BOSS) ===============
   const drawNecromancerSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
     ctx.save();
@@ -4046,6 +4510,93 @@ const WizardDungeonCrawler = () => {
         ctx.beginPath();
         ctx.arc(size * 0.3, size * 0.3, size * 0.6, 0, Math.PI * 2);
         ctx.fill();
+        break;
+      }
+
+      case 'dash': {
+        ctx.translate(x, y);
+        
+        // Teleport swirl effect
+        const swirls = 3;
+        for (let i = 0; i < swirls; i++) {
+          const angle = (i / swirls) * Math.PI * 2 + time * 5;
+          const radius = size * (0.8 + i * 0.4);
+          
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = brightness * (1 - i * 0.3);
+          
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, angle, angle + Math.PI * 0.8);
+          ctx.stroke();
+        }
+        
+        // Center burst
+        const burstGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
+        burstGlow.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+        burstGlow.addColorStop(0.5, 'rgba(0, 200, 255, 0.4)');
+        burstGlow.addColorStop(1, 'rgba(0, 150, 255, 0)');
+        ctx.globalAlpha = brightness;
+        ctx.fillStyle = burstGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Stars
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2 + time * 3;
+          const px = Math.cos(angle) * size * 1.5;
+          const py = Math.sin(angle) * size * 1.5;
+          ctx.fillRect(px - 2, py - 2, 4, 4);
+        }
+        break;
+      }
+      
+      case 'pushback': {
+        ctx.translate(x, y);
+        
+        // Expanding force rings
+        const rings = 4;
+        for (let i = 0; i < rings; i++) {
+          const ringPhase = (time * 3 + i * 0.3) % 1;
+          const ringRadius = size * (0.5 + ringPhase * 2.5);
+          const ringAlpha = brightness * (1 - ringPhase);
+          
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 4;
+          ctx.globalAlpha = ringAlpha;
+          
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        // Center impact
+        const impactGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.8);
+        impactGlow.addColorStop(0, 'rgba(136, 255, 136, 0.9)');
+        impactGlow.addColorStop(0.5, 'rgba(100, 255, 100, 0.5)');
+        impactGlow.addColorStop(1, 'rgba(50, 200, 50, 0)');
+        ctx.globalAlpha = brightness;
+        ctx.fillStyle = impactGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Directional force lines
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = brightness * 0.8;
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const innerR = size * 0.5;
+          const outerR = size * 2;
+          
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+          ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
+          ctx.stroke();
+        }
         break;
       }
 
@@ -5241,9 +5792,109 @@ const WizardDungeonCrawler = () => {
           if (canSeePlayer) {
             newState = 'chasing';
       
+            // Ranged enemy behavior
+            if (ENEMY_TYPES[enemy.type]?.isRanged) {
+              const idealRange = ENEMY_TYPES[enemy.type].attackRange * 0.7;
+              
+              if (distance < idealRange - 2) {
+                // Too close, back away
+                const ex = Math.floor(enemy.x);
+                const ey = Math.floor(enemy.y);
+                
+                const awayAngle = Math.atan2(-dy, -dx);
+                const moveAmount = enemy.speed * deltaTime;
+                const testX = enemy.x + Math.cos(awayAngle) * moveAmount;
+                const testY = enemy.y + Math.sin(awayAngle) * moveAmount;
+                
+                const tileX = Math.floor(testX);
+                const tileY = Math.floor(testY);
+                
+                if (
+                  tileX >= 0 && tileX < DUNGEON_SIZE &&
+                  tileY >= 0 && tileY < DUNGEON_SIZE &&
+                  dungeon[tileY][tileX] === 0
+                ) {
+                  newX = testX;
+                  newY = testY;
+                }
+                newAngle = awayAngle;
+              } else if (distance > idealRange + 2) {
+                // Too far, move closer (use pathfinding)
+                const ex = Math.floor(enemy.x);
+                const ey = Math.floor(enemy.y);
+      
+                if (ex >= 0 && ex < DUNGEON_SIZE && ey >= 0 && ey < DUNGEON_SIZE) {
+                  const hereDist = distField[ey]?.[ex] ?? Infinity;
+                  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                  let bestTile = null;
+                  let bestDist = hereDist;
+      
+                  for (const [ox, oy] of dirs) {
+                    const nx = ex + ox;
+                    const ny = ey + oy;
+                    if (nx < 0 || nx >= DUNGEON_SIZE || ny < 0 || ny >= DUNGEON_SIZE)
+                      continue;
+      
+                    const d = distField[ny][nx];
+                    if (d < bestDist) {
+                      bestDist = d;
+                      bestTile = { x: nx, y: ny };
+                    }
+                  }
+      
+                  if (bestTile && bestDist < Infinity) {
+                    const targetX = bestTile.x + 0.5;
+                    const targetY = bestTile.y + 0.5;
+                    const dirX = targetX - enemy.x;
+                    const dirY = targetY - enemy.y;
+                    const len = Math.hypot(dirX, dirY) || 1;
+                    const moveAmount = enemy.speed * deltaTime;
+      
+                    newX = enemy.x + (dirX / len) * moveAmount;
+                    newY = enemy.y + (dirY / len) * moveAmount;
+                    newAngle = Math.atan2(dirY, dirX);
+      
+                    const tileX = Math.floor(newX);
+                    const tileY = Math.floor(newY);
+                    if (
+                      tileX < 0 || tileX >= DUNGEON_SIZE ||
+                      tileY < 0 || tileY >= DUNGEON_SIZE ||
+                      dungeon[tileY][tileX] > 0
+                    ) {
+                      newX = enemy.x;
+                      newY = enemy.y;
+                    }
+                  }
+                }
+              } else {
+                // In ideal range, just aim at player
+                newAngle = Math.atan2(dy, dx);
+              }
+              
+              // Shoot at player if in range and cooldown ready
+              if (distance <= ENEMY_TYPES[enemy.type].attackRange && newAttackCooldown <= 0) {
+                setProjectiles(projs => [
+                  ...projs,
+                  {
+                    id: Math.random(),
+                    x: enemy.x,
+                    y: enemy.y,
+                    angle: Math.atan2(dy, dx),
+                    speed: 6,
+                    damage: enemy.damage,
+                    color: enemy.color,
+                    lifetime: 4,
+                    dead: false,
+                    spellType: 'enemy',
+                    isEnemyProjectile: true
+                  }
+                ]);
+                newAttackCooldown = ENEMY_TYPES[enemy.type].attackCooldown;
+                addScreenShake(0.2);
+              }
+            }
             // Boss special attacks
-            if (enemy.isBoss && distance < 8 && newAttackCooldown <= 0) {
-              // Shoot projectile at player
+            else if (enemy.isBoss && distance < 8 && newAttackCooldown <= 0) {
               setProjectiles(projs => [
                 ...projs,
                 {
@@ -5263,116 +5914,113 @@ const WizardDungeonCrawler = () => {
               newAttackCooldown = 2.0;
               addScreenShake(0.3);
             }
+            // Melee enemy pathfinding
+            else if (!ENEMY_TYPES[enemy.type]?.isRanged) {
+              const ex = Math.floor(enemy.x);
+              const ey = Math.floor(enemy.y);
       
-            const ex = Math.floor(enemy.x);
-            const ey = Math.floor(enemy.y);
+              if (ex >= 0 && ex < DUNGEON_SIZE && ey >= 0 && ey < DUNGEON_SIZE) {
+                const hereDist = distField[ey]?.[ex] ?? Infinity;
+                const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                let bestTile = null;
+                let bestDist = hereDist;
       
-            if (ex >= 0 && ex < DUNGEON_SIZE && ey >= 0 && ey < DUNGEON_SIZE) {
-              const hereDist =
-                distField[ey] && distField[ey][ex] !== undefined
-                  ? distField[ey][ex]
-                  : Infinity;
+                for (const [ox, oy] of dirs) {
+                  const nx = ex + ox;
+                  const ny = ey + oy;
+                  if (nx < 0 || nx >= DUNGEON_SIZE || ny < 0 || ny >= DUNGEON_SIZE)
+                    continue;
       
-              const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-              let bestTile = null;
-              let bestDist = hereDist;
-      
-              for (const [ox, oy] of dirs) {
-                const nx = ex + ox;
-                const ny = ey + oy;
-                if (nx < 0 || nx >= DUNGEON_SIZE || ny < 0 || ny >= DUNGEON_SIZE)
-                  continue;
-      
-                const d = distField[ny][nx];
-                if (d < bestDist) {
-                  bestDist = d;
-                  bestTile = { x: nx, y: ny };
+                  const d = distField[ny][nx];
+                  if (d < bestDist) {
+                    bestDist = d;
+                    bestTile = { x: nx, y: ny };
+                  }
                 }
-              }
       
-              if (bestTile && bestDist < Infinity) {
-                const targetX = bestTile.x + 0.5;
-                const targetY = bestTile.y + 0.5;
-                const dirX = targetX - enemy.x;
-                const dirY = targetY - enemy.y;
-                const len = Math.hypot(dirX, dirY) || 1;
-                const moveAmount = enemy.speed * deltaTime;
+                if (bestTile && bestDist < Infinity) {
+                  const targetX = bestTile.x + 0.5;
+                  const targetY = bestTile.y + 0.5;
+                  const dirX = targetX - enemy.x;
+                  const dirY = targetY - enemy.y;
+                  const len = Math.hypot(dirX, dirY) || 1;
+                  const moveAmount = enemy.speed * deltaTime;
       
-                newX = enemy.x + (dirX / len) * moveAmount;
-                newY = enemy.y + (dirY / len) * moveAmount;
-                newAngle = Math.atan2(dirY, dirX);
+                  newX = enemy.x + (dirX / len) * moveAmount;
+                  newY = enemy.y + (dirY / len) * moveAmount;
+                  newAngle = Math.atan2(dirY, dirX);
       
-                const tileX = Math.floor(newX);
-                const tileY = Math.floor(newY);
-                if (
-                  tileX < 0 || tileX >= DUNGEON_SIZE || 
-                  tileY < 0 || tileY >= DUNGEON_SIZE ||
-                  dungeon[tileY][tileX] > 0
-                ) {
-                  const fallbackMove = enemy.speed * deltaTime * 0.6;
-                  const fallbackAngle = Math.atan2(dy, dx);
-                  const fx = enemy.x + Math.cos(fallbackAngle) * fallbackMove;
-                  const fy = enemy.y + Math.sin(fallbackAngle) * fallbackMove;
-      
-                  const ftx = Math.floor(fx);
-                  const fty = Math.floor(fy);
+                  const tileX = Math.floor(newX);
+                  const tileY = Math.floor(newY);
                   if (
-                    ftx >= 0 && ftx < DUNGEON_SIZE && 
-                    fty >= 0 && fty < DUNGEON_SIZE &&
-                    dungeon[fty][ftx] === 0
+                    tileX < 0 || tileX >= DUNGEON_SIZE ||
+                    tileY < 0 || tileY >= DUNGEON_SIZE ||
+                    dungeon[tileY][tileX] > 0
                   ) {
-                    newX = fx;
-                    newY = fy;
-                    newAngle = fallbackAngle;
-                  } else {
-                    newX = enemy.x;
-                    newY = enemy.y;
+                    const fallbackMove = enemy.speed * deltaTime * 0.6;
+                    const fallbackAngle = Math.atan2(dy, dx);
+                    const fx = enemy.x + Math.cos(fallbackAngle) * fallbackMove;
+                    const fy = enemy.y + Math.sin(fallbackAngle) * fallbackMove;
+      
+                    const ftx = Math.floor(fx);
+                    const fty = Math.floor(fy);
+                    if (
+                      ftx >= 0 && ftx < DUNGEON_SIZE &&
+                      fty >= 0 && fty < DUNGEON_SIZE &&
+                      dungeon[fty][ftx] === 0
+                    ) {
+                      newX = fx;
+                      newY = fy;
+                      newAngle = fallbackAngle;
+                    } else {
+                      newX = enemy.x;
+                      newY = enemy.y;
+                    }
                   }
                 }
               }
-            }
       
-            if (distance < 1.5 && newAttackCooldown <= 0) {
-              newState = 'attacking';
-              setPlayer(p => ({
-                ...p,
-                health: Math.max(0, p.health - enemy.damage)
-              }));
-
-              soundEffectsRef.current?.playerHit?.();
-
-              setDamageVignette(1.0);
+              // Melee attack
+              if (distance < 1.5 && newAttackCooldown <= 0) {
+                newState = 'attacking';
+                setPlayer(p => ({
+                  ...p,
+                  health: Math.max(0, p.health - enemy.damage)
+                }));
       
-              addScreenShake(0.5);
-              createParticleEffect(player.x, player.y, '#ff0000', 15, 'hit');
+                soundEffectsRef.current?.playerHit?.();
+                setDamageVignette(1.0);
+                addScreenShake(0.5);
+                createParticleEffect(player.x, player.y, '#ff0000', 15, 'hit');
       
-              try {
-                if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                  navigator.vibrate(60);
-                }
-      
-                if (navigator.getGamepads) {
-                  const pads = navigator.getGamepads();
-                  const gp = pads && pads[0];
-                  if (
-                    gp &&
-                    gp.vibrationActuator &&
-                    gp.vibrationActuator.type === 'dual-rumble'
-                  ) {
-                    gp.vibrationActuator
-                      .playEffect('dual-rumble', {
-                        duration: 90,
-                        strongMagnitude: 0.9,
-                        weakMagnitude: 0.4
-                      })
-                      .catch(() => {});
+                try {
+                  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                    navigator.vibrate(60);
                   }
-                }
-              } catch (err) {
-                console.log('Haptics not supported', err);
-              }
       
-              newAttackCooldown = 1.5;
+                  if (navigator.getGamepads) {
+                    const pads = navigator.getGamepads();
+                    const gp = pads && pads[0];
+                    if (
+                      gp &&
+                      gp.vibrationActuator &&
+                      gp.vibrationActuator.type === 'dual-rumble'
+                    ) {
+                      gp.vibrationActuator
+                        .playEffect('dual-rumble', {
+                          duration: 90,
+                          strongMagnitude: 0.9,
+                          weakMagnitude: 0.4
+                        })
+                        .catch(() => {});
+                    }
+                  }
+                } catch (err) {
+                  console.log('Haptics not supported', err);
+                }
+      
+                newAttackCooldown = 1.5;
+              }
             }
           } else {
             newState = 'idle';
@@ -6427,20 +7075,27 @@ const WizardDungeonCrawler = () => {
           {equippedSpells.map((spell, index) => {
             const Icon = spell.icon;
             const isSelected = index === selectedSpell;
-            const isReady =
-              spell.cooldown <= 0 && player.mana >= spell.manaCost;
-
+            const isReady = spell.cooldown <= 0 && player.mana >= spell.manaCost;
+            const isUtility = spell.isUtility;
+          
             return (
               <button
                 key={index}
                 type="button"
                 onClick={() => setSelectedSpell(index)}
-                className={`bg-black bg-opacity-70 p-2 md:p-3 rounded-lg border-2 transition-all ${
+                className={`bg-black bg-opacity-70 p-2 md:p-3 rounded-lg border-2 transition-all relative ${
                   isSelected
                     ? 'border-yellow-400 scale-110'
                     : 'border-gray-600'
                 } ${!isReady ? 'opacity-50' : ''}`}
               >
+                {/* Utility indicator */}
+                {isUtility && (
+                  <div className="absolute -top-1 -right-1 bg-cyan-500 rounded-full w-3 h-3 md:w-4 md:h-4 flex items-center justify-center">
+                    <span className="text-white text-[8px] md:text-[10px] font-bold">U</span>
+                  </div>
+                )}
+                
                 <div className="flex flex-col items-center">
                   <Icon
                     size={24}
