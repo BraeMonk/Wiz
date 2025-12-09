@@ -1145,44 +1145,43 @@ const WizardDungeonCrawler = () => {
             return enemy;
           }).filter(e => !e.dead)
         );
-
-        } else if (spell.key === 'arcaneward') {
-          // Activate shield
-          setPlayerBuffs(prev => ({
-            ...prev,
-            arcaneWard: { active: true, hits: 0, maxHits: 3 }
-          }));
-          createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 40, 'explosion');
-          addScreenShake(0.2);
-        } else if (spell.key === 'gravitychoke') {
-          // Find all enemies in range and suspend them
-          const suspendRadius = 4;
-          const suspendedIds = new Set();
-          
-          setEnemies(prevEnemies =>
-            prevEnemies.map(enemy => {
-              const dx = enemy.x - currentPlayer.x;
-              const dy = enemy.y - currentPlayer.y;
-              const distance = Math.hypot(dx, dy);
+      } else if (spell.key === 'arcaneward') {
+        // Activate shield
+        setPlayerBuffs(prev => ({
+          ...prev,
+          arcaneWard: { active: true, hits: 0, maxHits: 3 }
+        }));
+        createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 40, 'explosion');
+        addScreenShake(0.2);
+      } else if (spell.key === 'gravitychoke') {
+        // Find all enemies in range and suspend them
+        const suspendRadius = 4;
+        const suspendedIds = new Set();
+        
+        setEnemies(prevEnemies =>
+          prevEnemies.map(enemy => {
+            const dx = enemy.x - currentPlayer.x;
+            const dy = enemy.y - currentPlayer.y;
+            const distance = Math.hypot(dx, dy);
+            
+            if (distance < suspendRadius) {
+              suspendedIds.add(enemy.id);
+              createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'explosion');
               
-              if (distance < suspendRadius) {
-                suspendedIds.add(enemy.id);
-                createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'explosion');
-                
-                return {
-                  ...enemy,
-                  gravitySuspended: true,
-                  suspendTimer: 3.0,
-                  suspendDamageTimer: 0
-                };
-              }
-              return enemy;
-            })
-          );
-          
-          setGravitySuspendedEnemies(suspendedIds);
-          addScreenShake(0.4);
-        }
+              return {
+                ...enemy,
+                gravitySuspended: true,
+                suspendTimer: 3.0,
+                suspendDamageTimer: 0
+              };
+            }
+            return enemy;
+          })
+        );
+        
+        setGravitySuspendedEnemies(suspendedIds);
+        addScreenShake(0.4);
+        
       } else {
         // Normal projectile spell
         setProjectiles(projs => [
