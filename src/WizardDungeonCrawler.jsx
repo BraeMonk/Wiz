@@ -83,8 +83,11 @@ const WizardDungeonCrawler = () => {
   const [playerBuffs, setPlayerBuffs] = useState({
     damageBoost: { active: false, multiplier: 1, timeLeft: 0 },
     speedBoost: { active: false, multiplier: 1, timeLeft: 0 },
-    invincible: { active: false, timeLeft: 0 }
+    invincible: { active: false, timeLeft: 0 },
+    arcaneWard: { active: false, hits: 0, maxHits: 3 }
   });
+
+  const [gravitySuspendedEnemies, setGravitySuspendedEnemies] = useState(new Set());
 
   const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(true);
   const [sfxVolume, setSfxVolume] = useState(0.7);
@@ -340,6 +343,32 @@ const WizardDungeonCrawler = () => {
       price: 120,
       description: 'Knockback enemies around you',
       isUtility: true
+    },
+    arcaneward: {
+      key: 'arcaneward',
+      name: 'Arcane Ward',
+      damage: 0,
+      manaCost: 30,
+      cooldown: 0,
+      maxCooldown: 15.0,
+      color: '#4a9eff',
+      icon: Shield,
+      price: 150,
+      description: 'Shield that blocks 3 hits',
+      isUtility: true
+    },
+    gravitychoke: {
+      key: 'gravitychoke',
+      name: 'Gravity Choke',
+      damage: 10,
+      manaCost: 40,
+      cooldown: 0,
+      maxCooldown: 8.0,
+      color: '#9b4aff',
+      icon: Skull,
+      price: 250,
+      description: 'Suspend and damage enemies over time',
+      isUtility: false
     },
   };
 
@@ -1035,6 +1064,16 @@ const WizardDungeonCrawler = () => {
         
         setEnemies(prevEnemies =>
           prevEnemies.map(enemy => {
+
+            // Skip AI if gravity suspended
+            if (enemy.gravitySuspended) {
+              return {
+                ...enemy,
+                x: enemy.x,
+                y: enemy.y
+              };
+            }
+              
             const dx = enemy.x - currentPlayer.x;
             const dy = enemy.y - currentPlayer.y;
             const distance = Math.hypot(dx, dy);
@@ -1106,6 +1145,44 @@ const WizardDungeonCrawler = () => {
             return enemy;
           }).filter(e => !e.dead)
         );
+
+        } else if (spell.key === 'arcaneward') {
+          // Activate shield
+          setPlayerBuffs(prev => ({
+            ...prev,
+            arcaneWard: { active: true, hits: 0, maxHits: 3 }
+          }));
+          createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 40, 'explosion');
+          addScreenShake(0.2);
+        } else if (spell.key === 'gravitychoke') {
+          // Find all enemies in range and suspend them
+          const suspendRadius = 4;
+          const suspendedIds = new Set();
+          
+          setEnemies(prevEnemies =>
+            prevEnemies.map(enemy => {
+              const dx = enemy.x - currentPlayer.x;
+              const dy = enemy.y - currentPlayer.y;
+              const distance = Math.hypot(dx, dy);
+              
+              if (distance < suspendRadius) {
+                suspendedIds.add(enemy.id);
+                createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'explosion');
+                
+                return {
+                  ...enemy,
+                  gravitySuspended: true,
+                  suspendTimer: 3.0,
+                  suspendDamageTimer: 0
+                };
+              }
+              return enemy;
+            })
+          );
+          
+          setGravitySuspendedEnemies(suspendedIds);
+          addScreenShake(0.4);
+        }
       } else {
         // Normal projectile spell
         setProjectiles(projs => [
@@ -4597,6 +4674,52 @@ const WizardDungeonCrawler = () => {
         break;
       }
 
+      case 'gravitychoke': {
+        ctx.translate(x, y);
+        
+        // Swirling vortex effect
+        const vortexRings = 5;
+        for (let i = 0; i < vortexRings; i++) {
+          const ringPhase = (time * 2 - i * 0.2) % 1;
+          const ringRadius = size * (1 + i * 0.4);
+          const ringAlpha = brightness * (1 - ringPhase) * 0.6;
+          
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = ringAlpha;
+          
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        // Center gravity well
+        const wellGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
+        wellGrad.addColorStop(0, 'rgba(155, 74, 255, 0.9)');
+        wellGrad.addColorStop(0.5, 'rgba(100, 50, 200, 0.5)');
+        wellGrad.addColorStop(1, 'rgba(50, 20, 100, 0)');
+        ctx.globalAlpha = brightness;
+        ctx.fillStyle = wellGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Orbiting particles
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + time * 3;
+          const orbitR = size * 1.5;
+          const px = Math.cos(angle) * orbitR;
+          const py = Math.sin(angle) * orbitR;
+          
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = brightness * 0.8;
+          ctx.beginPath();
+          ctx.arc(px, py, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+
       default: {
         const orbGlow = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
         orbGlow.addColorStop(0, baseColor);
@@ -5120,6 +5243,39 @@ const WizardDungeonCrawler = () => {
     
         if (sprite.spriteType === 'enemy') {
           drawMonsterSprite(ctx, sprite, x, y, spriteWidth, spriteHeight, brightness, time);
+
+          // Gravity suspension effect
+          if (sprite.gravitySuspended) {
+            ctx.save();
+            
+            // Purple gravity field
+            const fieldGrad = ctx.createRadialGradient(
+              screenX, y + spriteHeight / 2, 0,
+              screenX, y + spriteHeight / 2, spriteWidth * 0.8
+            );
+            fieldGrad.addColorStop(0, 'rgba(155, 74, 255, 0.4)');
+            fieldGrad.addColorStop(1, 'rgba(155, 74, 255, 0)');
+            ctx.fillStyle = fieldGrad;
+            ctx.beginPath();
+            ctx.arc(screenX, y + spriteHeight / 2, spriteWidth * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Floating particles
+            for (let p = 0; p < 6; p++) {
+              const angle = (p / 6) * Math.PI * 2 + time * 2;
+              const radius = spriteWidth * 0.4;
+              const px = screenX + Math.cos(angle) * radius;
+              const py = y + spriteHeight / 2 + Math.sin(angle) * radius;
+              
+              ctx.fillStyle = '#bb88ff';
+              ctx.globalAlpha = 0.8 * brightness;
+              ctx.beginPath();
+              ctx.arc(px, py, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            
+            ctx.restore();
+          }
     
           // health bar + shadow remains the same...
           const healthPercent = sprite.health / sprite.maxHealth;
@@ -5602,23 +5758,39 @@ const WizardDungeonCrawler = () => {
           if (proj.isEnemyProjectile) {
             const distToPlayer = Math.hypot(proj.x - player.x, proj.y - player.y);
             if (distToPlayer < 0.5) {
-
-              soundEffectsRef.current?.playerHit?.();
-  
-              // TRIGGER DAMAGE VIGNETTE
-              setDamageVignette(1.0);
+              // Check arcane ward
+              if (playerBuffs.arcaneWard.active) {
+                const newHits = playerBuffs.arcaneWard.hits + 1;
+                
+                setPlayerBuffs(prev => ({
+                  ...prev,
+                  arcaneWard: {
+                    ...prev.arcaneWard,
+                    hits: newHits,
+                    active: newHits < prev.arcaneWard.maxHits
+                  }
+                }));
+                
+                createParticleEffect(player.x, player.y, '#4a9eff', 20, 'explosion');
+                addScreenShake(0.2);
+                
+                if (newHits >= playerBuffs.arcaneWard.maxHits) {
+                  showNotification('Shield Broken!', 'blue');
+                }
+              } else {
+                soundEffectsRef.current?.playerHit?.();
+                setDamageVignette(1.0);
+                
+                setPlayer(p => ({
+                  ...p,
+                  health: Math.max(0, p.health - proj.damage)
+                }));
+              }
               
-              setPlayer(p => ({
-                ...p,
-                health: Math.max(0, p.health - proj.damage)
-              }));
               createParticleEffect(proj.x, proj.y, proj.color, 12, 'explosion');
               addScreenShake(0.4);
-              return; // Don't add to remaining
+              return;
             }
-            remaining.push(proj);
-            return;
-          }
       
           // Player projectiles hitting enemies
           let hit = false;
@@ -5980,15 +6152,37 @@ const WizardDungeonCrawler = () => {
               // Melee attack
               if (distance < 1.5 && newAttackCooldown <= 0) {
                 newState = 'attacking';
-                setPlayer(p => ({
-                  ...p,
-                  health: Math.max(0, p.health - enemy.damage)
-                }));
+                
+                // Check arcane ward
+                if (playerBuffs.arcaneWard.active) {
+                  const newHits = playerBuffs.arcaneWard.hits + 1;
+                  
+                  setPlayerBuffs(prev => ({
+                    ...prev,
+                    arcaneWard: {
+                      ...prev.arcaneWard,
+                      hits: newHits,
+                      active: newHits < prev.arcaneWard.maxHits
+                    }
+                  }));
+                  
+                  createParticleEffect(player.x, player.y, '#4a9eff', 20, 'explosion');
+                  addScreenShake(0.3);
+                  
+                  if (newHits >= playerBuffs.arcaneWard.maxHits) {
+                    showNotification('Shield Broken!', 'blue');
+                  }
+                } else {
+                  setPlayer(p => ({
+                    ...p,
+                    health: Math.max(0, p.health - enemy.damage)
+                  }));
       
-                soundEffectsRef.current?.playerHit?.();
-                setDamageVignette(1.0);
-                addScreenShake(0.5);
-                createParticleEffect(player.x, player.y, '#ff0000', 15, 'hit');
+                  soundEffectsRef.current?.playerHit?.();
+                  setDamageVignette(1.0);
+                  addScreenShake(0.5);
+                  createParticleEffect(player.x, player.y, '#ff0000', 15, 'hit');
+                }
       
                 try {
                   if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -6050,8 +6244,78 @@ const WizardDungeonCrawler = () => {
           ...prev.invincible,
           timeLeft: Math.max(0, prev.invincible.timeLeft - deltaTime),
           active: prev.invincible.timeLeft > deltaTime
-        }
+        },
+        arcaneWard: prev.arcaneWard
       }));
+
+      // Update gravity suspended enemies
+      setEnemies(prev =>
+        prev.map(enemy => {
+          if (enemy.gravitySuspended) {
+            const newTimer = Math.max(0, enemy.suspendTimer - deltaTime);
+            const newDamageTimer = enemy.suspendDamageTimer + deltaTime;
+            
+            // Apply damage every second
+            let newHealth = enemy.health;
+            if (newDamageTimer >= 1.0) {
+              newHealth -= 10;
+              createParticleEffect(enemy.x, enemy.y, '#9b4aff', 8, 'hit');
+              
+              if (newHealth <= 0) {
+                soundEffectsRef.current?.death?.();
+                createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
+                
+                const newCombo = comboRef.current.count + 1;
+                const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
+                setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
+                
+                const comboBonus = comboRef.current.multiplier;
+                setPlayer(p => ({
+                  ...p,
+                  xp: p.xp + Math.floor(enemy.xp * comboBonus),
+                  gold: p.gold + Math.floor(enemy.gold * comboBonus),
+                  kills: p.kills + 1
+                }));
+                
+                const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
+                const baseEssence = Number(enemy?.essence ?? 0);
+                const essenceBonus = 1 + essenceGainUpgrade * 0.2;
+                const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
+                setEssence(prev => {
+                  const safePrev = Number.isFinite(prev) ? prev : 0;
+                  return safePrev + gainedEssence;
+                });
+                
+                setTotalKills(prev => {
+                  const newTotal = prev + 1;
+                  if (newTotal % 100 === 0) {
+                    showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
+                  }
+                  return newTotal;
+                });
+                
+                return { ...enemy, health: 0, dead: true, gravitySuspended: false };
+              }
+              
+              return {
+                ...enemy,
+                health: newHealth,
+                suspendTimer: newTimer,
+                suspendDamageTimer: 0,
+                gravitySuspended: newTimer > 0
+              };
+            }
+            
+            return {
+              ...enemy,
+              suspendTimer: newTimer,
+              suspendDamageTimer: newDamageTimer,
+              gravitySuspended: newTimer > 0
+            };
+          }
+          return enemy;
+        }).filter(e => !e.dead)
+      );
       
       // Update item pickup (around line 1885):
       setItems(prev =>
@@ -7045,6 +7309,11 @@ const WizardDungeonCrawler = () => {
             {playerBuffs.invincible.active && (
               <div className="bg-yellow-600 bg-opacity-80 px-3 py-2 rounded-lg text-white text-sm animate-pulse">
                 ✨ Invincible: {playerBuffs.invincible.timeLeft.toFixed(1)}s
+              </div>
+            )}
+            {playerBuffs.arcaneWard.active && (
+              <div className="bg-blue-600 bg-opacity-80 px-3 py-2 rounded-lg text-white text-sm">
+                🛡️ Arcane Ward: {playerBuffs.arcaneWard.maxHits - playerBuffs.arcaneWard.hits} hits left
               </div>
             )}
           </div>
