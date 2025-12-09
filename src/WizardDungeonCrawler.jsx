@@ -1224,47 +1224,95 @@ const WizardDungeonCrawler = () => {
     const size = map.length;
     const chests = [];
   
-    const numRooms = Math.min(3, 1 + Math.floor(level / 3));
+    // 30% chance for a secret room to spawn at all
+    if (Math.random() > 0.3) {
+      return { mapWithSecrets: map, chests: [] };
+    }
+  
+    // If we do spawn secrets, 1-2 rooms max (rarely 2)
+    const numRooms = Math.random() > 0.7 ? 2 : 1;
   
     for (let n = 0; n < numRooms; n++) {
       let roomX = null;
       let roomY = null;
       let attempts = 0;
   
-      // Pick a floor tile WITH adjacent floor tiles (near existing corridors)
-      while (attempts < 200 && roomX === null) {
-        const x = Math.floor(Math.random() * (size - 6)) + 3;
-        const y = Math.floor(Math.random() * (size - 6)) + 3;
+      // Find a solid wall area far from spawn that's adjacent to a corridor
+      while (attempts < 300 && roomX === null) {
+        const x = Math.floor(Math.random() * (size - 10)) + 5;
+        const y = Math.floor(Math.random() * (size - 10)) + 5;
   
-        // Must be floor AND have at least one adjacent floor tile
-        if (map[y][x] === TILE_FLOOR && Math.hypot(x - 5, y - 5) > 8) {
-          const hasAdjacentFloor = 
-            map[y-1][x] === TILE_FLOOR ||
-            map[y+1][x] === TILE_FLOOR ||
-            map[y][x-1] === TILE_FLOOR ||
-            map[y][x+1] === TILE_FLOOR;
-          
-          if (hasAdjacentFloor) {
-            roomX = x;
-            roomY = y;
+        // Skip if too close to spawn
+        if (Math.hypot(x - 5, y - 5) < 10) {
+          attempts++;
+          continue;
+        }
+  
+        // Check if there's a 5x5 solid area (good place to carve a room)
+        let isSolid = true;
+        for (let oy = -2; oy <= 2; oy++) {
+          for (let ox = -2; ox <= 2; ox++) {
+            const tx = x + ox;
+            const ty = y + oy;
+            if (tx < 1 || ty < 1 || tx >= size - 1 || ty >= size - 1) {
+              isSolid = false;
+              break;
+            }
+            if (map[ty][tx] === TILE_FLOOR) {
+              isSolid = false;
+              break;
+            }
+          }
+          if (!isSolid) break;
+        }
+  
+        if (!isSolid) {
+          attempts++;
+          continue;
+        }
+  
+        // Check if there's a corridor nearby (within 1-2 tiles)
+        const directions = [
+          { dx: 0, dy: -3 }, // north
+          { dx: 3, dy: 0 },  // east
+          { dx: 0, dy: 3 },  // south
+          { dx: -3, dy: 0 }  // west
+        ];
+  
+        let hasNearbyCorridor = false;
+        for (const dir of directions) {
+          const checkX = x + dir.dx;
+          const checkY = y + dir.dy;
+          if (checkX > 0 && checkY > 0 && checkX < size - 1 && checkY < size - 1) {
+            if (map[checkY][checkX] === TILE_FLOOR) {
+              hasNearbyCorridor = true;
+              break;
+            }
           }
         }
+  
+        if (hasNearbyCorridor) {
+          roomX = x;
+          roomY = y;
+        }
+  
         attempts++;
       }
   
       if (roomX === null) continue;
   
-      // 1) Carve 3x3 room
+      // 1) Carve 3x3 room interior
       for (let oy = -1; oy <= 1; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
           const tx = roomX + ox;
           const ty = roomY + oy;
-          if (tx <= 0 || ty <= 0 || tx >= size - 1 || ty >= size - 1) continue;
-          map[ty][tx] = TILE_FLOOR;
+          if (tx > 0 && ty > 0 && tx < size - 1 && ty < size - 1) {
+            map[ty][tx] = TILE_FLOOR;
+          }
         }
       }
   
-      // 2) Add walls around (5x5 perimeter)
+      // 2) Ensure walls surround the room (5x5 perimeter)
       for (let oy = -2; oy <= 2; oy++) {
         for (let ox = -2; ox <= 2; ox++) {
           const tx = roomX + ox;
@@ -1272,14 +1320,17 @@ const WizardDungeonCrawler = () => {
           if (tx <= 0 || ty <= 0 || tx >= size - 1 || ty >= size - 1) continue;
   
           const onPerimeter = (Math.abs(ox) === 2 || Math.abs(oy) === 2);
-          if (onPerimeter && map[ty][tx] !== TILE_FLOOR) {
+          const isCorner = (Math.abs(ox) === 2 && Math.abs(oy) === 2);
+          
+          // Only place walls on perimeter, not corners, and only if not already floor
+          if (onPerimeter && !isCorner && map[ty][tx] !== TILE_FLOOR) {
             map[ty][tx] = TILE_WALL;
           }
         }
       }
   
-      // 3) Find which direction has existing floor (the corridor we came from)
-      const directions = [
+      // 3) Find which direction leads to a corridor and place secret door
+      const doorDirections = [
         { dx: 0, dy: -1, doorX: roomX, doorY: roomY - 2, name: 'north' },
         { dx: 1, dy: 0, doorX: roomX + 2, doorY: roomY, name: 'east' },
         { dx: 0, dy: 1, doorX: roomX, doorY: roomY + 2, name: 'south' },
@@ -1287,34 +1338,38 @@ const WizardDungeonCrawler = () => {
       ];
   
       let doorPlaced = false;
-      for (const dir of directions) {
-        // Check if there's floor just outside this wall
-        const checkX = dir.doorX + dir.dx;
-        const checkY = dir.doorY + dir.dy;
+      for (const dir of doorDirections) {
+        // Look 1-2 tiles beyond the door position for a corridor
+        const checkX1 = dir.doorX + dir.dx;
+        const checkY1 = dir.doorY + dir.dy;
+        const checkX2 = dir.doorX + dir.dx * 2;
+        const checkY2 = dir.doorY + dir.dy * 2;
         
-        if (checkX > 0 && checkY > 0 && checkX < size - 1 && checkY < size - 1) {
-          if (map[checkY][checkX] === TILE_FLOOR) {
-            // Place secret door here
-            map[dir.doorY][dir.doorX] = TILE_SECRET_DOOR;
-            doorPlaced = true;
-            break;
+        let foundCorridor = false;
+        if (checkX1 > 0 && checkY1 > 0 && checkX1 < size - 1 && checkY1 < size - 1) {
+          if (map[checkY1][checkX1] === TILE_FLOOR) {
+            foundCorridor = true;
           }
+        }
+        if (!foundCorridor && checkX2 > 0 && checkY2 > 0 && checkX2 < size - 1 && checkY2 < size - 1) {
+          if (map[checkY2][checkX2] === TILE_FLOOR) {
+            foundCorridor = true;
+          }
+        }
+        
+        if (foundCorridor) {
+          // Place secret door on the wall
+          map[dir.doorY][dir.doorX] = TILE_SECRET_DOOR;
+          doorPlaced = true;
+          break;
         }
       }
   
       if (!doorPlaced) {
-        // Fallback: connect to nearest floor tile
-        const directions2 = [
-          { doorX: roomX, doorY: roomY - 2 },
-          { doorX: roomX + 2, doorY: roomY },
-          { doorX: roomX, doorY: roomY + 2 },
-          { doorX: roomX - 2, doorY: roomY }
-        ];
-        
-        // Just pick the first valid wall position
-        for (const dir of directions2) {
+        // Fallback: just pick the first valid wall position
+        for (const dir of doorDirections) {
           if (dir.doorX > 0 && dir.doorY > 0 && dir.doorX < size - 1 && dir.doorY < size - 1) {
-            if (map[dir.doorY][dir.doorX] === TILE_WALL) {
+            if (map[dir.doorY][dir.doorX] === TILE_WALL || map[dir.doorY][dir.doorX] > 0) {
               map[dir.doorY][dir.doorX] = TILE_SECRET_DOOR;
               break;
             }
@@ -1322,7 +1377,7 @@ const WizardDungeonCrawler = () => {
         }
       }
   
-      // 4) Chest in center
+      // 4) Chest in center of room
       chests.push({
         id: `secret-${n}-${Date.now()}`,
         x: roomX + 0.5,
@@ -1334,7 +1389,7 @@ const WizardDungeonCrawler = () => {
   
     return { mapWithSecrets: map, chests };
   }
-
+  
   const grantSecretChestReward = () => {
     const roll = Math.random();
     if (roll < 0.5) {
@@ -6528,27 +6583,59 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      setChests(prev => {
-        let hasOpened = false;
-        const updated = prev.map(chest => {
-          if (chest.opened || hasOpened) return chest;
-      
-          const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
-          if (dist < 0.7) {
-            hasOpened = true;
-            createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
-            addScreenShake(0.3);
-            showNotification?.('You opened a secret chest!', 'yellow');
-      
-            grantSecretChestReward();
-      
-            return { ...chest, opened: true };
-          }
-      
-          return chest;
-        });
-        return updated;
+      // Check for chest opening - this doesn't interrupt gameplay flow
+      const nearbyChest = chests.find(chest => {
+        if (chest.opened) return false;
+        const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
+        return dist < 0.7;
       });
+
+      if (nearbyChest) {
+        setChests(prev =>
+          prev.map(chest => {
+            if (chest.id === nearbyChest.id) {
+              // Open this chest
+              createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
+              addScreenShake(0.3);
+              
+              soundEffectsRef.current?.pickup?.();
+              
+              // Show notification based on chest type
+              if (chest.inSecretRoom) {
+                showNotification?.('🗝️ Secret Chest Opened!', 'yellow');
+                grantSecretChestReward();
+              } else {
+                showNotification?.('💰 Chest Opened!', 'yellow');
+                // Regular chest rewards
+                const roll = Math.random();
+                if (roll < 0.4) {
+                  // Gold
+                  const goldAmount = 50 + currentLevel * 10;
+                  setPlayer(p => ({ ...p, gold: p.gold + goldAmount }));
+                  showNotification?.(`Found ${goldAmount} gold!`, 'yellow');
+                } else if (roll < 0.7) {
+                  // Health potion
+                  setPlayer(p => ({
+                    ...p,
+                    health: Math.min(p.maxHealth, p.health + 50)
+                  }));
+                  showNotification?.('Health restored!', 'green');
+                } else {
+                  // Mana potion
+                  setPlayer(p => ({
+                    ...p,
+                    mana: Math.min(p.maxMana, p.mana + 50)
+                  }));
+                  showNotification?.('Mana restored!', 'blue');
+                }
+              }
+              
+              return { ...chest, opened: true };
+            }
+            return chest;
+          })
+        );
+      }
             
       setPlayer(prev => {
         if (prev.xp >= prev.xpToNext) {
