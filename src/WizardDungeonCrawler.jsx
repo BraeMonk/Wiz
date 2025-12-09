@@ -1005,18 +1005,13 @@ const WizardDungeonCrawler = () => {
         const tileX = Math.floor(newX);
         const tileY = Math.floor(newY);
         
-        if (
+        const successfulDash = (
           tileX >= 0 && tileX < DUNGEON_SIZE &&
           tileY >= 0 && tileY < DUNGEON_SIZE &&
           dungeon[tileY][tileX] === 0
-        ) {
-          setPlayer(p => ({ ...p, x: newX, y: newY }));
-          createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 20, 'explosion');
-          createParticleEffect(newX, newY, spell.color, 20, 'explosion');
-          addScreenShake(0.3);
-        }
-
-        if (/* successful dash */) {
+        );
+        
+        if (successfulDash) {
           // Create trail effect between old and new position
           const steps = 10;
           for (let i = 0; i <= steps; i++) {
@@ -1029,6 +1024,8 @@ const WizardDungeonCrawler = () => {
           }
           
           setPlayer(p => ({ ...p, x: newX, y: newY }));
+          createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 20, 'explosion');
+          createParticleEffect(newX, newY, spell.color, 20, 'explosion');
           addScreenShake(0.3);
         }
       } else if (spell.key === 'pushback') {
