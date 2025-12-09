@@ -5462,6 +5462,37 @@ const WizardDungeonCrawler = () => {
     ctx.lineWidth = 2;
     ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
 
+    // Draw chests on minimap
+    chests.forEach(chest => {
+      if (chest.opened) return;
+      
+      ctx.fillStyle = chest.inSecretRoom ? '#ffd700' : '#8b4513';
+      ctx.beginPath();
+      ctx.arc(
+        minimapX + chest.x * minimapScale,
+        minimapY + chest.y * minimapScale,
+        3,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      
+      // Gold ring for secret chests
+      if (chest.inSecretRoom) {
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(
+          minimapX + chest.x * minimapScale,
+          minimapY + chest.y * minimapScale,
+          5,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+      }
+    });
+
     dungeon.forEach((row, yIdx) => {
       row.forEach((tile, xIdx) => {
         if (tile > 0) {
@@ -5487,6 +5518,84 @@ const WizardDungeonCrawler = () => {
         Math.PI * 2
       );
       ctx.fill();
+    });
+
+    // Draw chests in 3D view
+    chests.forEach(chest => {
+      if (chest.opened) return;
+      
+      const dx = chest.x - player.x;
+      const dy = chest.y - player.y;
+      const distance = Math.hypot(dx, dy);
+      
+      if (distance > RENDER_DISTANCE) return;
+      
+      let angleToChest = Math.atan2(dy, dx) - player.angle;
+      
+      while (angleToChest > Math.PI) angleToChest -= Math.PI * 2;
+      while (angleToChest < -Math.PI) angleToChest += Math.PI * 2;
+      
+      const halfFov = (FOV * Math.PI / 180) / 2;
+      if (Math.abs(angleToChest) > halfFov) return;
+      
+      const screenX = (angleToChest / (FOV * Math.PI / 180) + 0.5) * width;
+      
+      const spriteHeightRaw = height / distance;
+      const spriteHeight = Math.max(
+        PIXEL_STEP,
+        Math.floor(spriteHeightRaw / PIXEL_STEP) * PIXEL_STEP
+      );
+      const spriteWidth = spriteHeight * 0.8;
+      
+      const x = Math.floor((screenX - spriteWidth / 2) / PIXEL_STEP) * PIXEL_STEP;
+      const yRaw = horizon - spriteHeight / 2;
+      const y = Math.floor(yRaw / PIXEL_STEP) * PIXEL_STEP;
+      
+      const screenSlice = Math.floor(screenX / (width / RESOLUTION));
+      if (
+        screenSlice >= 0 &&
+        screenSlice < RESOLUTION &&
+        distance < zBuffer[screenSlice]
+      ) {
+        let brightness = 1.0 - (distance / RENDER_DISTANCE) * 0.5;
+        brightness = Math.max(0.2, Math.min(1.0, brightness));
+        
+        ctx.save();
+        ctx.globalAlpha = brightness;
+        
+        // Draw chest body
+        ctx.fillStyle = chest.inSecretRoom ? '#8b4513' : '#654321';
+        ctx.fillRect(x, y + spriteHeight * 0.3, spriteWidth, spriteHeight * 0.7);
+        
+        // Draw chest lid
+        ctx.fillStyle = chest.inSecretRoom ? '#a0522d' : '#7a5230';
+        ctx.fillRect(x, y + spriteHeight * 0.3, spriteWidth, spriteHeight * 0.3);
+        
+        // Draw lock/keyhole
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(
+          x + spriteWidth * 0.4,
+          y + spriteHeight * 0.5,
+          spriteWidth * 0.2,
+          spriteHeight * 0.15
+        );
+        
+        // Glow effect for secret chests
+        if (chest.inSecretRoom) {
+          const glowGrad = ctx.createRadialGradient(
+            screenX, y + spriteHeight / 2, 0,
+            screenX, y + spriteHeight / 2, spriteWidth * 1.5
+          );
+          glowGrad.addColorStop(0, 'rgba(255, 215, 0, 0.4)');
+          glowGrad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+          ctx.fillStyle = glowGrad;
+          ctx.beginPath();
+          ctx.arc(screenX, y + spriteHeight / 2, spriteWidth * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        ctx.restore();
+      }
     });
 
     ctx.fillStyle = '#5bff8a';
