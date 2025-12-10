@@ -6279,13 +6279,19 @@ const WizardDungeonCrawler = () => {
               
               // Shoot at player if in range and cooldown ready
               if (distance <= ENEMY_TYPES[enemy.type].attackRange && newAttackCooldown <= 0) {
+                const angleToPlayer = Math.atan2(dy, dx);
+                const spawnOffset = 0.7; // about 0.7 tiles in front of the enemy
+
+                const spawnX = newX + Math.cos(angleToPlayer) * spawnOffset;
+                const spawnY = newY + Math.sin(angleToPlayer) * spawnOffset;
+
                 setProjectiles(projs => [
                   ...projs,
                   {
                     id: Math.random(),
-                    x: enemy.x,
-                    y: enemy.y,
-                    angle: Math.atan2(dy, dx),
+                    x: spawnX,
+                    y: spawnY,
+                    angle: angleToPlayer,
                     speed: 6,
                     damage: enemy.damage,
                     color: enemy.color,
@@ -6295,19 +6301,26 @@ const WizardDungeonCrawler = () => {
                     isEnemyProjectile: true
                   }
                 ]);
+
                 newAttackCooldown = ENEMY_TYPES[enemy.type].attackCooldown;
                 addScreenShake(0.2);
               }
             }
             // Boss special attacks
             else if (enemy.isBoss && distance < 8 && newAttackCooldown <= 0) {
+              const angleToPlayer = Math.atan2(dy, dx);
+              const spawnOffset = 0.7;
+
+              const spawnX = newX + Math.cos(angleToPlayer) * spawnOffset;
+              const spawnY = newY + Math.sin(angleToPlayer) * spawnOffset;
+
               setProjectiles(projs => [
                 ...projs,
                 {
                   id: Math.random(),
-                  x: enemy.x,
-                  y: enemy.y,
-                  angle: Math.atan2(dy, dx),
+                  x: spawnX,
+                  y: spawnY,
+                  angle: angleToPlayer,
                   speed: 6,
                   damage: enemy.damage * 0.5,
                   color: enemy.color,
