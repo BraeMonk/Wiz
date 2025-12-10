@@ -1391,17 +1391,7 @@ const WizardDungeonCrawler = () => {
     return { mapWithSecrets: map, chests };
   }
   
-  const grantSecretChestReward = useCallback(() => {
-    const roll = Math.random();
-    setTimeout(() => {
-      if (roll < 0.5) {
-        upgradeRandomPermanentStat();
-      } else {
-        unlockRandomSecretSpell();
-      }
-    }, 100);
-  }, [upgradeRandomPermanentStat, unlockRandomSecretSpell]);
-
+  // Move these two functions BEFORE grantSecretChestReward
   const upgradeRandomPermanentStat = useCallback(() => {
     const keys = [
       'maxHealthBonus',
@@ -1431,7 +1421,6 @@ const WizardDungeonCrawler = () => {
   
     const label = prettyNameMap[chosenKey] || chosenKey;
   
-    // Update upgrades without causing remount
     setPermanentUpgrades(prev => {
       const next = {
         ...prev,
@@ -1439,15 +1428,14 @@ const WizardDungeonCrawler = () => {
       };
       localStorage.setItem('wizardUpgrades', JSON.stringify(next));
   
-      // Show notification after state update
       setTimeout(() => {
         showNotification(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
       }, 200);
   
       return next;
     });
-  }, [showNotification]);
-
+  }, [showNotification]); // Remove upgradeRandomPermanentStat from dependencies
+  
   const unlockRandomSecretSpell = useCallback(() => {
     setEquippedSpells(prev => {
       const ownedKeys = new Set(prev.map(s => s.key));
@@ -1472,8 +1460,19 @@ const WizardDungeonCrawler = () => {
       return [...prev, { ...spell }];
     });
   }, [showNotification, upgradeRandomPermanentStat]);
-
-
+  
+  // NOW define grantSecretChestReward AFTER the above two
+  const grantSecretChestReward = useCallback(() => {
+    const roll = Math.random();
+    setTimeout(() => {
+      if (roll < 0.5) {
+        upgradeRandomPermanentStat();
+      } else {
+        unlockRandomSecretSpell();
+      }
+    }, 100);
+  }, [upgradeRandomPermanentStat, unlockRandomSecretSpell]);
+  
   const revealNearbySecretDoors = (px, py, dungeonMap) => {
     const size = dungeonMap.length;
     const radius = 1;
