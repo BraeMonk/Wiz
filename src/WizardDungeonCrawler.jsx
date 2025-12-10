@@ -7528,10 +7528,28 @@ const WizardDungeonCrawler = () => {
                     onClick={() => {
                       if (canAfford) {
                         setEssence(prev => prev - cost);
-                        setPermanentUpgrades(prev => ({
-                          ...prev,
-                          [upgradeKey]: prev[upgradeKey] + 1
-                        }));
+                        setPermanentUpgrades(prev => {
+                          const newLevel = prev[upgradeKey] + 1;
+                          const next = {
+                            ...prev,
+                            [upgradeKey]: newLevel
+                          };
+                          
+                          // Check if this upgrade or any stat hits 50
+                          if (newLevel === 50 || Object.values(next).some(level => level >= 50)) {
+                            setTimeout(() => {
+                              const allClasses = Object.keys(PRESTIGE_CLASSES);
+                              const availableClasses = allClasses.filter(c => c !== currentClass);
+                              const shuffled = [...availableClasses].sort(() => Math.random() - 0.5);
+                              const choices = shuffled.slice(0, 3);
+                              
+                              setPrestigeClassChoices(choices);
+                              setShowPrestigeOffer(true);
+                            }, 500);
+                          }
+                          
+                          return next;
+                        });
                       }
                     }}
                     disabled={!canAfford}
@@ -7548,7 +7566,27 @@ const WizardDungeonCrawler = () => {
             })}
           </div>
         </div>
-  
+
+        {/* Prestige Offer Button - Shows when any stat is 50+ */}
+        {Object.values(permanentUpgrades).some(level => level >= 50) && !showPrestigeOffer && (
+          <div className="px-4 pb-3">
+            <button
+              onClick={() => {
+                const allClasses = Object.keys(PRESTIGE_CLASSES);
+                const availableClasses = allClasses.filter(c => c !== currentClass);
+                const shuffled = [...availableClasses].sort(() => Math.random() - 0.5);
+                const choices = shuffled.slice(0, 3);
+                
+                setPrestigeClassChoices(choices);
+                setShowPrestigeOffer(true);
+              }}
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg text-lg animate-pulse"
+            >
+              🎖️ PRESTIGE AVAILABLE - Click to View Options
+            </button>
+          </div>
+        )}
+        
         {/* Footer button - Fixed at bottom */}
         <div className="px-4 py-3 bg-black bg-opacity-30">
           <button
