@@ -79,6 +79,20 @@ const WizardDungeonCrawler = () => {
     };
   });
 
+  const [prestigeLevel, setPrestigeLevel] = useState(() => {
+    const saved = localStorage.getItem('wizardPrestigeLevel');
+    const parsed = saved ? parseInt(saved, 10) : 0;
+    return isNaN(parsed) ? 0 : parsed;
+  });
+  
+  const [currentClass, setCurrentClass] = useState(() => {
+    const saved = localStorage.getItem('wizardCurrentClass');
+    return saved || null;
+  });
+  
+  const [showPrestigeOffer, setShowPrestigeOffer] = useState(false);
+  const [prestigeClassChoices, setPrestigeClassChoices] = useState([]);
+
   // Add powerup state to player (around line 86):
   const [playerBuffs, setPlayerBuffs] = useState({
     damageBoost: { active: false, multiplier: 1, timeLeft: 0 },
@@ -617,6 +631,204 @@ const WizardDungeonCrawler = () => {
     boss_lich: { health: 400, damage: 35, speed: 0.7, xp: 250, color: '#00ffaa', gold: 120, essence: 25, isBoss: true }
   };
 
+  const PRESTIGE_CLASSES = {
+    battlemage: {
+      id: 'battlemage',
+      name: 'Battle Mage',
+      icon: '⚔️',
+      description: 'Master of close combat magic',
+      color: '#ff6b35',
+      bonuses: {
+        damageMultiplier: 1.5,
+        healthOnKill: 15,
+        meleeRange: 2.0,
+        specialAbility: 'Enemies that die explode, damaging nearby foes'
+      }
+    },
+    necromancer: {
+      id: 'necromancer',
+      name: 'Necromancer',
+      icon: '💀',
+      description: 'Raise the dead to fight for you',
+      color: '#8b5cf6',
+      bonuses: {
+        summonChance: 0.15,
+        summonHealth: 50,
+        essenceGainBonus: 0.5,
+        specialAbility: '15% chance to summon skeleton minion on kill'
+      }
+    },
+    elementalist: {
+      id: 'elementalist',
+      name: 'Elementalist',
+      icon: '🔥',
+      description: 'Harness all elements with devastating power',
+      color: '#f59e0b',
+      bonuses: {
+        elementalDamage: 2.0,
+        manaEfficiency: 0.7,
+        aoeRadius: 1.5,
+        specialAbility: 'All spells deal double damage and cost 30% less mana'
+      }
+    },
+    shadowdancer: {
+      id: 'shadowdancer',
+      name: 'Shadow Dancer',
+      icon: '🌙',
+      description: 'Move through shadows with lethal grace',
+      color: '#6366f1',
+      bonuses: {
+        speedMultiplier: 1.8,
+        dodgeChance: 0.25,
+        criticalChance: 0.3,
+        specialAbility: '25% dodge chance and 30% critical hit chance'
+      }
+    },
+    archmagus: {
+      id: 'archmagus',
+      name: 'Archmagus',
+      icon: '✨',
+      description: 'Ultimate magical mastery',
+      color: '#a855f7',
+      bonuses: {
+        allStatsMultiplier: 1.3,
+        cooldownReduction: 0.4,
+        manaRegen: 2.0,
+        specialAbility: '30% bonus to all stats and 40% faster cooldowns'
+      }
+    },
+    bloodmage: {
+      id: 'bloodmage',
+      name: 'Blood Mage',
+      icon: '🩸',
+      description: 'Convert life force into devastating power',
+      color: '#dc2626',
+      bonuses: {
+        lifestealMultiplier: 3.0,
+        damagePerMissingHealth: 0.02,
+        healthCostReduction: 0.5,
+        specialAbility: 'Triple lifesteal, gain damage based on missing health'
+      }
+    },
+    timewarden: {
+      id: 'timewarden',
+      name: 'Time Warden',
+      icon: '⏰',
+      description: 'Manipulate the flow of time itself',
+      color: '#06b6d4',
+      bonuses: {
+        slowEnemies: 0.5,
+        hasteSelf: 1.4,
+        cooldownRewind: 0.2,
+        specialAbility: 'Enemies move 50% slower, you move 40% faster'
+      }
+    },
+    voidcaller: {
+      id: 'voidcaller',
+      name: 'Void Caller',
+      icon: '🌀',
+      description: 'Channel the power of the void',
+      color: '#7c3aed',
+      bonuses: {
+        voidDamage: 2.5,
+        piercing: true,
+        healthDrain: 0.1,
+        specialAbility: 'Spells pierce enemies and drain 10% of damage as health'
+      }
+    },
+    stormlord: {
+      id: 'stormlord',
+      name: 'Storm Lord',
+      icon: '⚡',
+      description: 'Command the fury of the storm',
+      color: '#eab308',
+      bonuses: {
+        chainLightning: 3,
+        shockDamage: 1.8,
+        movementInCombat: 1.5,
+        specialAbility: 'Lightning spells chain to 3 additional enemies'
+      }
+    },
+    runekeeper: {
+      id: 'runekeeper',
+      name: 'Runekeeper',
+      icon: '📜',
+      description: 'Ancient runes grant immense power',
+      color: '#f97316',
+      bonuses: {
+        runeShield: 100,
+        runeDamageBonus: 1.6,
+        runeRegeneration: 5,
+        specialAbility: 'Start with 100 shield that regenerates 5/sec'
+      }
+    },
+    frostlord: {
+      id: 'frostlord',
+      name: 'Frost Lord',
+      icon: '❄️',
+      description: 'Freeze your enemies in eternal winter',
+      color: '#0ea5e9',
+      bonuses: {
+        freezeChance: 0.3,
+        freezeDuration: 2.0,
+        frostDamage: 1.7,
+        specialAbility: '30% chance to freeze enemies for 2 seconds'
+      }
+    },
+    pyromancer: {
+      id: 'pyromancer',
+      name: 'Pyromancer',
+      icon: '🔥',
+      description: 'Burn everything to ashes',
+      color: '#ef4444',
+      bonuses: {
+        burnDamage: 10,
+        burnDuration: 5,
+        explosionRadius: 2.0,
+        specialAbility: 'Enemies burn for 10 damage/sec for 5 seconds'
+      }
+    },
+    celestial: {
+      id: 'celestial',
+      name: 'Celestial',
+      icon: '☀️',
+      description: 'Channel divine light',
+      color: '#fbbf24',
+      bonuses: {
+        healOnKill: 25,
+        holyDamage: 1.8,
+        reviveOnce: true,
+        specialAbility: 'Heal 25 HP per kill, revive once per level at 50% health'
+      }
+    },
+    demonpact: {
+      id: 'demonpact',
+      name: 'Demon Pact',
+      icon: '👿',
+      description: 'Trade health for overwhelming power',
+      color: '#991b1b',
+      bonuses: {
+        demonicPower: 3.0,
+        healthCost: 0.5,
+        damageResistance: 0.3,
+        specialAbility: 'Triple damage but spells cost health, 30% damage resistance'
+      }
+    },
+    earthshaper: {
+      id: 'earthshaper',
+      name: 'Earth Shaper',
+      icon: '🌍',
+      description: 'Command the earth itself',
+      color: '#92400e',
+      bonuses: {
+        maxHealthBonus: 200,
+        earthDamage: 1.5,
+        knockbackPower: 2.0,
+        specialAbility: '+200 max health, spells knockback enemies'
+      }
+    }
+  };
+
   // Save persistent data
   useEffect(() => {
     localStorage.setItem('wizardUpgrades', JSON.stringify(permanentUpgrades));
@@ -629,6 +841,16 @@ const WizardDungeonCrawler = () => {
   useEffect(() => {
     localStorage.setItem('wizardRuns', totalRuns.toString());
   }, [totalRuns]);
+
+  useEffect(() => {
+    localStorage.setItem('wizardPrestigeLevel', prestigeLevel.toString());
+  }, [prestigeLevel]);
+  
+  useEffect(() => {
+    if (currentClass) {
+      localStorage.setItem('wizardCurrentClass', currentClass);
+    }
+  }, [currentClass]);
   
   // Color helpers
   const hexToRgb = (hex) => {
@@ -1026,9 +1248,12 @@ const WizardDungeonCrawler = () => {
   
       soundEffectsRef.current?.cast?.();
   
+      // Replace the finalDamage line with:
       const bonusDamage = permanentUpgrades.damageBonus * 0.1;
-      const finalDamage = spell.damage * (1 + bonusDamage);
-  
+      const baseDamage = spell.damage * (1 + bonusDamage);
+      const classBonus = applyClassBonuses(baseDamage, 0, 0);
+      const finalDamage = classBonus.damage;
+      
       // Handle utility spells
       if (spell.key === 'dash') {
         // Teleport forward
@@ -1217,13 +1442,11 @@ const WizardDungeonCrawler = () => {
     });
   
     setPlayer(p => {
-      const idx = selectedSpellRef.current;
-      const spell = equippedSpellsRef.current[idx];
-      if (spell && p.mana >= spell.manaCost) {
-        const newMana = Math.max(0, p.mana - spell.manaCost);
-        return { ...p, mana: newMana };
-      }
-      return p;
+      const spell = equippedSpells[selectedSpell];
+      if (!spell) return p;
+      
+      const newMana = Math.max(0, p.mana - spell.manaCost);
+      return { ...p, mana: newMana };
     });
   }, [permanentUpgrades.damageBonus, dungeon]);
 
@@ -1397,7 +1620,6 @@ const WizardDungeonCrawler = () => {
     return { mapWithSecrets: map, chests };
   }
   
-  // Move these two functions BEFORE grantSecretChestReward
   const upgradeRandomPermanentStat = useCallback(() => {
     const keys = [
       'maxHealthBonus',
@@ -1428,9 +1650,22 @@ const WizardDungeonCrawler = () => {
     const label = prettyNameMap[chosenKey] || chosenKey;
   
     setPermanentUpgrades(prev => {
+      const newLevel = (prev[chosenKey] || 0) + 1;
+      
+      // Check if any stat reaches 50 and offer prestige
+      if (newLevel >= 50) {
+        const allClasses = Object.keys(PRESTIGE_CLASSES);
+        const availableClasses = allClasses.filter(c => c !== currentClass);
+        const shuffled = [...availableClasses].sort(() => Math.random() - 0.5);
+        const choices = shuffled.slice(0, 3);
+        
+        setPrestigeClassChoices(choices);
+        setShowPrestigeOffer(true);
+      }
+      
       const next = {
         ...prev,
-        [chosenKey]: (prev[chosenKey] || 0) + 1
+        [chosenKey]: newLevel
       };
       localStorage.setItem('wizardUpgrades', JSON.stringify(next));
   
@@ -1440,7 +1675,75 @@ const WizardDungeonCrawler = () => {
   
       return next;
     });
-  }, [showNotification]); // Remove upgradeRandomPermanentStat from dependencies
+  }, [showNotification, currentClass]);
+
+  const acceptPrestige = (classId) => {
+    const classData = PRESTIGE_CLASSES[classId];
+    
+    // Reset all permanent upgrades
+    const resetUpgrades = {
+      maxHealthBonus: 0,
+      maxManaBonus: 0,
+      damageBonus: 0,
+      speedBonus: 0,
+      manaRegenBonus: 0,
+      goldMultiplier: 0,
+      criticalChance: 0,
+      lifeSteal: 0,
+      essenceGain: 0
+    };
+    
+    setPermanentUpgrades(resetUpgrades);
+    localStorage.setItem('wizardUpgrades', JSON.stringify(resetUpgrades));
+    
+    // Set new class and prestige level
+    setCurrentClass(classId);
+    setPrestigeLevel(prev => prev + 1);
+    
+    // Award bonus essence
+    const bonusEssence = 500 * (prestigeLevel + 1);
+    setEssence(prev => prev + bonusEssence);
+    
+    setShowPrestigeOffer(false);
+    
+    showNotification(`🎖️ Prestige ${prestigeLevel + 1}: ${classData.name}!`, 'purple');
+    setTimeout(() => {
+      showNotification(`Bonus: +${bonusEssence} Essence!`, 'yellow');
+    }, 1000);
+  };
+  
+  const declinePrestige = () => {
+    setShowPrestigeOffer(false);
+    showNotification('Prestige offer declined - you can try again later', 'blue');
+  };
+  
+  const applyClassBonuses = (baseDamage, baseSpeed, baseHealth) => {
+    if (!currentClass) return { damage: baseDamage, speed: baseSpeed, health: baseHealth };
+    
+    const classData = PRESTIGE_CLASSES[currentClass];
+    const bonuses = classData.bonuses;
+    
+    let damage = baseDamage;
+    let speed = baseSpeed;
+    let health = baseHealth;
+    
+    if (bonuses.damageMultiplier) damage *= bonuses.damageMultiplier;
+    if (bonuses.elementalDamage) damage *= bonuses.elementalDamage;
+    if (bonuses.allStatsMultiplier) {
+      damage *= bonuses.allStatsMultiplier;
+      speed *= bonuses.allStatsMultiplier;
+      health *= bonuses.allStatsMultiplier;
+    }
+    if (bonuses.speedMultiplier) speed *= bonuses.speedMultiplier;
+    if (bonuses.hasteSelf) speed *= bonuses.hasteSelf;
+    if (bonuses.maxHealthBonus) health += bonuses.maxHealthBonus;
+    
+    return { damage, speed, health };
+  };
+  
+  const getDifficultyMultiplier = () => {
+    return 1 + (prestigeLevel * 0.3); // 30% harder per prestige
+  };
   
   const unlockRandomSecretSpell = useCallback(() => {
     setEquippedSpells(prev => {
@@ -1681,8 +1984,8 @@ const WizardDungeonCrawler = () => {
         y,
         type: bossType,
         // Boss HP scales harder with level AND your permanent upgrades
-        health: stats.health * (1 + level * 0.35) * bossPlayerScale,
-        maxHealth: stats.health * (1 + level * 0.35) * bossPlayerScale,
+        health: stats.health * (1 + level * 0.35) * bossPlayerScale * getDifficultyMultiplier(),
+        maxHealth: stats.health * (1 + level * 0.35) * bossPlayerScale * getDifficultyMultiplier(),
         damage: stats.damage * (1 + level * 0.1),
         speed: stats.speed,
         xp: stats.xp * level,
@@ -1718,8 +2021,8 @@ const WizardDungeonCrawler = () => {
           x: mx,
           y: my,
           type,
-          health: mstats.health * (1 + level * 0.2),
-          maxHealth: mstats.health * (1 + level * 0.2),
+          health: mstats.health * (1 + level * 0.2) * getDifficultyMultiplier(),
+          maxHealth: mstats.health * (1 + level * 0.2) * getDifficultyMultiplier(),
           damage: mstats.damage * (1 + level * 0.1),
           speed: mstats.speed,
           xp: mstats.xp * level,
@@ -1755,8 +2058,8 @@ const WizardDungeonCrawler = () => {
           x,
           y,
           type,
-          health: stats.health * (1 + level * 0.2),
-          maxHealth: stats.health * (1 + level * 0.2),
+          health: stats.health * (1 + level * 0.2) * getDifficultyMultiplier(),
+          maxHealth: stats.health * (1 + level * 0.2) * getDifficultyMultiplier(),
           damage: stats.damage * (1 + level * 0.1),
           speed: stats.speed,
           xp: stats.xp * level,
@@ -7113,6 +7416,71 @@ const WizardDungeonCrawler = () => {
 
   // SCREENS
 
+  if (showPrestigeOffer) {
+    return (
+      <div className="w-full h-screen bg-gradient-to-b from-yellow-900 via-orange-900 to-red-900 flex items-center justify-center overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+          <div className="text-8xl mb-4 animate-pulse">🎖️</div>
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+            PRESTIGE AVAILABLE!
+          </h1>
+          <p className="text-2xl text-yellow-300 mb-6">
+            You have reached level 50 in a permanent upgrade!
+          </p>
+          
+          <div className="bg-black bg-opacity-60 p-6 rounded-lg mb-8">
+            <h2 className="text-3xl text-orange-400 mb-4">Choose Your Path</h2>
+            <p className="text-lg text-white mb-2">
+              Prestiging will:
+            </p>
+            <ul className="text-left text-white space-y-2 max-w-2xl mx-auto">
+              <li>✨ Reset all permanent upgrades to 0</li>
+              <li>🎯 Grant you a powerful class with unique abilities</li>
+              <li>📈 Increase game difficulty by 30%</li>
+              <li>💎 Award {500 * (prestigeLevel + 1)} bonus Essence</li>
+              <li>🏆 Your prestige level: {prestigeLevel} → {prestigeLevel + 1}</li>
+            </ul>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {prestigeClassChoices.map(classId => {
+              const classData = PRESTIGE_CLASSES[classId];
+              return (
+                <div
+                  key={classId}
+                  className="bg-black bg-opacity-70 p-6 rounded-lg border-4 border-yellow-500 hover:border-yellow-300 transition-all"
+                >
+                  <div className="text-6xl mb-3">{classData.icon}</div>
+                  <h3 className="text-2xl font-bold text-white mb-2">{classData.name}</h3>
+                  <p className="text-gray-300 mb-4">{classData.description}</p>
+                  
+                  <div className="text-left text-sm text-gray-200 space-y-1 mb-4">
+                    <p className="font-bold text-yellow-400">Special Ability:</p>
+                    <p>{classData.bonuses.specialAbility}</p>
+                  </div>
+                  
+                  <button
+                    onClick={() => acceptPrestige(classId)}
+                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg text-lg"
+                  >
+                    Choose {classData.name}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          
+          <button
+            onClick={declinePrestige}
+            className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg text-lg"
+          >
+            Decline (Keep Current Progress)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (showUpgradeMenu) {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-purple-900 via-indigo-900 to-black flex flex-col">
@@ -7348,6 +7716,23 @@ const WizardDungeonCrawler = () => {
               </div>
             </div>
 
+            {currentClass && (
+              <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-4">
+                <div className="text-center">
+                  <div className="text-5xl mb-2">{PRESTIGE_CLASSES[currentClass].icon}</div>
+                  <p className="text-xl text-yellow-400 font-bold">
+                    {PRESTIGE_CLASSES[currentClass].name}
+                  </p>
+                  <p className="text-sm text-purple-300">
+                    Prestige Level {prestigeLevel}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {PRESTIGE_CLASSES[currentClass].bonuses.specialAbility}
+                  </p>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <button
                 onClick={startGame}
