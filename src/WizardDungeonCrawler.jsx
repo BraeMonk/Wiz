@@ -1686,7 +1686,8 @@ const WizardDungeonCrawler = () => {
         angle: Math.random() * Math.PI * 2,
         state: 'idle',
         attackCooldown: 0,
-        isBoss: true
+        isBoss: true,
+        hasSummonedMinions: false
       });
   
       // minions
@@ -6451,6 +6452,47 @@ const WizardDungeonCrawler = () => {
             }
           } else {
             newState = 'idle';
+          }
+
+          // Boss 50% HP minion summon
+          if (enemy.isBoss && !enemy.hasSummonedMinions) {
+            const hpPercent = enemy.health / enemy.maxHealth;
+
+            if (hpPercent <= 0.5) {
+              enemy.hasSummonedMinions = true;
+
+              // Visual impact
+              createParticleEffect(enemy.x, enemy.y, '#ff8800', 35, 'explosion');
+              addScreenShake(0.5);
+              showNotification('👹 The boss summons reinforcements!', 'orange');
+
+              // Number of minions scales with level
+              const minionCount = Math.min(4 + Math.floor(currentLevel / 3), 8);
+
+              for (let i = 0; i < minionCount; i++) {
+                const angle = (Math.PI * 2 * i) / minionCount;
+                const dist = 2 + Math.random() * 1.5;
+                const spawnX = enemy.x + Math.cos(angle) * dist;
+                const spawnY = enemy.y + Math.sin(angle) * dist;
+
+                // Choose from your existing enemy types
+                const minionType = Math.random() < 0.5 ? 'demon' : 'skeleton';
+                const base = ENEMY_TYPES[minionType];
+
+                spawnEnemy({
+                  x: spawnX,
+                  y: spawnY,
+                  type: minionType,
+                  health: base.health * (1 + currentLevel * 0.15),
+                  maxHealth: base.health * (1 + currentLevel * 0.15),
+                  damage: base.damage * (1 + currentLevel * 0.1),
+                  speed: base.speed,
+                  attackCooldown: base.attackCooldown,
+                  hitCooldown: 0,
+                  isBoss: false
+                });
+              }
+            }
           }
       
           return {
