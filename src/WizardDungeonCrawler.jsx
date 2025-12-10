@@ -1392,12 +1392,14 @@ const WizardDungeonCrawler = () => {
   
   const grantSecretChestReward = useCallback(() => {
     const roll = Math.random();
-    if (roll < 0.5) {
-      upgradeRandomPermanentStat();
-    } else {
-      unlockRandomSecretSpell();
-    }
-  }, []);
+    setTimeout(() => {
+      if (roll < 0.5) {
+        upgradeRandomPermanentStat();
+      } else {
+        unlockRandomSecretSpell();
+      }
+    }, 100);
+  }, [upgradeRandomPermanentStat, unlockRandomSecretSpell]);
 
   const upgradeRandomPermanentStat = useCallback(() => {
     const keys = [
@@ -1427,8 +1429,7 @@ const WizardDungeonCrawler = () => {
     };
   
     const label = prettyNameMap[chosenKey] || chosenKey;
-    showNotification(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
-  
+    
     // Update upgrades without causing remount
     setPermanentUpgrades(prev => {
       const next = {
@@ -1436,36 +1437,40 @@ const WizardDungeonCrawler = () => {
         [chosenKey]: (prev[chosenKey] || 0) + 1
       };
       localStorage.setItem('wizardUpgrades', JSON.stringify(next));
+      
+      // Show notification after state update
+      setTimeout(() => {
+        showNotification(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
+      }, 200);
+      
       return next;
     });
-  }, []);
+  }, [showNotification]);
 
   const unlockRandomSecretSpell = useCallback(() => {
-    // figure out what we already have equipped
-    const ownedKeys = new Set(equippedSpells.map(s => s.key));
-  
-    // pick from secret-only spells that we don't already own
-    const candidates = SECRET_SPELL_KEYS.filter(key => !ownedKeys.has(key));
-  
-    if (candidates.length === 0) {
-      // nothing left to unlock, give a stat upgrade instead
-      showNotification('✨ All spells mastered! Granting upgrade...', 'purple');
-      upgradeRandomPermanentStat();
-      return;
-    }
-  
-    const key = candidates[Math.floor(Math.random() * candidates.length)];
-    const spell = ALL_SPELLS[key];
-  
-    showNotification(`🔮 Secret Spell Unlocked: ${spell.name}!`, 'purple');
-  
-    // add it to equipped spells
     setEquippedSpells(prev => {
-      // just in case we somehow double-unlock
+      const ownedKeys = new Set(prev.map(s => s.key));
+      const candidates = SECRET_SPELL_KEYS.filter(key => !ownedKeys.has(key));
+  
+      if (candidates.length === 0) {
+        setTimeout(() => {
+          showNotification('✨ All spells mastered! Granting upgrade...', 'purple');
+        }, 200);
+        upgradeRandomPermanentStat();
+        return prev;
+      }
+  
+      const key = candidates[Math.floor(Math.random() * candidates.length)];
+      const spell = ALL_SPELLS[key];
+  
+      setTimeout(() => {
+        showNotification(`🔮 Secret Spell Unlocked: ${spell.name}!`, 'purple');
+      }, 200);
+  
       if (prev.some(s => s.key === key)) return prev;
       return [...prev, { ...spell }];
     });
-  }, [equippedSpells]);
+  }, [showNotification, upgradeRandomPermanentStat]);
 
   const revealNearbySecretDoors = (px, py, dungeon) => {
     const size = dungeon.length;
@@ -1787,7 +1792,7 @@ const WizardDungeonCrawler = () => {
       
       const baseMaxHealth = 100 + permanentUpgrades.maxHealthBonus * 20;
       const baseMaxMana = 100 + permanentUpgrades.maxManaBonus * 15;
-
+  
       setPlayer(prev => ({ 
         ...prev, 
         x: 5, 
@@ -1802,7 +1807,8 @@ const WizardDungeonCrawler = () => {
       setDungeon(newMap);
       setPitch(0);
     }
-  }, [gameState, currentLevel, generateDungeon, permanentUpgrades]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, currentLevel]);
 
   // Raycasting
   const castRay = useCallback((origin, angle, map) => {
@@ -6606,8 +6612,25 @@ const WizardDungeonCrawler = () => {
               // Grant rewards based on chest type
               if (chest.inSecretRoom) {
                 showNotification('🗝️ Secret Chest!', 'yellow');
+                
                 // Grant secret reward
-                grantSecretChestReward();
+                const roll = Math.random();
+                if (roll < 0.5) {
+                  // Give permanent upgrade AND immediate benefit
+                  upgradeRandomPermanentStat();
+                  
+                  // Apply immediate benefit to current stats
+                  setPlayer(p => ({
+                    ...p,
+                    maxHealth: p.maxHealth + 20,
+                    health: p.health + 20,
+                    maxMana: p.maxMana + 15,
+                    mana: p.mana + 15
+                  }));
+                } else {
+                  // Unlock spell
+                  unlockRandomSecretSpell();
+                }
               } else {
                 showNotification('💰 Chest Opened!', 'yellow');
                 // Regular chest rewards
