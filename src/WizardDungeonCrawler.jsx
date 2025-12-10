@@ -6589,29 +6589,23 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      // Check for chest opening - treat like item pickup
+      // Add chest checking RIGHT AFTER setItems (around line 1850):
       setChests(prev =>
         prev.map(chest => {
           if (chest.opened) return chest;
           
           const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
           if (dist < 0.7) {
-            // Open this chest immediately
             createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
             addScreenShake(0.3);
             soundEffectsRef.current?.pickup?.();
             
-            // Grant rewards based on chest type
             if (chest.inSecretRoom) {
               showNotification('🗝️ Secret Chest!', 'yellow');
               
-              // Grant secret reward
               const roll = Math.random();
               if (roll < 0.5) {
-                // Give permanent upgrade AND immediate benefit
                 upgradeRandomPermanentStat();
-                
-                // Apply immediate benefit to current stats
                 setPlayer(p => ({
                   ...p,
                   maxHealth: p.maxHealth + 20,
@@ -6620,37 +6614,35 @@ const WizardDungeonCrawler = () => {
                   mana: p.mana + 15
                 }));
               } else {
-                // Unlock spell
                 unlockRandomSecretSpell();
-              } else {
-                showNotification('💰 Chest Opened!', 'yellow');
-                // Regular chest rewards
-                const roll = Math.random();
-                if (roll < 0.4) {
-                  const goldAmount = 50 + currentLevel * 10;
-                  setPlayer(p => ({ ...p, gold: p.gold + goldAmount }));
-                  setTimeout(() => showNotification(`Found ${goldAmount} gold!`, 'yellow'), 100);
-                } else if (roll < 0.7) {
-                  setPlayer(p => ({
-                    ...p,
-                    health: Math.min(p.maxHealth, p.health + 50)
-                  }));
-                  setTimeout(() => showNotification('Health restored!', 'green'), 100);
-                } else {
-                  setPlayer(p => ({
-                    ...p,
-                    mana: Math.min(p.maxMana, p.mana + 50)
-                  }));
-                  setTimeout(() => showNotification('Mana restored!', 'blue'), 100);
-                }
               }
-              
-              return { ...chest, opened: true };
+            } else {
+              showNotification('💰 Chest Opened!', 'yellow');
+              const roll = Math.random();
+              if (roll < 0.4) {
+                const goldAmount = 50 + currentLevel * 10;
+                setPlayer(p => ({ ...p, gold: p.gold + goldAmount }));
+                setTimeout(() => showNotification(`Found ${goldAmount} gold!`, 'yellow'), 100);
+              } else if (roll < 0.7) {
+                setPlayer(p => ({
+                  ...p,
+                  health: Math.min(p.maxHealth, p.health + 50)
+                }));
+                setTimeout(() => showNotification('Health restored!', 'green'), 100);
+              } else {
+                setPlayer(p => ({
+                  ...p,
+                  mana: Math.min(p.maxMana, p.mana + 50)
+                }));
+                setTimeout(() => showNotification('Mana restored!', 'blue'), 100);
+              }
             }
-            return chest;
-          })
-        );
-      }
+            
+            return { ...chest, opened: true };
+          }
+          return chest;
+        })
+      );
             
       setPlayer(prev => {
         if (prev.xp >= prev.xpToNext) {
