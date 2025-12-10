@@ -1390,16 +1390,16 @@ const WizardDungeonCrawler = () => {
     return { mapWithSecrets: map, chests };
   }
   
-  const grantSecretChestReward = () => {
+  const grantSecretChestReward = useCallback(() => {
     const roll = Math.random();
     if (roll < 0.5) {
       upgradeRandomPermanentStat();
     } else {
       unlockRandomSecretSpell();
     }
-  };
+  }, []);
 
-  const upgradeRandomPermanentStat = () => {
+  const upgradeRandomPermanentStat = useCallback(() => {
     const keys = [
       'maxHealthBonus',
       'maxManaBonus',
@@ -1411,62 +1411,61 @@ const WizardDungeonCrawler = () => {
       'lifeSteal',
       'essenceGain'
     ];
-
+  
     const chosenKey = keys[Math.floor(Math.random() * keys.length)];
-
+  
+    const prettyNameMap = {
+      maxHealthBonus: 'Max Health',
+      maxManaBonus: 'Max Mana',
+      damageBonus: 'Damage',
+      speedBonus: 'Speed',
+      manaRegenBonus: 'Mana Regen',
+      goldMultiplier: 'Gold Gain',
+      criticalChance: 'Critical Chance',
+      lifeSteal: 'Life Steal',
+      essenceGain: 'Essence Gain'
+    };
+  
+    const label = prettyNameMap[chosenKey] || chosenKey;
+    showNotification(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
+  
+    // Update upgrades without causing remount
     setPermanentUpgrades(prev => {
       const next = {
         ...prev,
         [chosenKey]: (prev[chosenKey] || 0) + 1
       };
-
       localStorage.setItem('wizardUpgrades', JSON.stringify(next));
-
-      const prettyNameMap = {
-        maxHealthBonus: 'Max Health',
-        maxManaBonus: 'Max Mana',
-        damageBonus: 'Damage',
-        speedBonus: 'Speed',
-        manaRegenBonus: 'Mana Regen',
-        goldMultiplier: 'Gold Gain',
-        criticalChance: 'Critical Chance',
-        lifeSteal: 'Life Steal',
-        essenceGain: 'Essence Gain'
-      };
-
-      const label = prettyNameMap[chosenKey] || chosenKey;
-      showNotification?.(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
-
       return next;
     });
-  };
+  }, []);
 
-  const unlockRandomSecretSpell = () => {
+  const unlockRandomSecretSpell = useCallback(() => {
     // figure out what we already have equipped
     const ownedKeys = new Set(equippedSpells.map(s => s.key));
-
+  
     // pick from secret-only spells that we don't already own
     const candidates = SECRET_SPELL_KEYS.filter(key => !ownedKeys.has(key));
-
+  
     if (candidates.length === 0) {
       // nothing left to unlock, give a stat upgrade instead
-      showNotification?.('✨ All spells mastered! Granting upgrade...', 'purple');
+      showNotification('✨ All spells mastered! Granting upgrade...', 'purple');
       upgradeRandomPermanentStat();
       return;
     }
-
+  
     const key = candidates[Math.floor(Math.random() * candidates.length)];
     const spell = ALL_SPELLS[key];
-
-    // add it to equipped spells (or your "owned" list if you have one)
+  
+    showNotification(`🔮 Secret Spell Unlocked: ${spell.name}!`, 'purple');
+  
+    // add it to equipped spells
     setEquippedSpells(prev => {
       // just in case we somehow double-unlock
       if (prev.some(s => s.key === key)) return prev;
       return [...prev, { ...spell }];
     });
-
-    showNotification?.(`🔮 Secret Spell Unlocked: ${spell.name}!`, 'purple');
-  };
+  }, [equippedSpells]);
 
   const revealNearbySecretDoors = (px, py, dungeon) => {
     const size = dungeon.length;
@@ -6592,48 +6591,47 @@ const WizardDungeonCrawler = () => {
       });
 
       if (nearbyChest && !nearbyChest.opening) {
-        // Mark chest as opening to prevent re-triggering
+        // Check for chest opening - treat like item pickup
         setChests(prev =>
           prev.map(chest => {
-            if (chest.id === nearbyChest.id && !chest.opening && !chest.opened) {
-              // Open this chest
+            if (chest.opened) return chest;
+            
+            const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
+            if (dist < 0.7) {
+              // Open this chest immediately
               createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
               addScreenShake(0.3);
-              
               soundEffectsRef.current?.pickup?.();
               
-              // Show notification based on chest type
+              // Grant rewards based on chest type
               if (chest.inSecretRoom) {
-                showNotification?.('🗝️ Secret Chest Opened!', 'yellow');
-                // Delay the reward grant slightly to ensure state is stable
-                setTimeout(() => grantSecretChestReward(), 50);
+                showNotification('🗝️ Secret Chest!', 'yellow');
+                // Grant secret reward
+                grantSecretChestReward();
               } else {
-                showNotification?.('💰 Chest Opened!', 'yellow');
+                showNotification('💰 Chest Opened!', 'yellow');
                 // Regular chest rewards
                 const roll = Math.random();
                 if (roll < 0.4) {
-                  // Gold
                   const goldAmount = 50 + currentLevel * 10;
                   setPlayer(p => ({ ...p, gold: p.gold + goldAmount }));
-                  showNotification?.(`Found ${goldAmount} gold!`, 'yellow');
+                  setTimeout(() => showNotification(`Found ${goldAmount} gold!`, 'yellow'), 100);
                 } else if (roll < 0.7) {
-                  // Health potion
                   setPlayer(p => ({
                     ...p,
                     health: Math.min(p.maxHealth, p.health + 50)
                   }));
-                  showNotification?.('Health restored!', 'green');
+                  setTimeout(() => showNotification('Health restored!', 'green'), 100);
                 } else {
-                  // Mana potion
                   setPlayer(p => ({
                     ...p,
                     mana: Math.min(p.maxMana, p.mana + 50)
                   }));
-                  showNotification?.('Mana restored!', 'blue');
+                  setTimeout(() => showNotification('Mana restored!', 'blue'), 100);
                 }
               }
               
-              return { ...chest, opened: true, opening: true };
+              return { ...chest, opened: true };
             }
             return chest;
           })
