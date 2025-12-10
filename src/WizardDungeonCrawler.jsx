@@ -1629,7 +1629,22 @@ const WizardDungeonCrawler = () => {
   
     // 6) Secret rooms + chests (uses existing helper)
     const { mapWithSecrets, chests: newChests } = addSecretRoomsToDungeon(map, level);
-  
+
+    // Rough "power level" based on all permanent upgrades
+    const totalUpgradeLevels =
+      permanentUpgrades.maxHealthBonus +
+      permanentUpgrades.maxManaBonus +
+      permanentUpgrades.damageBonus +
+      permanentUpgrades.speedBonus +
+      permanentUpgrades.manaRegenBonus +
+      permanentUpgrades.goldMultiplier +
+      permanentUpgrades.criticalChance +
+      permanentUpgrades.lifeSteal +
+      permanentUpgrades.essenceGain;
+
+    // Each upgrade = +8% boss HP
+    const bossPlayerScale = 1 + totalUpgradeLevels * 0.08;
+    
     // 7) Generate enemies (same logic as before, but using mapWithSecrets)
     const newEnemies = [];
     const isBossLevel = level % 5 === 0;
@@ -1659,8 +1674,9 @@ const WizardDungeonCrawler = () => {
         x,
         y,
         type: bossType,
-        health: stats.health * (1 + level * 0.2),
-        maxHealth: stats.health * (1 + level * 0.2),
+        // Boss HP scales harder with level AND your permanent upgrades
+        health: stats.health * (1 + level * 0.35) * bossPlayerScale,
+        maxHealth: stats.health * (1 + level * 0.35) * bossPlayerScale,
         damage: stats.damage * (1 + level * 0.1),
         speed: stats.speed,
         xp: stats.xp * level,
@@ -1784,7 +1800,7 @@ const WizardDungeonCrawler = () => {
     setChests(newChests);
   
     return mapWithSecrets;
-  }, [permanentUpgrades.goldMultiplier]);
+  }, [permanentUpgrades]);
 
   // Initialize game
   useEffect(() => {
