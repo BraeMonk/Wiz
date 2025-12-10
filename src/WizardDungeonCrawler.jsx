@@ -1434,18 +1434,17 @@ const WizardDungeonCrawler = () => {
     setPermanentUpgrades(prev => {
       const next = {
         ...prev,
-        [chosenKey]: (prev[chosenKey] || 0) + 1
+        [chosenKey]: (prev[chosenKey] || 0) + 1,
       };
       localStorage.setItem('wizardUpgrades', JSON.stringify(next));
-      
-      // Show notification after state update
+    
       setTimeout(() => {
         showNotification(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
       }, 200);
-      
+    
       return next;
     });
-  }, [showNotification, setPermanentUpgrades]);
+
 
   const unlockRandomSecretSpell = useCallback(() => {
     setEquippedSpells(prev => {
@@ -6537,72 +6536,85 @@ const WizardDungeonCrawler = () => {
       );
       
       // Update item pickup (around line 1885):
-      setItems(prev =>
-        prev.map(item => {
+      setItems(prevItems =>
+        prevItems.map(item => {
           if (item.collected) return item;
       
           const dist = Math.hypot(item.x - player.x, item.y - player.y);
           if (dist < 0.7) {
-
             soundEffectsRef.current?.pickup?.();
-            
             createParticleEffect(item.x, item.y, item.color, 15, 'explosion');
-            
+      
             setPlayer(p => {
               if (item.type === 'health') {
                 return {
                   ...p,
-                  health: Math.min(p.maxHealth, p.health + item.amount)
+                  health: Math.min(p.maxHealth, p.health + item.amount),
                 };
               } else if (item.type === 'mana') {
                 return {
                   ...p,
-                  mana: Math.min(p.maxMana, p.mana + item.amount)
+                  mana: Math.min(p.maxMana, p.mana + item.amount),
                 };
               } else if (item.type === 'gold') {
                 setTotalGold(prev => prev + item.amount);
-                return { ...p, gold: p.gold + item.amount };
+                return {
+                  ...p,
+                  gold: p.gold + item.amount,
+                };
               }
               return p;
             });
-            
+      
             if (item.type === 'powerup_damage') {
               setPlayerBuffs(prev => ({
                 ...prev,
-                damageBoost: { active: true, multiplier: item.multiplier, timeLeft: item.duration }
+                damageBoost: {
+                  active: true,
+                  multiplier: item.multiplier,
+                  timeLeft: item.duration,
+                },
               }));
             } else if (item.type === 'powerup_speed') {
               setPlayerBuffs(prev => ({
                 ...prev,
-                speedBoost: { active: true, multiplier: item.multiplier, timeLeft: item.duration }
+                speedBoost: {
+                  active: true,
+                  multiplier: item.multiplier,
+                  timeLeft: item.duration,
+                },
               }));
             } else if (item.type === 'powerup_invincible') {
               setPlayerBuffs(prev => ({
                 ...prev,
-                invincible: { active: true, timeLeft: item.duration }
+                invincible: {
+                  active: true,
+                  timeLeft: item.duration,
+                },
               }));
             }
-            
+      
             return { ...item, collected: true };
           }
+      
           return item;
         })
       );
 
       // Add chest checking RIGHT AFTER setItems (around line 1850):
-      setChests(prev =>
-        prev.map(chest => {
+      setChests(prevChests =>
+        prevChests.map(chest => {
           if (chest.opened) return chest;
-          
+      
           const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
           if (dist < 0.7) {
             createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
             addScreenShake(0.3);
             soundEffectsRef.current?.pickup?.();
-            
+      
             if (chest.inSecretRoom) {
               showNotification('🗝️ Secret Chest!', 'yellow');
-              
+      
               const roll = Math.random();
               if (roll < 0.5) {
                 upgradeRandomPermanentStat();
@@ -6611,7 +6623,7 @@ const WizardDungeonCrawler = () => {
                   maxHealth: p.maxHealth + 20,
                   health: p.health + 20,
                   maxMana: p.maxMana + 15,
-                  mana: p.mana + 15
+                  mana: p.mana + 15,
                 }));
               } else {
                 unlockRandomSecretSpell();
@@ -6622,24 +6634,34 @@ const WizardDungeonCrawler = () => {
               if (roll < 0.4) {
                 const goldAmount = 50 + currentLevel * 10;
                 setPlayer(p => ({ ...p, gold: p.gold + goldAmount }));
-                setTimeout(() => showNotification(`Found ${goldAmount} gold!`, 'yellow'), 100);
+                setTimeout(
+                  () => showNotification(`Found ${goldAmount} gold!`, 'yellow'),
+                  100
+                );
               } else if (roll < 0.7) {
                 setPlayer(p => ({
                   ...p,
-                  health: Math.min(p.maxHealth, p.health + 50)
+                  health: Math.min(p.maxHealth, p.health + 50),
                 }));
-                setTimeout(() => showNotification('Health restored!', 'green'), 100);
+                setTimeout(
+                  () => showNotification('Health restored!', 'green'),
+                  100
+                );
               } else {
                 setPlayer(p => ({
                   ...p,
-                  mana: Math.min(p.maxMana, p.mana + 50)
+                  mana: Math.min(p.maxMana, p.mana + 50),
                 }));
-                setTimeout(() => showNotification('Mana restored!', 'blue'), 100);
+                setTimeout(
+                  () => showNotification('Mana restored!', 'blue'),
+                  100
+                );
               }
             }
-            
+      
             return { ...chest, opened: true };
           }
+      
           return chest;
         })
       );
