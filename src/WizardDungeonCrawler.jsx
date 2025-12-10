@@ -1187,14 +1187,20 @@ const WizardDungeonCrawler = () => {
         setGravitySuspendedEnemies(suspendedIds);
         addScreenShake(0.4);
       } else {
-        // Normal projectile spell
+        // Normal projectile spell – spawn slightly in front of CURRENT position
+        const spawnAngle = currentPlayer.angle;
+        const spawnOffset = 0.7; // about 0.7 tiles in front
+
+        const spawnX = currentPlayer.x + Math.cos(spawnAngle) * spawnOffset;
+        const spawnY = currentPlayer.y + Math.sin(spawnAngle) * spawnOffset;
+
         setProjectiles(projs => [
           ...projs,
           {
             id: Math.random(),
-            x: currentPlayer.x,
-            y: currentPlayer.y,
-            angle: currentPlayer.angle,
+            x: spawnX,
+            y: spawnY,
+            angle: spawnAngle,
             speed: 8,
             damage: finalDamage,
             color: spell.color,
@@ -5924,7 +5930,9 @@ const WizardDungeonCrawler = () => {
         const manaRegenBonus = 1 + permanentUpgrades.manaRegenBonus * 0.1;
         const newMana = Math.min(prev.maxMana, prev.mana + 10 * manaRegenBonus * deltaTime);
         
-        return { ...prev, x: newX, y: newY, angle: newAngle, mana: newMana };
+        const next = { ...prev, x: newX, y: newY, angle: newAngle, mana: newMana };
+        playerRef.current = next;
+        return next;
       });
 
       {
