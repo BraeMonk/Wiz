@@ -990,10 +990,10 @@ const WizardDungeonCrawler = () => {
     }
     particlesRef.current = [...particlesRef.current, ...newParticles];
   }, []);
+
   
   const gameParticlesRef = useRef([]);
-  
-  // Add this function after createParticleEffect
+
   const updateGameParticles = useCallback((deltaTime) => {
     gameParticlesRef.current = gameParticlesRef.current
       .map(p => ({
@@ -1006,6 +1006,7 @@ const WizardDungeonCrawler = () => {
       }))
       .filter(p => p.life > 0);
   }, []);
+
   
   const castCurrentSpell = useCallback(() => {
     const idx = selectedSpellRef.current;
@@ -1429,22 +1430,23 @@ const WizardDungeonCrawler = () => {
     };
   
     const label = prettyNameMap[chosenKey] || chosenKey;
-    
+  
     // Update upgrades without causing remount
     setPermanentUpgrades(prev => {
       const next = {
         ...prev,
-        [chosenKey]: (prev[chosenKey] || 0) + 1,
+        [chosenKey]: (prev[chosenKey] || 0) + 1
       };
       localStorage.setItem('wizardUpgrades', JSON.stringify(next));
-    
+  
+      // Show notification after state update
       setTimeout(() => {
         showNotification(`⭐ Permanent Upgrade: +1 ${label}!`, 'purple');
       }, 200);
-    
+  
       return next;
     });
-
+  }, [showNotification]);
 
   const unlockRandomSecretSpell = useCallback(() => {
     setEquippedSpells(prev => {
@@ -1469,7 +1471,8 @@ const WizardDungeonCrawler = () => {
       if (prev.some(s => s.key === key)) return prev;
       return [...prev, { ...spell }];
     });
-  }, [showNotification, upgradeRandomPermanentStat, setEquippedSpells]);
+  }, [showNotification, upgradeRandomPermanentStat]);
+
 
   const revealNearbySecretDoors = (px, py, dungeonMap) => {
     const size = dungeonMap.length;
