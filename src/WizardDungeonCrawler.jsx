@@ -1445,7 +1445,7 @@ const WizardDungeonCrawler = () => {
       
       return next;
     });
-  }, [showNotification]);
+  }, [showNotification, setPermanentUpgrades]);
 
   const unlockRandomSecretSpell = useCallback(() => {
     setEquippedSpells(prev => {
@@ -1470,23 +1470,23 @@ const WizardDungeonCrawler = () => {
       if (prev.some(s => s.key === key)) return prev;
       return [...prev, { ...spell }];
     });
-  }, [showNotification, upgradeRandomPermanentStat]);
+  }, [showNotification, upgradeRandomPermanentStat, setEquippedSpells]);
 
-  const revealNearbySecretDoors = (px, py, dungeon) => {
-    const size = dungeon.length;
+  const revealNearbySecretDoors = (px, py, dungeonMap) => {
+    const size = dungeonMap.length;
     const radius = 1;
     let changed = false;
-
+  
     for (let y = py - radius; y <= py + radius; y++) {
       for (let x = px - radius; x <= px + radius; x++) {
         if (x < 0 || y < 0 || x >= size || y >= size) continue;
-        if (dungeon[y][x] === TILE_SECRET_DOOR) {
-          dungeon[y][x] = TILE_FLOOR;
+        if (dungeonMap[y][x] === TILE_SECRET_DOOR) {
+          dungeonMap[y][x] = TILE_FLOOR;
           changed = true;
         }
       }
     }
-
+  
     return changed;
   };
   
@@ -6589,48 +6589,39 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      // Check for chest opening - debounced to prevent multiple triggers
-      const nearbyChest = chests.find(chest => {
-        if (chest.opened) return false;
-        const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
-        return dist < 0.7;
-      });
-
-      if (nearbyChest && !nearbyChest.opening) {
-        // Check for chest opening - treat like item pickup
-        setChests(prev =>
-          prev.map(chest => {
-            if (chest.opened) return chest;
+      // Check for chest opening - treat like item pickup
+      setChests(prev =>
+        prev.map(chest => {
+          if (chest.opened) return chest;
+          
+          const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
+          if (dist < 0.7) {
+            // Open this chest immediately
+            createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
+            addScreenShake(0.3);
+            soundEffectsRef.current?.pickup?.();
             
-            const dist = Math.hypot(chest.x - player.x, chest.y - player.y);
-            if (dist < 0.7) {
-              // Open this chest immediately
-              createParticleEffect(chest.x, chest.y, '#ffaa00', 25, 'explosion');
-              addScreenShake(0.3);
-              soundEffectsRef.current?.pickup?.();
+            // Grant rewards based on chest type
+            if (chest.inSecretRoom) {
+              showNotification('🗝️ Secret Chest!', 'yellow');
               
-              // Grant rewards based on chest type
-              if (chest.inSecretRoom) {
-                showNotification('🗝️ Secret Chest!', 'yellow');
+              // Grant secret reward
+              const roll = Math.random();
+              if (roll < 0.5) {
+                // Give permanent upgrade AND immediate benefit
+                upgradeRandomPermanentStat();
                 
-                // Grant secret reward
-                const roll = Math.random();
-                if (roll < 0.5) {
-                  // Give permanent upgrade AND immediate benefit
-                  upgradeRandomPermanentStat();
-                  
-                  // Apply immediate benefit to current stats
-                  setPlayer(p => ({
-                    ...p,
-                    maxHealth: p.maxHealth + 20,
-                    health: p.health + 20,
-                    maxMana: p.maxMana + 15,
-                    mana: p.mana + 15
-                  }));
-                } else {
-                  // Unlock spell
-                  unlockRandomSecretSpell();
-                }
+                // Apply immediate benefit to current stats
+                setPlayer(p => ({
+                  ...p,
+                  maxHealth: p.maxHealth + 20,
+                  health: p.health + 20,
+                  maxMana: p.maxMana + 15,
+                  mana: p.mana + 15
+                }));
+              } else {
+                // Unlock spell
+                unlockRandomSecretSpell();
               } else {
                 showNotification('💰 Chest Opened!', 'yellow');
                 // Regular chest rewards
