@@ -1232,25 +1232,25 @@ const WizardDungeonCrawler = () => {
   
   const castCurrentSpell = useCallback(() => {
     const idx = selectedSpellRef.current;
-  
+
     setEquippedSpells(prev => {
       if (idx < 0 || idx >= prev.length) return prev;
       const spell = prev[idx];
-  
+
       if (spell.cooldown > 0) {
         return prev;
       }
-  
+
       const currentPlayer = playerRef.current;
       if (!currentPlayer || currentPlayer.mana < spell.manaCost) {
         return prev;
       }
 
-      // 🔵 Spend mana on the gameplay ref
+      // 🔵 Spend mana and update BOTH ref and state
       const newMana = Math.max(0, currentPlayer.mana - spell.manaCost);
-      currentPlayer.mana = newMana;
-
-      // 🟣 Sync mana to React state so the UI bar updates
+      playerRef.current = { ...currentPlayer, mana: newMana };
+    
+      // Sync to React state so UI updates
       setPlayer(prevPlayer => ({
         ...prevPlayer,
         mana: newMana
