@@ -8216,10 +8216,13 @@ const WizardDungeonCrawler = () => {
     };
 
     const StatBar = ({ current, max, color, icon: Icon, label }) => {
-      const safeMax = max || 1;
-      const safeCurrent = Math.max(0, current);
+      const numericCurrent = Number.isFinite(current) ? current : 0;
+      const numericMax = Number.isFinite(max) && max > 0 ? max : 1;
+    
+      const safeCurrent = Math.max(0, numericCurrent);
+      const safeMax = numericMax;
       const percent = Math.max(0, Math.min(100, (safeCurrent / safeMax) * 100));
-
+    
       return (
         <div className="mb-2">
           <div className="flex items-center justify-between mb-1">
@@ -8235,7 +8238,7 @@ const WizardDungeonCrawler = () => {
             <div
               className="h-full transition-all duration-150"
               style={{ width: `${percent}%`, backgroundColor: color }}
-              />
+            />
           </div>
         </div>
       );
@@ -9044,75 +9047,83 @@ const WizardDungeonCrawler = () => {
                 
                 {isMobile ? (
                 <>
-                    <div className="flex items-center gap-1 mb-1">
+                  {/* Health */}
+                  <div className="flex items-center gap-1 mb-1">
                     <Heart size={12} style={{ color: '#f87171' }} />
                     <div className="flex-1 h-2 bg-gray-700 rounded overflow-hidden">
-                        <div
+                      <div
                         className="h-full transition-all bg-red-400"
                         style={{
-                            width: `${(player.health / player.maxHealth) * 100}%`
+                          width: (() => {
+                            const hp = Number.isFinite(player.health) ? player.health : 0;
+                            const maxHp = Number.isFinite(player.maxHealth) && player.maxHealth > 0
+                              ? player.maxHealth
+                              : 1;
+                            const pct = (hp / maxHp) * 100;
+                            return `${Math.max(0, Math.min(100, pct))}%`;
+                          })()
                         }}
-                        />
+                      />
                     </div>
-                    </div>
-                    <div className="flex items-center gap-1 mb-1">
+                  </div>
+              
+                  {/* Mana */}
+                  <div className="flex items-center gap-1 mb-1">
                     <Droplet size={12} style={{ color: '#60a5fa' }} />
                     <div className="flex-1 h-2 bg-gray-700 rounded overflow-hidden">
-                        <div
+                      <div
                         className="h-full transition-all bg-blue-400"
                         style={{
-                            width: `${Math.max(
-                            0,
-                            Math.min(
-                                100,
-                                (player.mana / (player.maxMana || 1)) * 100
-                            )
-                            )}%`
+                          width: (() => {
+                            const mana = Number.isFinite(player.mana) ? player.mana : 0;
+                            const maxMana = Number.isFinite(player.maxMana) && player.maxMana > 0
+                              ? player.maxMana
+                              : 1;
+                            const pct = (mana / maxMana) * 100;
+                            return `${Math.max(0, Math.min(100, pct))}%`;
+                          })()
                         }}
-                        />
+                      />
                     </div>
-                    </div>
-                    
-                    <div className="text-yellow-400 text-[9px] mt-1">
+                  </div>
+              
+                  {/* Tiny footer */}
+                  <div className="text-yellow-400 text-[9px] mt-1">
                     Lv{player.level} | 💀{enemies.length}
-                    </div>
+                  </div>
                 </>
-                ) : (
+              ) : (
                 <>
-                    <StatBar
+                  <StatBar
                     current={player.health}
                     max={player.maxHealth}
                     color="#f87171"
                     icon={Heart}
                     label="Health"
-                    />
-                    <StatBar
+                  />
+                  <StatBar
                     current={player.mana}
                     max={player.maxMana}
                     color="#60a5fa"
                     icon={Droplet}
                     label="Mana"
-                    />
-                    <div className="mt-3 pt-3 border-t border-gray-600">
+                  />
+                  <div className="mt-3 pt-3 border-t border-gray-600">
                     <div className="flex justify-between text-xs text-gray-300 mb-1">
-                        <span>
-                        XP: {Math.floor(player.xp)}/{player.xpToNext}
-                        </span>
+                      <span>XP: {Math.floor(player.xp)}/{player.xpToNext}</span>
                     </div>
                     <div className="w-full h-2 bg-gray-700 rounded overflow-hidden">
-                        <div
+                      <div
                         className="h-full bg-yellow-500"
-                        style={{
-                            width: `${(player.xp / player.xpToNext) * 100}%`
-                        }}
-                        />
+                        style={{ width: `${(player.xp / player.xpToNext) * 100}%` }}
+                      />
                     </div>
-                    </div>
-                    <div className="mt-2 text-yellow-400 text-xs md:text-sm">
+                  </div>
+                  <div className="mt-2 text-yellow-400 text-xs md:text-sm">
                     💰 {player.gold} Gold | 💀 {player.kills} Kills
-                    </div>
+                  </div>
                 </>
-                )}
+              )}
             </div>
 
             {/* Combo Display */}
