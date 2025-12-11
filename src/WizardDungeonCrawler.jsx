@@ -1971,52 +1971,110 @@ const WizardDungeonCrawler = () => {
                 
                     // Damage + knockback nearby enemies
                     setEnemies(prevEnemies =>
-                      prevEnemies.map(otherEnemy => {
-                        if (otherEnemy.id === enemy.id) return otherEnemy;
-                        const dx = otherEnemy.x - enemy.x;
-                        const dy = otherEnemy.y - enemy.y;
-                        const dist = Math.hypot(dx, dy);
-                
-                        if (dist < quakeRadius && dist > 0.01) {
-                          const angle = Math.atan2(dy, dx);
-                          const knockbackDist = knockbackPower;
-                          const newX = otherEnemy.x + Math.cos(angle) * knockbackDist;
-                          const newY = otherEnemy.y + Math.sin(angle) * knockbackDist;
-                
-                          const tileX = Math.floor(newX);
-                          const tileY = Math.floor(newY);
-                
-                          let finalX = otherEnemy.x;
-                          let finalY = otherEnemy.y;
-                
-                          // Only move if destination is walkable
-                          if (
-                            tileX >= 0 && tileX < DUNGEON_SIZE &&
-                            tileY >= 0 && tileY < DUNGEON_SIZE &&
-                            dungeon[tileY][tileX] === TILE_FLOOR
-                          ) {
-                            finalX = newX;
-                            finalY = newY;
+                      prevEnemies
+                        .map(otherEnemy => {
+                          // Don't process the original enemy twice
+                          if (otherEnemy.id === enemy.id) return otherEnemy;
+                    
+                          const dx = otherEnemy.x - enemy.x;
+                          const dy = otherEnemy.y - enemy.y;
+                          const dist = Math.hypot(dx, dy);
+                    
+                          if (dist > 0.01 && dist < quakeRadius) {
+                            const angle = Math.atan2(dy, dx);
+                            const knockbackDist = knockbackPower;
+                    
+                            let newX = otherEnemy.x + Math.cos(angle) * knockbackDist;
+                            let newY = otherEnemy.y + Math.sin(angle) * knockbackDist;
+                    
+                            const tileX = Math.floor(newX);
+                            const tileY = Math.floor(newY);
+                    
+                            // Only move if destination is walkable
+                            if (
+                              tileX >= 0 &&
+                              tileX < DUNGEON_SIZE &&
+                              tileY >= 0 &&
+                              tileY < DUNGEON_SIZE &&
+                              dungeon[tileY][tileX] === TILE_FLOOR
+                            ) {
+                              createParticleEffect(newX, newY, '#92400e', 10, 'hit');
+                    
+                              const quakeDamage = finalDamage * 0.5 * earthDamageMult;
+                              const newHealth = (otherEnemy.health ?? 0) - quakeDamage;
+                    
+                              if (newHealth <= 0) {
+                                // Combo + multiplier
+                                const newCombo = comboRef.current.count + 1;
+                                const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
+                                setCombo({
+                                  count: newCombo,
+                                  multiplier: newMultiplier,
+                                  timer: 3.0
+                                });
+                    
+                                const comboBonus = comboRef.current.multiplier;
+                    
+                                // XP / Gold / Kill count
+                                setPlayer(p => ({
+                                  ...p,
+                                  xp: p.xp + Math.floor((otherEnemy.xp ?? 0) * comboBonus),
+                                  gold: p.gold + Math.floor((otherEnemy.gold ?? 0) * comboBonus),
+                                  kills: p.kills + 1
+                                }));
+                    
+                                // Essence gain
+                                const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
+                                const baseEssence = Number(otherEnemy?.essence ?? 0);
+                                const essenceBonus = 1 + essenceGainUpgrade * 0.2;
+                                const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
+                    
+                                setEssence(prev => {
+                                  const safePrev = Number.isFinite(prev) ? prev : 0;
+                                  return safePrev + gainedEssence;
+                                });
+                    
+                                // Total kills milestones
+                                setTotalKills(prev => {
+                                  const newTotal = prev + 1;
+                                  if (newTotal % 100 === 0) {
+                                    showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
+                                  }
+                                  return newTotal;
+                                });
+                    
+                                // Lifesteal on quake kills
+                                const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
+                                const healAmount = quakeDamage * lifeStealPercent;
+                    
+                                if (healAmount > 0) {
+                                  setPlayer(p => ({
+                                    ...p,
+                                    health: Math.min(p.maxHealth, p.health + healAmount)
+                                  }));
+                                  createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
+                                }
+                    
+                                // Mark enemy as dead so we can filter it out
+                                return { ...otherEnemy, health: 0, dead: true };
+                              }
+                    
+                              // Survives the quake: apply knockback + damage
+                              return {
+                                ...otherEnemy,
+                                x: newX,
+                                y: newY,
+                                health: newHealth
+                              };
+                            }
                           }
-                
-                          const quakeDamage = finalDamage * 0.5 * earthDamageMult;
-                
-                          setTimeout(() => {
-                            createParticleEffect(finalX, finalY, '#92400e', 10, 'hit');
-                          }, 100);
-                
-                          return {
-                            ...otherEnemy,
-                            x: finalX,
-                            y: finalY,
-                            health: otherEnemy.health - quakeDamage
-                          };
-                        }
-                
-                        return otherEnemy;
-                      }).filter(e => e.health > 0)
+                    
+                          // Outside radius or blocked: unchanged
+                          return otherEnemy;
+                        })
+                        .filter(e => !e.dead)
                     );
-                
+                    
                     showNotification('🌍 SEISMIC SHOCKWAVE!', 'orange');
                   }
                 
