@@ -8651,19 +8651,19 @@ const WizardDungeonCrawler = () => {
                   </button>
                 )}
 
-                  {equipped && (
+                {equipped && (
                   <button
                     onClick={() => {
                       setEquippedSpells(prev =>
                         prev.filter(s => s.key !== spell.key)
-                                       );
+                      );
                     }}
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded"
-                    >
+                  >
                     Unequip
                   </button>
                 )}
-                </div>
+              </div>
               );
             })}
           </div>
