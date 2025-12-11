@@ -7273,9 +7273,6 @@ const WizardDungeonCrawler = () => {
           // Player projectiles hitting enemies
           let hit = false;
 
-      
-          // Player projectiles hitting enemies
-          let hit = false;
           setEnemies(prevEnemies =>
             prevEnemies
               .map(enemy => {
@@ -7286,7 +7283,7 @@ const WizardDungeonCrawler = () => {
 
                   soundEffectsRef.current?.hit?.();
                   
-                  // Inside setProjectiles where you handle enemy hits
+                  // Damage / crits
                   const bonusDamage = permanentUpgrades.damageBonus * 0.1;
                   const critChance = permanentUpgrades.criticalChance * 0.05;
                   const isCrit = Math.random() < critChance;
@@ -7300,15 +7297,12 @@ const WizardDungeonCrawler = () => {
 
                   const newHealth = enemy.health - finalDamage;
                   
-                  // Create hit particles
+                  // Hit particles
                   createParticleEffect(proj.x, proj.y, enemy.color, 8, 'hit');
                   addScreenShake(0.2);
                   
                   if (newHealth <= 0) {
-
                     soundEffectsRef.current?.death?.();
-                    
-                    // Death particles
                     createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
                     addScreenShake(enemy.isBoss ? 0.8 : 0.3);
 
@@ -7362,8 +7356,10 @@ const WizardDungeonCrawler = () => {
               })
               .filter(e => !e.dead)
           );
+
           if (!hit) remaining.push(proj);
         });
+
         return remaining;
       });
 
