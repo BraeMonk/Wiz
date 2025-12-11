@@ -2077,7 +2077,8 @@ const WizardDungeonCrawler = () => {
                     
                     showNotification('🌍 SEISMIC SHOCKWAVE!', 'orange');
                   }
-                
+                  
+                  // === GENERIC KILL REWARDS FOR THIS HIT ===
                   const newCombo = comboRef.current.count + 1;
                   const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
                   setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
@@ -2107,6 +2108,7 @@ const WizardDungeonCrawler = () => {
                     return newTotal;
                   });
                 
+                  // Life steal
                   const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
                   const healAmount = finalDamage * lifeStealPercent;
                   if (healAmount > 0) {
@@ -2116,10 +2118,16 @@ const WizardDungeonCrawler = () => {
                     }));
                     createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
                   }
+                  
+                  // Enemy dies from the push hit
                   return { ...enemy, health: 0, dead: true };
                 }
+              }
+              
+              // Enemy survived the hit or was out of range
               return { ...enemy, health: newHealth };
             }
+            
             return enemy;
           })
           .filter(e => !e.dead)
