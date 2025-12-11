@@ -7470,8 +7470,8 @@ const WizardDungeonCrawler = () => {
       
       const distField = buildDistanceField();
 
-      setEnemies(prev =>
-        prev.map(enemy => {
+      setEnemies(prev => {
+        return prev.map(enemy => {
           const dx = player.x - enemy.x;
           const dy = player.y - enemy.y;
           const distance = Math.hypot(dx, dy);
@@ -7493,9 +7493,6 @@ const WizardDungeonCrawler = () => {
               
               if (distance < idealRange - 2) {
                 // Too close, back away
-                const ex = Math.floor(enemy.x);
-                const ey = Math.floor(enemy.y);
-                
                 const awayAngle = Math.atan2(-dy, -dx);
                 const moveAmount = enemy.speed * deltaTime;
                 const testX = enemy.x + Math.cos(awayAngle) * moveAmount;
@@ -7569,7 +7566,7 @@ const WizardDungeonCrawler = () => {
               // Shoot at player if in range and cooldown ready
               if (distance <= ENEMY_TYPES[enemy.type].attackRange && newAttackCooldown <= 0) {
                 const angleToPlayer = Math.atan2(dy, dx);
-                const spawnOffset = 0.7; // about 0.7 tiles in front of the enemy
+                const spawnOffset = 0.7;
 
                 const spawnX = newX + Math.cos(angleToPlayer) * spawnOffset;
                 const spawnY = newY + Math.sin(angleToPlayer) * spawnOffset;
@@ -7828,7 +7825,6 @@ const WizardDungeonCrawler = () => {
             }
           }
           
-          // Add to return object:
           return {
             ...enemy,
             x: newX,
@@ -7842,8 +7838,8 @@ const WizardDungeonCrawler = () => {
             burnTimer: effectiveBurnTimer,
             health: effectiveHealth
           };
-        })
-      );
+        });
+      });
       
       // Update buff timers in game loop:
       setPlayerBuffs(prev => ({
