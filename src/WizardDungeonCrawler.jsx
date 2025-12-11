@@ -8387,9 +8387,7 @@ const WizardDungeonCrawler = () => {
           
           <div className="bg-black bg-opacity-60 p-6 rounded-lg mb-8">
             <h2 className="text-3xl text-orange-400 mb-4">Choose Your Path</h2>
-            <p className="text-lg text-white mb-2">
-              Prestiging will:
-            </p>
+            <p className="text-lg text-white mb-2">Prestiging will:</p>
             <ul className="text-left text-white space-y-2 max-w-2xl mx-auto">
               <li>✨ Reset all permanent upgrades to 0</li>
               <li>🎯 Grant you a powerful class with unique abilities</li>
@@ -8448,11 +8446,13 @@ const WizardDungeonCrawler = () => {
             <br />
             Permanent Upgrades
           </h1>
-          <p className="text-lg md:text-xl text-purple-300 mb-0">Essence: ✨ {essence}</p>
+          <p className="text-lg md:text-xl text-purple-300 mb-0">
+            Essence: ✨ {essence}
+          </p>
           <p className="text-sm text-gray-400">Total Runs: {totalRuns}</p>
         </div>
   
-        {/* Scrollable upgrades list - Takes remaining space between header and footer */}
+        {/* Scrollable upgrades list */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.keys(UPGRADE_COSTS).map(upgradeKey => {
@@ -8483,31 +8483,37 @@ const WizardDungeonCrawler = () => {
   
                   <button
                     onClick={() => {
-                      if (canAfford) {
-                        setEssence(prev => prev - cost);
-                        setPermanentUpgrades(prev => {
-                          const newLevel = prev[upgradeKey] + 1;
-                          const next = {
-                            ...prev,
-                            [upgradeKey]: newLevel
-                          };
-                          
-                          // Check if this upgrade or any stat hits 50
-                          if (newLevel === 50 || Object.values(next).some(level => level >= 50)) {
-                            setTimeout(() => {
-                              const allClasses = Object.keys(PRESTIGE_CLASSES);
-                              const availableClasses = allClasses.filter(c => c !== currentClass);
-                              const shuffled = [...availableClasses].sort(() => Math.random() - 0.5);
-                              const choices = shuffled.slice(0, 3);
-                              
-                              setPrestigeClassChoices(choices);
-                              setShowPrestigeOffer(true);
-                            }, 500);
-                          }
-                          
-                          return next;
-                        });
-                      }
+                      if (!canAfford) return;
+                      setEssence(prev => prev - cost);
+                      setPermanentUpgrades(prev => {
+                        const newLevel = prev[upgradeKey] + 1;
+                        const next = {
+                          ...prev,
+                          [upgradeKey]: newLevel
+                        };
+                        
+                        // Check if this upgrade or any stat hits 50
+                        if (
+                          newLevel === 50 ||
+                          Object.values(next).some(level => level >= 50)
+                        ) {
+                          setTimeout(() => {
+                            const allClasses = Object.keys(PRESTIGE_CLASSES);
+                            const availableClasses = allClasses.filter(
+                              c => c !== currentClass
+                            );
+                            const shuffled = [...availableClasses].sort(
+                              () => Math.random() - 0.5
+                            );
+                            const choices = shuffled.slice(0, 3);
+                            
+                            setPrestigeClassChoices(choices);
+                            setShowPrestigeOffer(true);
+                          }, 500);
+                        }
+                        
+                        return next;
+                      });
                     }}
                     disabled={!canAfford}
                     className={`w-full py-2 rounded text-white font-bold ${
@@ -8524,27 +8530,32 @@ const WizardDungeonCrawler = () => {
           </div>
         </div>
 
-        {/* Prestige Offer Button - Shows when any stat is 50+ */}
-        {Object.values(permanentUpgrades).some(level => level >= 50) && !showPrestigeOffer && (
-          <div className="px-4 pb-3">
-            <button
-              onClick={() => {
-                const allClasses = Object.keys(PRESTIGE_CLASSES);
-                const availableClasses = allClasses.filter(c => c !== currentClass);
-                const shuffled = [...availableClasses].sort(() => Math.random() - 0.5);
-                const choices = shuffled.slice(0, 3);
-                
-                setPrestigeClassChoices(choices);
-                setShowPrestigeOffer(true);
-              }}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg text-lg animate-pulse"
-            >
-              🎖️ PRESTIGE AVAILABLE - Click to View Options
-            </button>
-          </div>
-        )}
+        {/* Prestige Offer Button */}
+        {Object.values(permanentUpgrades).some(level => level >= 50) &&
+          !showPrestigeOffer && (
+            <div className="px-4 pb-3">
+              <button
+                onClick={() => {
+                  const allClasses = Object.keys(PRESTIGE_CLASSES);
+                  const availableClasses = allClasses.filter(
+                    c => c !== currentClass
+                  );
+                  const shuffled = [...availableClasses].sort(
+                    () => Math.random() - 0.5
+                  );
+                  const choices = shuffled.slice(0, 3);
+                  
+                  setPrestigeClassChoices(choices);
+                  setShowPrestigeOffer(true);
+                }}
+                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg text-lg animate-pulse"
+              >
+                🎖️ PRESTIGE AVAILABLE - Click to View Options
+              </button>
+            </div>
+          )}
         
-        {/* Footer button - Fixed at bottom */}
+        {/* Footer button */}
         <div className="px-4 py-3 bg-black bg-opacity-30">
           <button
             onClick={() => setShowUpgradeMenu(false)}
@@ -8560,15 +8571,17 @@ const WizardDungeonCrawler = () => {
   if (showShop) {
     return (
       <div className="w-full h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-black flex flex-col">
-        {/* Header - Fixed at top */}
+        {/* Header */}
         <div className="px-4 pt-4 pb-3 text-center bg-black bg-opacity-30">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-1">
             Spell Shop
           </h1>
-          <p className="text-lg md:text-xl text-yellow-400">Gold: 💰 {player.gold}</p>
+          <p className="text-lg md:text-xl text-yellow-400">
+            Gold: 💰 {player.gold}
+          </p>
         </div>
   
-        {/* Scrollable spell list - Takes remaining space between header and footer */}
+        {/* Scrollable spell list */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.values(ALL_SPELLS).map(spell => {
@@ -8591,7 +8604,9 @@ const WizardDungeonCrawler = () => {
                   <div className="flex items-center gap-3 mb-3">
                     <Icon size={32} style={{ color: spell.color }} />
                     <div className="text-left flex-1">
-                      <h3 className="text-white font-bold text-base">{spell.name}</h3>
+                      <h3 className="text-white font-bold text-base">
+                        {spell.name}
+                      </h3>
                       <p className="text-gray-300 text-sm">
                         Damage: {spell.damage} | Mana: {spell.manaCost}
                       </p>
@@ -8605,13 +8620,12 @@ const WizardDungeonCrawler = () => {
                   {!owned && (
                     <button
                       onClick={() => {
-                        if (canAfford) {
-                          setPlayer(prev => ({
-                            ...prev,
-                            gold: prev.gold - spell.price
-                          }));
-                          setPurchasedSpells(prev => [...prev, spell.key]);
-                        }
+                        if (!canAfford) return;
+                        setPlayer(prev => ({
+                          ...prev,
+                          gold: prev.gold - spell.price
+                        }));
+                        setPurchasedSpells(prev => [...prev, spell.key]);
                       }}
                       disabled={!canAfford}
                       className={`w-full py-2 rounded text-white font-bold ${
@@ -8627,9 +8641,8 @@ const WizardDungeonCrawler = () => {
                   {owned && !equipped && (
                     <button
                       onClick={() => {
-                        if (equippedSpells.length < 3) {
-                          setEquippedSpells(prev => [...prev, { ...spell }]);
-                        }
+                        if (equippedSpells.length >= 3) return;
+                        setEquippedSpells(prev => [...prev, { ...spell }]);
                       }}
                       disabled={equippedSpells.length >= 3}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded"
@@ -8656,7 +8669,7 @@ const WizardDungeonCrawler = () => {
           </div>
         </div>
   
-        {/* Footer button - Fixed at bottom */}
+        {/* Footer button */}
         <div className="px-4 py-3 bg-black bg-opacity-30">
           <button
             onClick={continueToNextLevel}
@@ -8714,7 +8727,9 @@ const WizardDungeonCrawler = () => {
             {currentClass && (
               <div className="bg-black bg-opacity-60 p-4 rounded-lg mb-4">
                 <div className="text-center">
-                  <div className="text-5xl mb-2">{PRESTIGE_CLASSES[currentClass].icon}</div>
+                  <div className="text-5xl mb-2">
+                    {PRESTIGE_CLASSES[currentClass].icon}
+                  </div>
                   <p className="text-xl text-yellow-400 font-bold">
                     {PRESTIGE_CLASSES[currentClass].name}
                   </p>
@@ -8778,8 +8793,8 @@ const WizardDungeonCrawler = () => {
                   Math.max(
                     0,
                     Number.isFinite(essence - essenceAtStart)
-                    ? Math.floor(essence - essenceAtStart)
-                    : 0
+                      ? Math.floor(essence - essenceAtStart)
+                      : 0
                   )
                 }
               </p>
@@ -8811,9 +8826,17 @@ const WizardDungeonCrawler = () => {
   if (gameState === 'victory') {
     const isBossLevel = currentLevel % 5 === 0;
     return (
-      <div className={`w-full h-screen bg-gradient-to-b ${isBossLevel ? 'from-yellow-600 via-orange-700 to-red-800' : 'from-yellow-600 via-yellow-700 to-orange-800'} flex items-center justify-center`}>
+      <div
+        className={`w-full h-screen bg-gradient-to-b ${
+          isBossLevel
+            ? 'from-yellow-600 via-orange-700 to-red-800'
+            : 'from-yellow-600 via-yellow-700 to-orange-800'
+        } flex items-center justify-center`}
+      >
         <div className="text-center px-4">
-          {isBossLevel && <Crown className="mx-auto mb-4 text-yellow-300" size={80} />}
+          {isBossLevel && (
+            <Crown className="mx-auto mb-4 text-yellow-300" size={80} />
+          )}
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
             {isBossLevel ? 'Boss Defeated!' : 'Level Complete!'}
           </h1>
@@ -8861,10 +8884,12 @@ const WizardDungeonCrawler = () => {
                   max="1"
                   step="0.01"
                   value={musicVolume}
-                  onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                  onChange={e => setMusicVolume(parseFloat(e.target.value))}
                   className="flex-1"
                 />
-                <span className="text-white text-xs">{Math.round(musicVolume * 100)}%</span>
+                <span className="text-white text-xs">
+                  {Math.round(musicVolume * 100)}%
+                </span>
               </div>
             </div>
   
@@ -8883,10 +8908,12 @@ const WizardDungeonCrawler = () => {
                   max="1"
                   step="0.01"
                   value={sfxVolume}
-                  onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                  onChange={e => setSfxVolume(parseFloat(e.target.value))}
                   className="flex-1"
                 />
-                <span className="text-white text-xs">{Math.round(sfxVolume * 100)}%</span>
+                <span className="text-white text-xs">
+                  {Math.round(sfxVolume * 100)}%
+                </span>
               </div>
             </div>
           </div>
@@ -8913,7 +8940,7 @@ const WizardDungeonCrawler = () => {
     <div className="w-full h-screen bg-black overflow-hidden relative touch-none">
       {notification && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
-          <div className={`bg-${notification.color}-600 bg-opacity-90 px-6 py-3 rounded-lg text-white font-bold text-lg animate-pulse`}>
+          <div className="bg-black bg-opacity-90 px-6 py-3 rounded-lg text-white font-bold text-lg animate-pulse">
             {notification.text}
           </div>
         </div>
@@ -8937,7 +8964,11 @@ const WizardDungeonCrawler = () => {
 
       <div className="absolute top-0 left-0 right-0 p-2 md:p-4 pointer-events-none">
         <div className="flex justify-between items-start">
-          <div className={`bg-black bg-opacity-60 rounded-lg ${isMobile ? 'p-2 w-36' : 'p-3 md:p-4 w-52 md:w-64'}`}>
+          <div
+            className={`bg-black bg-opacity-60 rounded-lg ${
+              isMobile ? 'p-2 w-36' : 'p-3 md:p-4 w-52 md:w-64'
+            }`}
+          >
             {!isMobile && (
               <div className="text-white text-xs md:text-sm mb-2 flex justify-between">
                 <span>Level {player.level}</span>
@@ -8952,7 +8983,9 @@ const WizardDungeonCrawler = () => {
                   <div className="flex-1 h-2 bg-gray-700 rounded overflow-hidden">
                     <div
                       className="h-full transition-all bg-red-400"
-                      style={{ width: `${(player.health / player.maxHealth) * 100}%` }}
+                      style={{
+                        width: `${(player.health / player.maxHealth) * 100}%`
+                      }}
                     />
                   </div>
                 </div>
@@ -8964,7 +8997,10 @@ const WizardDungeonCrawler = () => {
                       style={{
                         width: `${Math.max(
                           0,
-                          Math.min(100, (player.mana / (player.maxMana || 1)) * 100)
+                          Math.min(
+                            100,
+                            (player.mana / (player.maxMana || 1)) * 100
+                          )
                         )}%`
                       }}
                     />
@@ -9016,10 +9052,11 @@ const WizardDungeonCrawler = () => {
           {/* Combo Display */}
           {combo.count > 1 && (
             <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 pointer-events-none">
-              <div 
+              <div
                 className="text-center animate-pulse"
                 style={{
-                  textShadow: '0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.5)'
+                  textShadow:
+                    '0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.5)'
                 }}
               >
                 <div className="text-6xl font-bold text-yellow-400">
@@ -9051,7 +9088,10 @@ const WizardDungeonCrawler = () => {
             )}
             {playerBuffs.arcaneWard.active && (
               <div className="bg-blue-600 bg-opacity-80 px-3 py-2 rounded-lg text-white text-sm">
-                🛡️ Arcane Ward: {playerBuffs.arcaneWard.maxHits - playerBuffs.arcaneWard.hits} hits left
+                🛡️ Arcane Ward:{' '}
+                {playerBuffs.arcaneWard.maxHits -
+                  playerBuffs.arcaneWard.hits}{' '}
+                hits left
               </div>
             )}
           </div>
@@ -9074,6 +9114,7 @@ const WizardDungeonCrawler = () => {
         </div>
       </div>
 
+      {/* Spell bar */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
         <div className="flex gap-2 md:gap-3">
           {equippedSpells.map((spell, index) => {
@@ -9096,7 +9137,9 @@ const WizardDungeonCrawler = () => {
                 {/* Utility indicator */}
                 {isUtility && (
                   <div className="absolute -top-1 -right-1 bg-cyan-500 rounded-full w-3 h-3 md:w-4 md:h-4 flex items-center justify-center">
-                    <span className="text-white text-[8px] md:text-[10px] font-bold">U</span>
+                    <span className="text-white text-[8px] md:text-[10px] font-bold">
+                      U
+                    </span>
                   </div>
                 )}
                 
@@ -9132,22 +9175,26 @@ const WizardDungeonCrawler = () => {
         </div>
       </div>
 
+      {/* Boss intro overlay */}
       {bossIntro && bossIntro.timer > 0 && (
         <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center pointer-events-none z-50">
           <div className="text-center animate-pulse">
             <div className="text-8xl mb-4">⚔️</div>
-            <div className="text-6xl font-bold text-red-500 mb-4" style={{
-              textShadow: '0 0 30px rgba(255,0,0,0.8), 0 0 60px rgba(255,0,0,0.5)'
-            }}>
+            <div
+              className="text-6xl font-bold text-red-500 mb-4"
+              style={{
+                textShadow:
+                  '0 0 30px rgba(255,0,0,0.8), 0 0 60px rgba(255,0,0,0.5)'
+              }}
+            >
               BOSS FIGHT
             </div>
-            <div className="text-4xl text-red-300">
-              {bossIntro.name}
-            </div>
+            <div className="text-4xl text-red-300">{bossIntro.name}</div>
           </div>
         </div>
       )}
       
+      {/* Mobile controls overlay */}
       {isMobile && (
         <>
           <div className="pointer-events-none absolute bottom-24 left-4 w-24 h-24 rounded-full border border-purple-400/50 bg-purple-500/10" />
@@ -9162,5 +9209,3 @@ const WizardDungeonCrawler = () => {
 };
 
 export default WizardDungeonCrawler;
-
-
