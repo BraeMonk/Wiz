@@ -8203,28 +8203,29 @@ const WizardDungeonCrawler = () => {
     };
 
     const StatBar = ({ current, max, color, icon: Icon, label }) => {
-        const safeMax = max || 1; // avoid divide-by-0
-        const percent = Math.max(0, Math.min(100, (current / safeMax) * 100));
+      const safeMax = max || 1;
+      const safeCurrent = Math.max(0, current);
+      const percent = Math.max(0, Math.min(100, (safeCurrent / safeMax) * 100));
 
-        return (
+      return (
         <div className="mb-2">
-            <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1">
-                <Icon size={16} style={{ color }} />
-                <span className="text-xs text-white">{label}</span>
+              <Icon size={16} style={{ color }} />
+              <span className="text-xs text-white">{label}</span>
             </div>
             <span className="text-xs text-white">
-                {Math.floor(current)}/{safeMax}
+              {Math.floor(safeCurrent)}/{safeMax}
             </span>
-            </div>
-            <div className="w-full h-3 bg-gray-700 rounded overflow-hidden">
+          </div>
+          <div className="w-full h-3 bg-gray-700 rounded overflow-hidden">
             <div
-                className="h-full transition-all"
-                style={{ width: `${percent}%`, backgroundColor: color }}
-            />
-            </div>
+              className="h-full transition-all duration-150"
+              style={{ width: `${percent}%`, backgroundColor: color }}
+              />
+          </div>
         </div>
-        );
+      );
     };
 
     useEffect(() => {
