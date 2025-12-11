@@ -1246,15 +1246,14 @@ const WizardDungeonCrawler = () => {
         return prev;
       }
 
-      // 🔵 Spend mana and update ref IN PLACE
+      // 🔵 Spend mana - update both ref and state immediately
       const newMana = Math.max(0, currentPlayer.mana - spell.manaCost);
-      currentPlayer.mana = newMana; // mutate the existing player object
 
-      // 🔵 Sync to React state so the StatBar uses the same value
-      setPlayer(prevPlayer => ({
-        ...prevPlayer,
-        mana: newMana
-      }));
+      setPlayer(prevPlayer => {
+        const updated = { ...prevPlayer, mana: newMana };
+        playerRef.current = updated; // Update ref immediately
+        return updated;
+      });
 
       soundEffectsRef.current?.cast?.();
 
