@@ -1231,94 +1231,103 @@ const WizardDungeonCrawler = () => {
 
   
   const castCurrentSpell = useCallback(() => {
-    const idx = selectedSpellRef.current;
+  const idx = selectedSpellRef.current;
 
-    setEquippedSpells(prev => {
-      if (idx < 0 || idx >= prev.length) return prev;
-      const spell = prev[idx];
+  setEquippedSpells(prev => {
+    if (idx < 0 || idx >= prev.length) return prev;
+    const spell = prev[idx];
 
-      if (spell.cooldown > 0) {
-        return prev;
+    if (!spell || spell.cooldown > 0) {
+      return prev;
+    }
+
+    const currentPlayer = playerRef.current;
+    if (!currentPlayer || currentPlayer.mana < spell.manaCost) {
+      return prev;
+    }
+
+    // 🔵 Spend mana - update both ref and state immediately so UI updates
+    setPlayer(prevPlayer => {
+      const cost = spell.manaCost ?? 0;
+      const newMana = Math.max(0, prevPlayer.mana - cost);
+      const updated = { ...prevPlayer, mana: newMana };
+      playerRef.current = updated; // keep ref in sync
+      return updated;
+    });
+
+    soundEffectsRef.current?.cast?.();
+
+    const bonusDamage = (permanentUpgrades?.damageBonus ?? 0) * 0.1;
+    let finalDamage = (spell.damage ?? 0) * (1 + bonusDamage);
+    
+    // Apply class bonuses
+    if (currentClass && PRESTIGE_CLASSES[currentClass]) {
+      const classData = PRESTIGE_CLASSES[currentClass];
+      const bonuses = classData.bonuses || {};
+      if (bonuses.damageMultiplier) {
+        finalDamage *= bonuses.damageMultiplier;
       }
-
-      const currentPlayer = playerRef.current;
-      if (!currentPlayer || currentPlayer.mana < spell.manaCost) {
-        return prev;
+      if (bonuses.elementalDamage) {
+        finalDamage *= bonuses.elementalDamage;
       }
-
-      // 🔵 Spend mana - update both ref and state immediately
-      const newMana = Math.max(0, currentPlayer.mana - spell.manaCost);
-
-      setPlayer(prevPlayer => {
-        const updated = { ...prevPlayer, mana: newMana };
-        playerRef.current = updated; // Update ref immediately
-        return updated;
-      });
-
-      soundEffectsRef.current?.cast?.();
-
-      const bonusDamage = permanentUpgrades.damageBonus * 0.1;
-      let finalDamage = spell.damage * (1 + bonusDamage);
+      if (bonuses.allStatsMultiplier) {
+        finalDamage *= bonuses.allStatsMultiplier;
+      }
+    }
+    
+    // Apply damage boost powerup
+    if (playerBuffs?.damageBoost?.active) {
+      finalDamage *= playerBuffs.damageBoost.multiplier ?? 1;
+    }
+    
+    // ==============================
+    //        UTILITY SPELLS
+    // ==============================
+    if (spell.key === 'dash') {
+      // Teleport forward
+      const dashDistance = 3;
+      const newX = currentPlayer.x + Math.cos(currentPlayer.angle) * dashDistance;
+      const newY = currentPlayer.y + Math.sin(currentPlayer.angle) * dashDistance;
       
-      // Apply class bonuses
-      if (currentClass) {
-        const classData = PRESTIGE_CLASSES[currentClass];
-        if (classData.bonuses.damageMultiplier) {
-          finalDamage *= classData.bonuses.damageMultiplier;
-        }
-        if (classData.bonuses.elementalDamage) {
-          finalDamage *= classData.bonuses.elementalDamage;
-        }
-        if (classData.bonuses.allStatsMultiplier) {
-          finalDamage *= classData.bonuses.allStatsMultiplier;
-        }
-      }
+      const tileX = Math.floor(newX);
+      const tileY = Math.floor(newY);
       
-      // Apply damage boost powerup
-      if (playerBuffs.damageBoost.active) {
-        finalDamage *= playerBuffs.damageBoost.multiplier;
-      }
+      const successfulDash = (
+        tileX >= 0 && tileX < DUNGEON_SIZE &&
+        tileY >= 0 && tileY < DUNGEON_SIZE &&
+        dungeon[tileY][tileX] === TILE_FLOOR
+      );
       
-      // Handle utility spells
-      if (spell.key === 'dash') {
-        // Teleport forward
-        const dashDistance = 3;
-        const newX = currentPlayer.x + Math.cos(currentPlayer.angle) * dashDistance;
-        const newY = currentPlayer.y + Math.sin(currentPlayer.angle) * dashDistance;
-        
-        const tileX = Math.floor(newX);
-        const tileY = Math.floor(newY);
-        
-        const successfulDash = (
-          tileX >= 0 && tileX < DUNGEON_SIZE &&
-          tileY >= 0 && tileY < DUNGEON_SIZE &&
-          dungeon[tileY][tileX] === 0
-        );
-        
-        if (successfulDash) {
-          // Create trail effect between old and new position
-          const steps = 10;
-          for (let i = 0; i <= steps; i++) {
-            const t = i / steps;
-            const trailX = currentPlayer.x + (newX - currentPlayer.x) * t;
-            const trailY = currentPlayer.y + (newY - currentPlayer.y) * t;
-            setTimeout(() => {
-              createParticleEffect(trailX, trailY, spell.color, 5, 'explosion');
-            }, i * 20);
-          }
-          
-          setPlayer(p => ({ ...p, x: newX, y: newY }));
-          createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 20, 'explosion');
-          createParticleEffect(newX, newY, spell.color, 20, 'explosion');
-          addScreenShake(0.3);
+      if (successfulDash) {
+        // Create trail effect between old and new position
+        const steps = 10;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const trailX = currentPlayer.x + (newX - currentPlayer.x) * t;
+          const trailY = currentPlayer.y + (newY - currentPlayer.y) * t;
+          setTimeout(() => {
+            createParticleEffect(trailX, trailY, spell.color, 5, 'explosion');
+          }, i * 20);
         }
-      } else if (spell.key === 'pushback') {
-        // Push back all nearby enemies
-        createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 30, 'explosion');
-        addScreenShake(0.6);
         
-        setEnemies(prevEnemies =>
-          prevEnemies.map(enemy => {
+        setPlayer(p => {
+          const updated = { ...p, x: newX, y: newY };
+          playerRef.current = updated;
+          return updated;
+        });
+        createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 20, 'explosion');
+        createParticleEffect(newX, newY, spell.color, 20, 'explosion');
+        addScreenShake(0.3);
+      }
+
+    } else if (spell.key === 'pushback') {
+      // Push back all nearby enemies
+      createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 30, 'explosion');
+      addScreenShake(0.6);
+      
+      setEnemies(prevEnemies =>
+        prevEnemies
+          .map(enemy => {
 
             // Skip AI if gravity suspended
             if (enemy.gravitySuspended) {
@@ -1335,7 +1344,7 @@ const WizardDungeonCrawler = () => {
             
             if (distance < 3) {
               // Apply damage
-              const newHealth = enemy.health - finalDamage;
+              const newHealth = (enemy.health ?? 0) - finalDamage;
               
               // Push enemy away
               const pushDistance = 2;
@@ -1349,7 +1358,7 @@ const WizardDungeonCrawler = () => {
               if (
                 tileX >= 0 && tileX < DUNGEON_SIZE &&
                 tileY >= 0 && tileY < DUNGEON_SIZE &&
-                dungeon[tileY][tileX] === 0
+                dungeon[tileY][tileX] === TILE_FLOOR
               ) {
                 createParticleEffect(enemy.x, enemy.y, spell.color, 10, 'hit');
                 
@@ -1423,7 +1432,8 @@ const WizardDungeonCrawler = () => {
                     // Healing spiral
                     for (let i = 0; i < 8; i++) {
                       setTimeout(() => {
-                        createParticleEffect(player.x, player.y, '#00ff00', 6, 'hit');
+                        const pVis = playerRef.current || currentPlayer;
+                        createParticleEffect(pVis.x, pVis.y, '#00ff00', 6, 'hit');
                       }, i * 40);
                     }
                   }
@@ -1557,7 +1567,6 @@ const WizardDungeonCrawler = () => {
                       setTimeout(() => {
                         const angle = Math.random() * Math.PI * 2;
                         const dist = Math.random() * 1.2;
-                        const height = Math.random() * 0.8;
                         createParticleEffect(
                           enemy.x + Math.cos(angle) * dist,
                           enemy.y + Math.sin(angle) * dist,
@@ -1571,9 +1580,10 @@ const WizardDungeonCrawler = () => {
                     // Blood streams to player
                     for (let i = 0; i < 8; i++) {
                       setTimeout(() => {
+                        const pVis = playerRef.current || currentPlayer;
                         createParticleEffect(
-                          player.x + (Math.random() - 0.5) * 0.4,
-                          player.y + (Math.random() - 0.5) * 0.4,
+                          pVis.x + (Math.random() - 0.5) * 0.4,
+                          pVis.y + (Math.random() - 0.5) * 0.4,
                           '#dc2626',
                           10,
                           'hit'
@@ -1640,7 +1650,8 @@ const WizardDungeonCrawler = () => {
                     // Void energy to player
                     for (let i = 0; i < 6; i++) {
                       setTimeout(() => {
-                        createParticleEffect(player.x, player.y, '#7c3aed', 8, 'hit');
+                        const pVis = playerRef.current || currentPlayer;
+                        createParticleEffect(pVis.x, pVis.y, '#7c3aed', 8, 'hit');
                       }, 400 + i * 50);
                     }
                     
@@ -1725,7 +1736,6 @@ const WizardDungeonCrawler = () => {
                   // Runekeeper - runic explosion
                   if (currentClass === 'runekeeper') {
                     // Runes orbit and explode
-                    const runes = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ'];
                     for (let i = 0; i < 6; i++) {
                       setTimeout(() => {
                         const angle = (i / 6) * Math.PI * 2;
@@ -1911,7 +1921,6 @@ const WizardDungeonCrawler = () => {
                   if (currentClass === 'demonpact') {
                     const demonicPower = PRESTIGE_CLASSES.demonpact.bonuses.demonicPower || 3.0;
                     const healthCostFactor = PRESTIGE_CLASSES.demonpact.bonuses.healthCost || 0.5;
-                    const damageResistance = PRESTIGE_CLASSES.demonpact.bonuses.damageResistance || 0.3;
                     const hellRadius = 2.5;
                 
                     // Pay health cost for the detonation
@@ -2001,34 +2010,34 @@ const WizardDungeonCrawler = () => {
                           // Don't process the original enemy twice
                           if (otherEnemy.id === enemy.id) return otherEnemy;
                     
-                          const dx = otherEnemy.x - enemy.x;
-                          const dy = otherEnemy.y - enemy.y;
-                          const dist = Math.hypot(dx, dy);
+                          const dx2 = otherEnemy.x - enemy.x;
+                          const dy2 = otherEnemy.y - enemy.y;
+                          const dist = Math.hypot(dx2, dy2);
                     
                           if (dist > 0.01 && dist < quakeRadius) {
-                            const angle = Math.atan2(dy, dx);
+                            const angle = Math.atan2(dy2, dx2);
                             const knockbackDist = knockbackPower;
                     
-                            let newX = otherEnemy.x + Math.cos(angle) * knockbackDist;
-                            let newY = otherEnemy.y + Math.sin(angle) * knockbackDist;
+                            let newX2 = otherEnemy.x + Math.cos(angle) * knockbackDist;
+                            let newY2 = otherEnemy.y + Math.sin(angle) * knockbackDist;
                     
-                            const tileX = Math.floor(newX);
-                            const tileY = Math.floor(newY);
+                            const tileX2 = Math.floor(newX2);
+                            const tileY2 = Math.floor(newY2);
                     
                             // Only move if destination is walkable
                             if (
-                              tileX >= 0 &&
-                              tileX < DUNGEON_SIZE &&
-                              tileY >= 0 &&
-                              tileY < DUNGEON_SIZE &&
-                              dungeon[tileY][tileX] === TILE_FLOOR
+                              tileX2 >= 0 &&
+                              tileX2 < DUNGEON_SIZE &&
+                              tileY2 >= 0 &&
+                              tileY2 < DUNGEON_SIZE &&
+                              dungeon[tileY2][tileX2] === TILE_FLOOR
                             ) {
-                              createParticleEffect(newX, newY, '#92400e', 10, 'hit');
+                              createParticleEffect(newX2, newY2, '#92400e', 10, 'hit');
                     
                               const quakeDamage = finalDamage * 0.5 * earthDamageMult;
-                              const newHealth = (otherEnemy.health ?? 0) - quakeDamage;
+                              const newHealth2 = (otherEnemy.health ?? 0) - quakeDamage;
                     
-                              if (newHealth <= 0) {
+                              if (newHealth2 <= 0) {
                                 // Combo + multiplier
                                 const newCombo = comboRef.current.count + 1;
                                 const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
@@ -2069,7 +2078,7 @@ const WizardDungeonCrawler = () => {
                                 });
                     
                                 // Lifesteal on quake kills
-                                const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
+                                const lifeStealPercent = (permanentUpgrades?.lifeSteal ?? 0) * 0.02;
                                 const healAmount = quakeDamage * lifeStealPercent;
                     
                                 if (healAmount > 0) {
@@ -2077,7 +2086,8 @@ const WizardDungeonCrawler = () => {
                                     ...p,
                                     health: Math.min(p.maxHealth, p.health + healAmount)
                                   }));
-                                  createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
+                                  const pVis = playerRef.current || currentPlayer;
+                                  createParticleEffect(pVis.x, pVis.y, '#00ff00', 5, 'hit');
                                 }
                     
                                 // Mark enemy as dead so we can filter it out
@@ -2087,9 +2097,9 @@ const WizardDungeonCrawler = () => {
                               // Survives the quake: apply knockback + damage
                               return {
                                 ...otherEnemy,
-                                x: newX,
-                                y: newY,
-                                health: newHealth
+                                x: newX2,
+                                y: newY2,
+                                health: newHealth2
                               };
                             }
                           }
@@ -2112,8 +2122,8 @@ const WizardDungeonCrawler = () => {
                   const comboBonus = comboRef.current.multiplier;
                   setPlayer(p => ({
                     ...p,
-                    xp: p.xp + Math.floor(enemy.xp * comboBonus),
-                    gold: p.gold + Math.floor(enemy.gold * comboBonus),
+                    xp: p.xp + Math.floor((enemy.xp ?? 0) * comboBonus),
+                    gold: p.gold + Math.floor((enemy.gold ?? 0) * comboBonus),
                     kills: p.kills + 1
                   }));
                   
@@ -2135,14 +2145,15 @@ const WizardDungeonCrawler = () => {
                   });
                 
                   // Life steal
-                  const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
+                  const lifeStealPercent = (permanentUpgrades?.lifeSteal ?? 0) * 0.02;
                   const healAmount = finalDamage * lifeStealPercent;
                   if (healAmount > 0) {
                     setPlayer(p => ({
                       ...p,
                       health: Math.min(p.maxHealth, p.health + healAmount)
                     }));
-                    createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
+                    const pVis = playerRef.current || currentPlayer;
+                    createParticleEffect(pVis.x, pVis.y, '#00ff00', 5, 'hit');
                   }
                   
                   // Enemy dies from the push hit
@@ -2157,224 +2168,227 @@ const WizardDungeonCrawler = () => {
             return enemy;
           })
           .filter(e => !e.dead)
-        );
-      } else if (spell.key === 'arcaneward') {
-        // Activate shield
-        setPlayerBuffs(prev => ({
-          ...prev,
-          arcaneWard: { active: true, hits: 0, maxHits: 3 }
-        }));
-        createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 40, 'explosion');
-        addScreenShake(0.2);
-      } else if (spell.key === 'gravitychoke') {
-        // Find all enemies in range and suspend them
-        const suspendRadius = 4;
-        const suspendedIds = new Set();
-        
-        setEnemies(prevEnemies =>
-          prevEnemies.map(enemy => {
-            const dx = enemy.x - currentPlayer.x;
-            const dy = enemy.y - currentPlayer.y;
-            const distance = Math.hypot(dx, dy);
+      );
+
+    } else if (spell.key === 'arcaneward') {
+      // Activate shield
+      setPlayerBuffs(prev => ({
+        ...prev,
+        arcaneWard: { active: true, hits: 0, maxHits: 3 }
+      }));
+      createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 40, 'explosion');
+      addScreenShake(0.2);
+
+    } else if (spell.key === 'gravitychoke') {
+      // Find all enemies in range and suspend them
+      const suspendRadius = 4;
+      const suspendedIds = new Set();
+      
+      setEnemies(prevEnemies =>
+        prevEnemies.map(enemy => {
+          const dx = enemy.x - currentPlayer.x;
+          const dy = enemy.y - currentPlayer.y;
+          const distance = Math.hypot(dx, dy);
+          
+          if (distance < suspendRadius) {
+            suspendedIds.add(enemy.id);
+            createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'explosion');
             
-            if (distance < suspendRadius) {
-              suspendedIds.add(enemy.id);
-              createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'explosion');
-              
-              return {
-                ...enemy,
-                gravitySuspended: true,
-                suspendTimer: 3.0,
-                suspendDamageTimer: 0
-              };
-            }
-            return enemy;
-          })
-        );
-        setGravitySuspendedEnemies(suspendedIds);
-        addScreenShake(0.4);
-      } else {
-        // Normal projectile spell – spawn slightly in front of CURRENT position
-        const spawnAngle = currentPlayer.angle;
-        const spawnOffset = 0.7; // about 0.7 tiles in front
-
-        const spawnX = currentPlayer.x + Math.cos(spawnAngle) * spawnOffset;
-        const spawnY = currentPlayer.y + Math.sin(spawnAngle) * spawnOffset;
-
-        // ========== PRESTIGE CLASS ATTACK MODIFICATIONS ==========
-
-        let projectileSpeed = 8;
-        let projectileColor = spell.color;
-        let projectileCount = 1;
-        let spreadAngle = 0;
-        let piercing = false;
-
-        // Elementalist - enhanced spell effects
-        if (currentClass === 'elementalist') {
-          const elementalBonus = PRESTIGE_CLASSES.elementalist.bonuses.elementalDamage;
-          // Visual enhancement - larger particles
-          createParticleEffect(spawnX, spawnY, spell.color, 15, 'explosion');
-
-          // Multi-element burst effect
-          const colors = ['#ff4400', '#00aaff', '#ffff00', '#88ff88'];
-          colors.forEach((color, i) => {
-            setTimeout(() => {
-              createParticleEffect(spawnX, spawnY, color, 8, 'explosion');
-            }, i * 50);
-          });
-        }
-
-        // Shadow Dancer - crit indicator (visual only here)
-        if (currentClass === 'shadowdancer') {
-          const critChance = PRESTIGE_CLASSES.shadowdancer.bonuses.criticalChance;
-          if (Math.random() < critChance) {
-            createParticleEffect(spawnX, spawnY, '#ffff00', 20, 'explosion');
-            showNotification('CRITICAL!', 'yellow');
-            addScreenShake(0.3);
+            return {
+              ...enemy,
+              gravitySuspended: true,
+              suspendTimer: 3.0,
+              suspendDamageTimer: 0
+            };
           }
-        }
+          return enemy;
+        })
+      );
+      setGravitySuspendedEnemies(suspendedIds);
+      addScreenShake(0.4);
 
-        // Archmagus - arcane flair
-        if (currentClass === 'archmagus') {
-          createParticleEffect(spawnX, spawnY, '#a855f7', 12, 'explosion');
-          for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            setTimeout(() => {
-              createParticleEffect(
-                spawnX + Math.cos(angle) * 0.5,
-                spawnY + Math.sin(angle) * 0.5,
-                '#a855f7',
-                6,
-                'hit'
-              );
-            }, i * 40);
-          }
-        }
+    } else {
+      // ==============================
+      //   NORMAL PROJECTILE SPELLS
+      // ==============================
+      const spawnAngle = currentPlayer.angle;
+      const spawnOffset = 0.7; // about 0.7 tiles in front
 
-        // Blood Mage - blood trail
-        if (currentClass === 'bloodmage') {
-          projectileColor = '#dc2626';
-          for (let i = 0; i < 5; i++) {
-            setTimeout(() => {
-              createParticleEffect(
-                spawnX - Math.cos(spawnAngle) * i * 0.2,
-                spawnY - Math.sin(spawnAngle) * i * 0.2,
-                '#dc2626',
-                4,
-                'hit'
-              );
-            }, i * 30);
-          }
-        }
+      const spawnX = currentPlayer.x + Math.cos(spawnAngle) * spawnOffset;
+      const spawnY = currentPlayer.y + Math.sin(spawnAngle) * spawnOffset;
 
-        // Time Warden - time ripple
-        if (currentClass === 'timewarden') {
-          createParticleEffect(spawnX, spawnY, '#06b6d4', 15, 'explosion');
-          for (let i = 1; i <= 3; i++) {
-            setTimeout(() => {
-              createParticleEffect(spawnX, spawnY, '#06b6d4', 10, 'explosion');
-            }, i * 100);
-          }
-        }
+      // ========== PRESTIGE CLASS ATTACK MODIFICATIONS ==========
 
-        // Void Caller - piercing projectiles
-        if (currentClass === 'voidcaller') {
-          piercing = true;
-          projectileColor = '#7c3aed';
-          createParticleEffect(spawnX, spawnY, '#7c3aed', 20, 'explosion');
-        }
+      let projectileSpeed = 8;
+      let projectileColor = spell.color;
+      let projectileCount = 1;
+      let spreadAngle = 0;
+      let piercing = false;
 
-        // Storm Lord - lightning crackle
-        if (currentClass === 'stormlord') {
-          projectileColor = '#eab308';
-          for (let i = 0; i < 3; i++) {
-            setTimeout(() => {
-              const angle = Math.random() * Math.PI * 2;
-              const dist = 0.3 + Math.random() * 0.4;
-              createParticleEffect(
-                spawnX + Math.cos(angle) * dist,
-                spawnY + Math.sin(angle) * dist,
-                '#eab308',
-                6,
-                'explosion'
-              );
-            }, i * 50);
-          }
-        }
+      // Elementalist - enhanced spell effects
+      if (currentClass === 'elementalist') {
+        createParticleEffect(spawnX, spawnY, spell.color, 15, 'explosion');
 
-        // Runekeeper - runic enhancement
-        if (currentClass === 'runekeeper') {
-          createParticleEffect(spawnX, spawnY, '#f97316', 18, 'explosion');
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const dist = 0.6;
+        // Multi-element burst effect
+        const colors = ['#ff4400', '#00aaff', '#ffff00', '#88ff88'];
+        colors.forEach((color, i) => {
+          setTimeout(() => {
+            createParticleEffect(spawnX, spawnY, color, 8, 'explosion');
+          }, i * 50);
+        });
+      }
+
+      // Shadow Dancer - crit indicator (visual only here)
+      if (currentClass === 'shadowdancer') {
+        const critChance = PRESTIGE_CLASSES.shadowdancer.bonuses.criticalChance;
+        if (Math.random() < critChance) {
+          createParticleEffect(spawnX, spawnY, '#ffff00', 20, 'explosion');
+          showNotification('CRITICAL!', 'yellow');
+          addScreenShake(0.3);
+        }
+      }
+
+      // Archmagus - arcane flair
+      if (currentClass === 'archmagus') {
+        createParticleEffect(spawnX, spawnY, '#a855f7', 12, 'explosion');
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          setTimeout(() => {
+            createParticleEffect(
+              spawnX + Math.cos(angle) * 0.5,
+              spawnY + Math.sin(angle) * 0.5,
+              '#a855f7',
+              6,
+              'hit'
+            );
+          }, i * 40);
+        }
+      }
+
+      // Blood Mage - blood trail
+      if (currentClass === 'bloodmage') {
+        projectileColor = '#dc2626';
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            createParticleEffect(
+              spawnX - Math.cos(spawnAngle) * i * 0.2,
+              spawnY - Math.sin(spawnAngle) * i * 0.2,
+              '#dc2626',
+              4,
+              'hit'
+            );
+          }, i * 30);
+        }
+      }
+
+      // Time Warden - time ripple
+      if (currentClass === 'timewarden') {
+        createParticleEffect(spawnX, spawnY, '#06b6d4', 15, 'explosion');
+        for (let i = 1; i <= 3; i++) {
+          setTimeout(() => {
+            createParticleEffect(spawnX, spawnY, '#06b6d4', 10, 'explosion');
+          }, i * 100);
+        }
+      }
+
+      // Void Caller - piercing projectiles
+      if (currentClass === 'voidcaller') {
+        piercing = true;
+        projectileColor = '#7c3aed';
+        createParticleEffect(spawnX, spawnY, '#7c3aed', 20, 'explosion');
+      }
+
+      // Storm Lord - lightning crackle
+      if (currentClass === 'stormlord') {
+        projectileColor = '#eab308';
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 0.3 + Math.random() * 0.4;
             createParticleEffect(
               spawnX + Math.cos(angle) * dist,
               spawnY + Math.sin(angle) * dist,
-              '#f97316',
-              5,
-              'hit'
+              '#eab308',
+              6,
+              'explosion'
             );
-          }
+          }, i * 50);
         }
-
-        // Earthshaper - little ground pop on cast (full shockwave is in hit logic)
-        if (currentClass === 'earthshaper') {
-          addScreenShake(0.5);
-          createParticleEffect(spawnX, spawnY, '#92400e', 25, 'explosion');
-        }
-
-        // ========== CREATE PROJECTILE(S) ==========
-
-        if (projectileCount === 1) {
-          setProjectiles(projs => [
-            ...projs,
-            {
-              id: Math.random(),
-              x: spawnX,
-              y: spawnY,
-              angle: spawnAngle,
-              speed: projectileSpeed,
-              damage: finalDamage,
-              color: projectileColor,
-              lifetime: 3,
-              dead: false,
-              spellType: spell.key,
-              piercing,
-              prestigeClass: currentClass
-            }
-          ]);
-        } else {
-          const newProjs = [];
-          for (let i = 0; i < projectileCount; i++) {
-            const offset = spreadAngle * (i - (projectileCount - 1) / 2);
-            newProjs.push({
-              id: Math.random(),
-              x: spawnX,
-              y: spawnY,
-              angle: spawnAngle + offset,
-              speed: projectileSpeed,
-              damage: finalDamage,
-              color: projectileColor,
-              lifetime: 3,
-              dead: false,
-              spellType: spell.key,
-              piercing,
-              prestigeClass: currentClass
-            });
-          }
-          setProjectiles(projs => [...projs, ...newProjs]);
-        }
-        // Cooldown only – mana was already spent at the top
-        return prev.map((s, i) =>
-          i === idx ? { ...s, cooldown: s.maxCooldown } : s
-        );
       }
 
-      // Safety fallback if some weird branch doesn't return
-      return prev;
-    }); // <-- closes setEquippedSpells(prev => { ... })
-  }, [permanentUpgrades.damageBonus, dungeon]);
+      // Runekeeper - runic enhancement
+      if (currentClass === 'runekeeper') {
+        createParticleEffect(spawnX, spawnY, '#f97316', 18, 'explosion');
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const dist = 0.6;
+          createParticleEffect(
+            spawnX + Math.cos(angle) * dist,
+            spawnY + Math.sin(angle) * dist,
+            '#f97316',
+            5,
+            'hit'
+          );
+        }
+      }
+
+      // Earthshaper - little ground pop on cast (full shockwave is in hit logic)
+      if (currentClass === 'earthshaper') {
+        addScreenShake(0.5);
+        createParticleEffect(spawnX, spawnY, '#92400e', 25, 'explosion');
+      }
+
+      // ========== CREATE PROJECTILE(S) ==========
+
+      if (projectileCount === 1) {
+        setProjectiles(projs => [
+          ...projs,
+          {
+            id: Math.random(),
+            x: spawnX,
+            y: spawnY,
+            angle: spawnAngle,
+            speed: projectileSpeed,
+            damage: finalDamage,
+            color: projectileColor,
+            lifetime: 3,
+            dead: false,
+            spellType: spell.key,
+            piercing,
+            prestigeClass: currentClass
+          }
+        ]);
+      } else {
+        const newProjs = [];
+        for (let i = 0; i < projectileCount; i++) {
+          const offset = spreadAngle * (i - (projectileCount - 1) / 2);
+          newProjs.push({
+            id: Math.random(),
+            x: spawnX,
+            y: spawnY,
+            angle: spawnAngle + offset,
+            speed: projectileSpeed,
+            damage: finalDamage,
+            color: projectileColor,
+            lifetime: 3,
+            dead: false,
+            spellType: spell.key,
+            piercing,
+            prestigeClass: currentClass
+          });
+        }
+        setProjectiles(projs => [...projs, ...newProjs]);
+      }
+    }
+
+    // ==============================
+    //   APPLY COOLDOWN FOR SPELL
+    // ==============================
+    return prev.map((s, i) =>
+      i === idx ? { ...s, cooldown: s.maxCooldown } : s
+    );
+  });
+}, [permanentUpgrades, playerBuffs, currentClass, dungeon]);
 
     function carveCorridorToNearestFloor(map, startX, startY) {
       const size = map.length;
