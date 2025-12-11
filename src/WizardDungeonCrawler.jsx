@@ -2366,13 +2366,15 @@ const WizardDungeonCrawler = () => {
           }
           setProjectiles(projs => [...projs, ...newProjs]);
         }
-
-        // Put spell on cooldown (mana already spent at the top)
+        // Cooldown only – mana was already spent at the top
         return prev.map((s, i) =>
           i === idx ? { ...s, cooldown: s.maxCooldown } : s
         );
-        return prev;
-      });
+      }
+
+      // Safety fallback if some weird branch doesn't return
+      return prev;
+    }); // <-- closes setEquippedSpells(prev => { ... })
   }, [permanentUpgrades.damageBonus, dungeon]);
 
     function carveCorridorToNearestFloor(map, startX, startY) {
