@@ -7866,75 +7866,91 @@ const WizardDungeonCrawler = () => {
       }));
 
       // Update gravity suspended enemies
-      setEnemies(prev =>
-        prev.map(enemy => {
-          if (enemy.gravitySuspended) {
-            const newTimer = Math.max(0, enemy.suspendTimer - deltaTime);
-            const newDamageTimer = enemy.suspendDamageTimer + deltaTime;
-            
-            // Apply damage every second
+      setEnemies(prevEnemies =>
+        prevEnemies
+          .map(enemy => {
+            if (!enemy.gravitySuspended) return enemy;
+      
+            const oldTimer = enemy.suspendTimer || 0;
+            const oldDamageTimer = enemy.suspendDamageTimer || 0;
+      
+            const newTimer = Math.max(0, oldTimer - deltaTime);
+            let newDamageTimer = oldDamageTimer + deltaTime;
             let newHealth = enemy.health;
+      
+            // Apply damage every second while suspended
             if (newDamageTimer >= 1.0) {
+              // one tick of damage per second (you can scale this later)
               newHealth -= 10;
               createParticleEffect(enemy.x, enemy.y, '#9b4aff', 8, 'hit');
-              
-              if (newHealth <= 0) {
-                soundEffectsRef.current?.death?.();
-                createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
-                
-                const newCombo = comboRef.current.count + 1;
-                const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
-                setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
-                
-                const comboBonus = comboRef.current.multiplier;
+              newDamageTimer -= 1.0;
+            }
+      
+            // If they die while suspended
+            if (newHealth <= 0) {
+              soundEffectsRef.current?.death?.();
+              createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
+              addScreenShake(enemy.isBoss ? 0.8 : 0.3);
+      
+              // Combo + rewards
+              const newCombo = comboRef.current.count + 1;
+              const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
+              setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
+      
+              const comboBonus = comboRef.current.multiplier;
+              setPlayer(p => ({
+                ...p,
+                xp: p.xp + Math.floor(enemy.xp * comboBonus),
+                gold: p.gold + Math.floor(enemy.gold * comboBonus),
+                kills: p.kills + 1
+              }));
+      
+              // Essence
+              const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
+              const baseEssence = Number(enemy?.essence ?? 0);
+              const essenceBonus = 1 + essenceGainUpgrade * 0.2;
+              const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
+              setEssence(prev => {
+                const safePrev = Number.isFinite(prev) ? prev : 0;
+                return safePrev + gainedEssence;
+              });
+      
+              // Total kills tracker
+              setTotalKills(prev => {
+                const newTotal = prev + 1;
+                if (newTotal % 100 === 0) {
+                  showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
+                }
+                return newTotal;
+              });
+      
+              // Lifesteal from suspended kill (uses same permanent upgrade)
+              const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
+              const healAmount = 10 * lifeStealPercent; // based on DOT tick, tweak if you want
+              if (healAmount > 0) {
                 setPlayer(p => ({
                   ...p,
-                  xp: p.xp + Math.floor(enemy.xp * comboBonus),
-                  gold: p.gold + Math.floor(enemy.gold * comboBonus),
-                  kills: p.kills + 1
+                  health: Math.min(p.maxHealth, p.health + healAmount)
                 }));
-                
-                const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
-                const baseEssence = Number(enemy?.essence ?? 0);
-                const essenceBonus = 1 + essenceGainUpgrade * 0.2;
-                const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
-                setEssence(prev => {
-                  const safePrev = Number.isFinite(prev) ? prev : 0;
-                  return safePrev + gainedEssence;
-                });
-                
-                setTotalKills(prev => {
-                  const newTotal = prev + 1;
-                  if (newTotal % 100 === 0) {
-                    showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
-                  }
-                  return newTotal;
-                });
-                
-                return { ...enemy, health: 0, dead: true, gravitySuspended: false };
+                createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
               }
-              
-              return {
-                ...enemy,
-                health: newHealth,
-                suspendTimer: newTimer,
-                suspendDamageTimer: 0,
-                gravitySuspended: newTimer > 0
-              };
+      
+              return { ...enemy, health: 0, dead: true, gravitySuspended: false };
             }
-            
+      
+            // Still suspended but alive
             return {
               ...enemy,
+              health: newHealth,
               suspendTimer: newTimer,
               suspendDamageTimer: newDamageTimer,
               gravitySuspended: newTimer > 0
             };
-          }
-          return enemy;
-        }).filter(e => !e.dead)
+          })
+          .filter(e => !e.dead)
       );
       
-      // Update item pickup (around line 1885):
+      // Update item pickup
       setItems(prevItems =>
         prevItems.map(item => {
           if (item.collected) return item;
@@ -8000,7 +8016,7 @@ const WizardDungeonCrawler = () => {
         })
       );
 
-      // Add chest checking RIGHT AFTER setItems (around line 1850):
+      // Add chest checking RIGHT AFTER setItems:
       setChests(prevChests =>
         prevChests.map(chest => {
           if (chest.opened) return chest;
@@ -8029,33 +8045,7 @@ const WizardDungeonCrawler = () => {
               }
             } else {
               showNotification('💰 Chest Opened!', 'yellow');
-              const roll = Math.random();
-              if (roll < 0.4) {
-                const goldAmount = 50 + currentLevel * 10;
-                setPlayer(p => ({ ...p, gold: p.gold + goldAmount }));
-                setTimeout(
-                  () => showNotification(`Found ${goldAmount} gold!`, 'yellow'),
-                  100
-                );
-              } else if (roll < 0.7) {
-                setPlayer(p => ({
-                  ...p,
-                  health: Math.min(p.maxHealth, p.health + 50),
-                }));
-                setTimeout(
-                  () => showNotification('Health restored!', 'green'),
-                  100
-                );
-              } else {
-                setPlayer(p => ({
-                  ...p,
-                  mana: Math.min(p.maxMana, p.mana + 50),
-                }));
-                setTimeout(
-                  () => showNotification('Mana restored!', 'blue'),
-                  100
-                );
-              }
+              // You can drop bonus gold / items here if you want
             }
       
             return { ...chest, opened: true };
