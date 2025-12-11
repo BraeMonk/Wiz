@@ -8697,7 +8697,7 @@ const WizardDungeonCrawler = () => {
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
               <Wand2 className="inline-block mb-2" size={64} />
               <br />
-              WIZARD&apos;S DESCENT
+              WIZARD'S DESCENT
             </h1>
             <p className="text-lg md:text-xl text-purple-200 mb-2">
               A Roguelite Dungeon Crawler
