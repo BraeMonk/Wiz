@@ -1242,13 +1242,22 @@ const WizardDungeonCrawler = () => {
       }
   
       const currentPlayer = playerRef.current;
-      if (currentPlayer.mana < spell.manaCost) {
+      if (!currentPlayer || currentPlayer.mana < spell.manaCost) {
         return prev;
       }
-  
+
+      // 🔵 Spend mana on the gameplay ref
+      const newMana = Math.max(0, currentPlayer.mana - spell.manaCost);
+      currentPlayer.mana = newMana;
+
+      // 🟣 Sync mana to React state so the UI bar updates
+      setPlayer(prevPlayer => ({
+        ...prevPlayer,
+        mana: newMana
+      }));
+
       soundEffectsRef.current?.cast?.();
-  
-      // Replace the finalDamage line with:
+
       const bonusDamage = permanentUpgrades.damageBonus * 0.1;
       let finalDamage = spell.damage * (1 + bonusDamage);
       
@@ -2358,19 +2367,12 @@ const WizardDungeonCrawler = () => {
           setProjectiles(projs => [...projs, ...newProjs]);
         }
 
-        // Put spell on cooldown & spend mana
-        setPlayer(p => {
-          const newMana = Math.max(0, p.mana - spell.manaCost);
-          return { ...p, mana: newMana };
-        });
-        
+        // Put spell on cooldown (mana already spent at the top)
         return prev.map((s, i) =>
           i === idx ? { ...s, cooldown: s.maxCooldown } : s
         );
-      }
-      
-      return prev;
-    });
+        return prev;
+      });
   }, [permanentUpgrades.damageBonus, dungeon]);
 
     function carveCorridorToNearestFloor(map, startX, startY) {
