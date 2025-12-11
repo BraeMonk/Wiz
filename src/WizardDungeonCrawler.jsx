@@ -9199,7 +9199,6 @@ const WizardDungeonCrawler = () => {
                 )}
             </div>
         );
-    });
-}
-
-export default WizardDungeonCrawler;
+    };
+    
+    export default WizardDungeonCrawler;
