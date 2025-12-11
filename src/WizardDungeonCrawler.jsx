@@ -8514,7 +8514,7 @@ const WizardDungeonCrawler = () => {
                         
                         return next;
                       });
-                    }}
+                    }
                     disabled={!canAfford}
                     className={`w-full py-2 rounded text-white font-bold ${
                       canAfford
@@ -8657,12 +8657,12 @@ const WizardDungeonCrawler = () => {
                         setEquippedSpells(prev =>
                           prev.filter(s => s.key !== spell.key)
                         );
-                      }}
+                      )}
                       className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded"
                     >
                       Unequip
                     </button>
-                  )}
+                  }}
                 </div>
               );
             })}
