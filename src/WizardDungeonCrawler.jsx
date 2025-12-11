@@ -2372,6 +2372,43 @@ const WizardDungeonCrawler = () => {
       return prev;
     });
   }, [permanentUpgrades.damageBonus, dungeon]);
+
+    function carveCorridorToNearestFloor(map, startX, startY) {
+      const size = map.length;
+      let best = null;
+      let bestDist = Infinity;
+
+      // Find nearest existing floor tile outside the secret room block
+      for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+              if (map[y][x] === TILE_FLOOR) {
+                  const d = Math.hypot(x - startX, y - startY);
+                  if (d < bestDist) {
+                      bestDist = d;
+                      best = { x, y };
+                  }
+              }
+          }
+      }
+
+      if (!best) return;
+
+      // Dig corridor step-by-step toward best floor location
+      let cx = startX;
+      let cy = startY;
+
+      let safety = 2000;
+      while ((cx !== best.x || cy !== best.y) && safety-- > 0) {
+          if (cx < best.x) cx++;
+          else if (cx > best.x) cx--;
+          if (cy < best.y) cy++;
+          else if (cy > best.y) cy--;
+
+          if (cx > 0 && cy > 0 && cx < size - 1 && cy < size - 1) {
+              map[cy][cx] = TILE_FLOOR;
+          }
+      }
+    }
   
     function addSecretRoomsToDungeon(map, level) {
         const size = map.length;
@@ -2528,6 +2565,16 @@ const WizardDungeonCrawler = () => {
                 }
             }
             }
+        }
+
+        // 3B) Guarantee a corridor into the secret room
+        // Pick the tile just inside the door and extend a path outward
+        for (const dir of doorDirections) {
+          const doorTile = map[dir.doorY]?.[dir.doorX];
+          if (doorTile === TILE_SECRET_DOOR || doorTile === TILE_FLOOR) {
+            carveCorridorToNearestFloor(map, roomX, roomY);
+            break;
+          }
         }
 
         // 4) Chest in center of room
