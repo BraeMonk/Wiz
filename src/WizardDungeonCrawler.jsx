@@ -1330,8 +1330,696 @@ const WizardDungeonCrawler = () => {
                 
                 if (newHealth <= 0) {
                   soundEffectsRef.current?.death?.();
-                  createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
                   
+                  // ========== BASE DEATH PARTICLES ==========
+                  createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
+                  addScreenShake(enemy.isBoss ? 0.8 : 0.3);
+                
+                  // ========== PRESTIGE CLASS DEATH EFFECTS ==========
+                  
+                  // Battle Mage - massive explosion
+                  if (currentClass === 'battlemage') {
+                    const explosionRadius = PRESTIGE_CLASSES.battlemage.bonuses.meleeRange;
+                    
+                    // Central explosion
+                    createParticleEffect(enemy.x, enemy.y, '#ff6b35', 40, 'explosion');
+                    addScreenShake(0.6);
+                    
+                    // Shockwave rings
+                    for (let ring = 1; ring <= 3; ring++) {
+                      setTimeout(() => {
+                        const ringParticles = 12 * ring;
+                        for (let i = 0; i < ringParticles; i++) {
+                          const angle = (i / ringParticles) * Math.PI * 2;
+                          const dist = ring * 0.5;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * dist,
+                            enemy.y + Math.sin(angle) * dist,
+                            '#ff6b35',
+                            6,
+                            'explosion'
+                          );
+                        }
+                      }, ring * 100);
+                    }
+                    
+                    showNotification('💥 EXPLOSIVE DEATH!', 'orange');
+                    
+                    // Damage nearby enemies
+                    setEnemies(prevEnemies =>
+                      prevEnemies.map(otherEnemy => {
+                        if (otherEnemy.id === enemy.id) return otherEnemy;
+                        const dist = Math.hypot(otherEnemy.x - enemy.x, otherEnemy.y - enemy.y);
+                        if (dist < explosionRadius) {
+                          const explosionDamage = finalDamage * 0.6;
+                          
+                          // Explosion effect on each enemy hit
+                          setTimeout(() => {
+                            createParticleEffect(otherEnemy.x, otherEnemy.y, '#ff6b35', 15, 'hit');
+                            addScreenShake(0.2);
+                          }, 150);
+                          
+                          return {
+                            ...otherEnemy,
+                            health: otherEnemy.health - explosionDamage
+                          };
+                        }
+                        return otherEnemy;
+                      }).filter(e => e.health > 0)
+                    );
+                    
+                    // Heal on kill
+                    const healAmount = PRESTIGE_CLASSES.battlemage.bonuses.healthOnKill;
+                    setPlayer(p => ({
+                      ...p,
+                      health: Math.min(p.maxHealth, p.health + healAmount)
+                    }));
+                    
+                    // Healing spiral
+                    for (let i = 0; i < 8; i++) {
+                      setTimeout(() => {
+                        createParticleEffect(player.x, player.y, '#00ff00', 6, 'hit');
+                      }, i * 40);
+                    }
+                  }
+                  
+                  // Necromancer - soul rises
+                  if (currentClass === 'necromancer' && Math.random() < PRESTIGE_CLASSES.necromancer.bonuses.summonChance) {
+                    showNotification('💀 SKELETON SUMMONED!', 'purple');
+                    
+                    // Dark ritual circle
+                    for (let circle = 0; circle < 3; circle++) {
+                      setTimeout(() => {
+                        const circleParticles = 8;
+                        for (let i = 0; i < circleParticles; i++) {
+                          const angle = (i / circleParticles) * Math.PI * 2;
+                          const radius = 0.3 + circle * 0.2;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * radius,
+                            enemy.y + Math.sin(angle) * radius,
+                            '#8b5cf6',
+                            8,
+                            'explosion'
+                          );
+                        }
+                      }, circle * 150);
+                    }
+                    
+                    // Soul ascension
+                    for (let i = 0; i < 10; i++) {
+                      setTimeout(() => {
+                        createParticleEffect(
+                          enemy.x + (Math.random() - 0.5) * 0.6,
+                          enemy.y - i * 0.1,
+                          '#8b5cf6',
+                          5,
+                          'explosion'
+                        );
+                      }, i * 80);
+                    }
+                    
+                    addScreenShake(0.3);
+                  }
+                  
+                  // Elementalist - elemental burst
+                  if (currentClass === 'elementalist') {
+                    const elements = [
+                      { color: '#ff4400', name: 'Fire' },
+                      { color: '#00aaff', name: 'Ice' },
+                      { color: '#ffff00', name: 'Lightning' },
+                      { color: '#88ff88', name: 'Wind' }
+                    ];
+                    
+                    elements.forEach((element, i) => {
+                      setTimeout(() => {
+                        createParticleEffect(enemy.x, enemy.y, element.color, 20, 'explosion');
+                        
+                        // Element-specific spread
+                        for (let j = 0; j < 8; j++) {
+                          const angle = (j / 8) * Math.PI * 2 + i * Math.PI / 2;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * 0.7,
+                            enemy.y + Math.sin(angle) * 0.7,
+                            element.color,
+                            8,
+                            'hit'
+                          );
+                        }
+                      }, i * 120);
+                    });
+                    
+                    addScreenShake(0.5);
+                  }
+                  
+                  // Shadow Dancer - shadow dispersion
+                  if (currentClass === 'shadowdancer') {
+                    // Shadow clones fade away
+                    for (let i = 0; i < 5; i++) {
+                      setTimeout(() => {
+                        const angle = (i / 5) * Math.PI * 2;
+                        const dist = 0.5 + i * 0.2;
+                        createParticleEffect(
+                          enemy.x + Math.cos(angle) * dist,
+                          enemy.y + Math.sin(angle) * dist,
+                          '#6366f1',
+                          12,
+                          'explosion'
+                        );
+                      }, i * 80);
+                    }
+                    
+                    // Quick fade effect
+                    for (let i = 0; i < 3; i++) {
+                      setTimeout(() => {
+                        createParticleEffect(enemy.x, enemy.y, '#6366f1', 15 - i * 5, 'explosion');
+                      }, i * 60);
+                    }
+                  }
+                  
+                  // Archmagus - arcane implosion
+                  if (currentClass === 'archmagus') {
+                    // Implosion (particles move inward)
+                    for (let wave = 0; wave < 4; wave++) {
+                      setTimeout(() => {
+                        const particleCount = 12;
+                        for (let i = 0; i < particleCount; i++) {
+                          const angle = (i / particleCount) * Math.PI * 2;
+                          const startDist = 1.5 - wave * 0.35;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * startDist,
+                            enemy.y + Math.sin(angle) * startDist,
+                            '#a855f7',
+                            10,
+                            'hit'
+                          );
+                        }
+                      }, wave * 100);
+                    }
+                    
+                    // Final burst
+                    setTimeout(() => {
+                      createParticleEffect(enemy.x, enemy.y, '#a855f7', 35, 'explosion');
+                      addScreenShake(0.4);
+                    }, 400);
+                  }
+                  
+                  // Blood Mage - blood fountain
+                  if (currentClass === 'bloodmage') {
+                    const bloodHeal = finalDamage * PRESTIGE_CLASSES.bloodmage.bonuses.lifestealMultiplier * 0.15;
+                    
+                    // Blood eruption
+                    for (let i = 0; i < 20; i++) {
+                      setTimeout(() => {
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = Math.random() * 1.2;
+                        const height = Math.random() * 0.8;
+                        createParticleEffect(
+                          enemy.x + Math.cos(angle) * dist,
+                          enemy.y + Math.sin(angle) * dist,
+                          '#dc2626',
+                          8,
+                          'explosion'
+                        );
+                      }, i * 30);
+                    }
+                    
+                    // Blood streams to player
+                    for (let i = 0; i < 8; i++) {
+                      setTimeout(() => {
+                        createParticleEffect(
+                          player.x + (Math.random() - 0.5) * 0.4,
+                          player.y + (Math.random() - 0.5) * 0.4,
+                          '#dc2626',
+                          10,
+                          'hit'
+                        );
+                      }, 200 + i * 40);
+                    }
+                    
+                    setPlayer(p => ({
+                      ...p,
+                      health: Math.min(p.maxHealth, p.health + bloodHeal)
+                    }));
+                    
+                    showNotification(`💉 +${Math.floor(bloodHeal)} HP`, 'red');
+                  }
+                  
+                  // Time Warden - time freeze death
+                  if (currentClass === 'timewarden') {
+                    // Time ripples
+                    for (let i = 0; i < 5; i++) {
+                      setTimeout(() => {
+                        const radius = i * 0.4;
+                        const particleCount = 12;
+                        for (let j = 0; j < particleCount; j++) {
+                          const angle = (j / particleCount) * Math.PI * 2;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * radius,
+                            enemy.y + Math.sin(angle) * radius,
+                            '#06b6d4',
+                            6,
+                            'explosion'
+                          );
+                        }
+                      }, i * 100);
+                    }
+                    
+                    // Slow-motion effect indicator
+                    showNotification('⏰ TIME SLOWS...', 'cyan');
+                  }
+                  
+                  // Void Caller - void implosion
+                  if (currentClass === 'voidcaller') {
+                    const drainAmount = finalDamage * PRESTIGE_CLASSES.voidcaller.bonuses.healthDrain;
+                    
+                    // Void portal opens
+                    for (let i = 0; i < 8; i++) {
+                      setTimeout(() => {
+                        const radius = 1.2 - i * 0.15;
+                        createParticleEffect(enemy.x, enemy.y, '#7c3aed', 15, 'explosion');
+                        
+                        // Tendrils reach out
+                        for (let j = 0; j < 6; j++) {
+                          const angle = (j / 6) * Math.PI * 2 + i * 0.3;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * radius,
+                            enemy.y + Math.sin(angle) * radius,
+                            '#7c3aed',
+                            8,
+                            'hit'
+                          );
+                        }
+                      }, i * 80);
+                    }
+                    
+                    // Void energy to player
+                    for (let i = 0; i < 6; i++) {
+                      setTimeout(() => {
+                        createParticleEffect(player.x, player.y, '#7c3aed', 8, 'hit');
+                      }, 400 + i * 50);
+                    }
+                    
+                    setPlayer(p => ({
+                      ...p,
+                      health: Math.min(p.maxHealth, p.health + drainAmount)
+                    }));
+                    
+                    showNotification('🌀 VOID ABSORB', 'purple');
+                  }
+                  
+                  // Storm Lord - lightning storm
+                  if (currentClass === 'stormlord') {
+                    const chainTargets = PRESTIGE_CLASSES.stormlord.bonuses.chainLightning;
+                    const chainDamage = finalDamage * 0.4;
+                    
+                    // Lightning strikes at death location
+                    for (let i = 0; i < 5; i++) {
+                      setTimeout(() => {
+                        createParticleEffect(
+                          enemy.x + (Math.random() - 0.5) * 0.8,
+                          enemy.y + (Math.random() - 0.5) * 0.8,
+                          '#eab308',
+                          25,
+                          'explosion'
+                        );
+                        addScreenShake(0.3);
+                      }, i * 120);
+                    }
+                    
+                    // Chain to nearby enemies
+                    let chainedEnemies = [];
+                    let lastPos = { x: enemy.x, y: enemy.y };
+                    
+                    setEnemies(prevEnemies => {
+                      const sortedByDistance = [...prevEnemies]
+                        .filter(e => e.id !== enemy.id)
+                        .sort((a, b) => {
+                          const distA = Math.hypot(a.x - lastPos.x, a.y - lastPos.y);
+                          const distB = Math.hypot(b.x - lastPos.x, b.y - lastPos.y);
+                          return distA - distB;
+                        });
+                      
+                      for (let i = 0; i < Math.min(chainTargets, sortedByDistance.length); i++) {
+                        const target = sortedByDistance[i];
+                        chainedEnemies.push(target);
+                        
+                        setTimeout(() => {
+                          // Lightning bolt effect
+                          createParticleEffect(target.x, target.y, '#eab308', 25, 'explosion');
+                          
+                          // Lightning arc particles
+                          const steps = 8;
+                          for (let j = 0; j <= steps; j++) {
+                            const t = j / steps;
+                            const arcX = lastPos.x + (target.x - lastPos.x) * t;
+                            const arcY = lastPos.y + (target.y - lastPos.y) * t;
+                            setTimeout(() => {
+                              createParticleEffect(arcX, arcY, '#eab308', 6, 'hit');
+                            }, j * 20);
+                          }
+                          
+                          addScreenShake(0.25);
+                        }, i * 200);
+                        
+                        lastPos = { x: target.x, y: target.y };
+                      }
+                      
+                      return prevEnemies.map(e => {
+                        if (chainedEnemies.some(ce => ce.id === e.id)) {
+                          return { ...e, health: e.health - chainDamage };
+                        }
+                        return e;
+                      }).filter(e => e.health > 0);
+                    });
+                    
+                    if (chainedEnemies.length > 0) {
+                      showNotification(`⚡ CHAINED ${chainedEnemies.length}!`, 'yellow');
+                    }
+                  }
+                  
+                  // Runekeeper - runic explosion
+                  if (currentClass === 'runekeeper') {
+                    // Runes orbit and explode
+                    const runes = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ'];
+                    for (let i = 0; i < 6; i++) {
+                      setTimeout(() => {
+                        const angle = (i / 6) * Math.PI * 2;
+                        const radius = 0.8;
+                        createParticleEffect(
+                          enemy.x + Math.cos(angle) * radius,
+                          enemy.y + Math.sin(angle) * radius,
+                          '#f97316',
+                          15,
+                          'explosion'
+                        );
+                      }, i * 100);
+                    }
+                    
+                    // Final runic burst
+                    setTimeout(() => {
+                      createParticleEffect(enemy.x, enemy.y, '#f97316', 30, 'explosion');
+                      addScreenShake(0.4);
+                    }, 600);
+                  }
+                  
+                  // Frost Lord - ice shatter
+                  if (currentClass === 'frostlord') {
+                    const freezeRadius = 3.0;
+                    
+                    // Ice explosion
+                    createParticleEffect(enemy.x, enemy.y, '#0ea5e9', 35, 'explosion');
+                    
+                    // Ice shards fly out
+                    for (let i = 0; i < 16; i++) {
+                      setTimeout(() => {
+                        const angle = (i / 16) * Math.PI * 2;
+                        const dist = 0.3 + Math.random() * 0.8;
+                        createParticleEffect(
+                          enemy.x + Math.cos(angle) * dist,
+                          enemy.y + Math.sin(angle) * dist,
+                          '#0ea5e9',
+                          10,
+                          'explosion'
+                        );
+                      }, i * 40);
+                    }
+                    
+                    // Freeze nearby enemies
+                    setEnemies(prevEnemies =>
+                      prevEnemies.map(otherEnemy => {
+                        if (otherEnemy.id === enemy.id) return otherEnemy;
+                        const dist = Math.hypot(otherEnemy.x - enemy.x, otherEnemy.y - enemy.y);
+                        if (dist < freezeRadius && Math.random() < PRESTIGE_CLASSES.frostlord.bonuses.freezeChance) {
+                          
+                          // Freeze effect on enemy
+                          setTimeout(() => {
+                            createParticleEffect(otherEnemy.x, otherEnemy.y, '#0ea5e9', 15, 'hit');
+                          }, 100);
+                          
+                          return {
+                            ...otherEnemy,
+                            speed: otherEnemy.speed * 0.1,
+                            frozen: true,
+                            freezeTimer: PRESTIGE_CLASSES.frostlord.bonuses.freezeDuration
+                          };
+                        }
+                        return otherEnemy;
+                      })
+                    );
+                    
+                    showNotification('❄️ FROZEN!', 'cyan');
+                  }
+                  
+                  // Pyromancer - inferno
+                  if (currentClass === 'pyromancer') {
+                    const burnRadius = PRESTIGE_CLASSES.pyromancer.bonuses.explosionRadius;
+                    
+                    // Massive fire explosion
+                    createParticleEffect(enemy.x, enemy.y, '#ef4444', 50, 'explosion');
+                    addScreenShake(0.7);
+                    
+                    // Fire waves
+                    for (let wave = 0; wave < 4; wave++) {
+                      setTimeout(() => {
+                        const waveParticles = 16;
+                        for (let i = 0; i < waveParticles; i++) {
+                          const angle = (i / waveParticles) * Math.PI * 2;
+                          const radius = wave * 0.5;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * radius,
+                            enemy.y + Math.sin(angle) * radius,
+                            wave % 2 === 0 ? '#ef4444' : '#ff8800',
+                            12,
+                            'explosion'
+                          );
+                        }
+                      }, wave * 120);
+                    }
+                    
+                    // Burn nearby enemies
+                    setEnemies(prevEnemies =>
+                      prevEnemies.map(otherEnemy => {
+                        if (otherEnemy.id === enemy.id) return otherEnemy;
+                        const dist = Math.hypot(otherEnemy.x - enemy.x, otherEnemy.y - enemy.y);
+                        if (dist < burnRadius) {
+                          
+                          // Ignite effect
+                          setTimeout(() => {
+                            createParticleEffect(otherEnemy.x, otherEnemy.y, '#ef4444', 18, 'hit');
+                          }, 150);
+                          
+                          return {
+                            ...otherEnemy,
+                            burning: true,
+                            burnDamage: PRESTIGE_CLASSES.pyromancer.bonuses.burnDamage,
+                            burnTimer: PRESTIGE_CLASSES.pyromancer.bonuses.burnDuration
+                          };
+                        }
+                        return otherEnemy;
+                      })
+                    );
+                    
+                    showNotification('🔥 BURNING!', 'red');
+                  }
+                  
+                  // Celestial - holy nova
+                  if (currentClass === 'celestial') {
+                    const healOnKill = PRESTIGE_CLASSES.celestial.bonuses.healOnKill;
+                    const holyDamageMult = PRESTIGE_CLASSES.celestial.bonuses.holyDamage || 1.8;
+                    const holyRadius = 3.0;
+                
+                    // Holy explosion at death location
+                    createParticleEffect(enemy.x, enemy.y, '#fbbf24', 40, 'explosion');
+                    addScreenShake(0.5);
+                
+                    // Radiating rings of light
+                    for (let ring = 1; ring <= 3; ring++) {
+                      setTimeout(() => {
+                        const ringParticles = 16 * ring;
+                        const radius = ring * 0.7;
+                        for (let i = 0; i < ringParticles; i++) {
+                          const angle = (i / ringParticles) * Math.PI * 2;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * radius,
+                            enemy.y + Math.sin(angle) * radius,
+                            '#fde68a',
+                            6,
+                            'explosion'
+                          );
+                        }
+                      }, ring * 100);
+                    }
+                
+                    // Damage nearby enemies with holy nova
+                    setEnemies(prevEnemies =>
+                      prevEnemies
+                        .map(otherEnemy => {
+                          if (otherEnemy.id === enemy.id) return otherEnemy;
+                          const dist = Math.hypot(otherEnemy.x - enemy.x, otherEnemy.y - enemy.y);
+                          if (dist < holyRadius) {
+                            const aoeDamage = finalDamage * 0.5 * holyDamageMult;
+                
+                            setTimeout(() => {
+                              createParticleEffect(otherEnemy.x, otherEnemy.y, '#fbbf24', 12, 'hit');
+                            }, 120);
+                
+                            return {
+                              ...otherEnemy,
+                              health: otherEnemy.health - aoeDamage
+                            };
+                          }
+                          return otherEnemy;
+                        })
+                        .filter(e => e.health > 0)
+                    );
+                
+                    // Heal the player on kill
+                    setPlayer(p => ({
+                      ...p,
+                      health: Math.min(p.maxHealth, p.health + healOnKill)
+                    }));
+                
+                    showNotification(`☀️ HOLY NOVA +${healOnKill} HP`, 'yellow');
+                  }
+                
+                  // Demon Pact - hellfire detonation
+                  if (currentClass === 'demonpact') {
+                    const demonicPower = PRESTIGE_CLASSES.demonpact.bonuses.demonicPower || 3.0;
+                    const healthCostFactor = PRESTIGE_CLASSES.demonpact.bonuses.healthCost || 0.5;
+                    const damageResistance = PRESTIGE_CLASSES.demonpact.bonuses.damageResistance || 0.3;
+                    const hellRadius = 2.5;
+                
+                    // Pay health cost for the detonation
+                    const healthCost = Math.floor(finalDamage * healthCostFactor);
+                    setPlayer(p => ({
+                      ...p,
+                      health: Math.max(1, p.health - healthCost)
+                    }));
+                
+                    showNotification(`👿 -${healthCost} HP FOR POWER`, 'red');
+                
+                    // Central hellfire explosion
+                    createParticleEffect(enemy.x, enemy.y, '#991b1b', 50, 'explosion');
+                    addScreenShake(0.8);
+                
+                    // Rising hellfire pillars
+                    for (let i = 0; i < 8; i++) {
+                      setTimeout(() => {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const dist = 0.8 + Math.random() * 0.8;
+                        createParticleEffect(
+                          enemy.x + Math.cos(angle) * dist,
+                          enemy.y + Math.sin(angle) * dist,
+                          '#ef4444',
+                          10,
+                          'explosion'
+                        );
+                      }, i * 70);
+                    }
+                
+                    // Massive AoE damage around corpse
+                    setEnemies(prevEnemies =>
+                      prevEnemies
+                        .map(otherEnemy => {
+                          if (otherEnemy.id === enemy.id) return otherEnemy;
+                          const dist = Math.hypot(otherEnemy.x - enemy.x, otherEnemy.y - enemy.y);
+                          if (dist < hellRadius) {
+                            const aoeDamage = finalDamage * demonicPower;
+                
+                            setTimeout(() => {
+                              createParticleEffect(otherEnemy.x, otherEnemy.y, '#ef4444', 16, 'hit');
+                            }, 100);
+                
+                            return {
+                              ...otherEnemy,
+                              health: otherEnemy.health - aoeDamage
+                            };
+                          }
+                          return otherEnemy;
+                        })
+                        .filter(e => e.health > 0)
+                    );
+                  }
+                
+                  // Earth Shaper - seismic shockwave
+                  if (currentClass === 'earthshaper') {
+                    const quakeRadius = 3.5;
+                    const knockbackPower = PRESTIGE_CLASSES.earthshaper.bonuses.knockbackPower || 2.0;
+                    const earthDamageMult = PRESTIGE_CLASSES.earthshaper.bonuses.earthDamage || 1.5;
+                
+                    // Ground crack + dust burst
+                    createParticleEffect(enemy.x, enemy.y, '#92400e', 35, 'explosion');
+                    addScreenShake(0.7);
+                
+                    // Circular shockwave
+                    for (let ring = 0; ring < 3; ring++) {
+                      setTimeout(() => {
+                        const ringParticles = 18;
+                        const radius = 0.8 + ring * 0.6;
+                        for (let i = 0; i < ringParticles; i++) {
+                          const angle = (i / ringParticles) * Math.PI * 2;
+                          createParticleEffect(
+                            enemy.x + Math.cos(angle) * radius,
+                            enemy.y + Math.sin(angle) * radius,
+                            '#b45309',
+                            8,
+                            'explosion'
+                          );
+                        }
+                      }, ring * 90);
+                    }
+                
+                    // Damage + knockback nearby enemies
+                    setEnemies(prevEnemies =>
+                      prevEnemies.map(otherEnemy => {
+                        if (otherEnemy.id === enemy.id) return otherEnemy;
+                        const dx = otherEnemy.x - enemy.x;
+                        const dy = otherEnemy.y - enemy.y;
+                        const dist = Math.hypot(dx, dy);
+                
+                        if (dist < quakeRadius && dist > 0.01) {
+                          const angle = Math.atan2(dy, dx);
+                          const knockbackDist = knockbackPower;
+                          const newX = otherEnemy.x + Math.cos(angle) * knockbackDist;
+                          const newY = otherEnemy.y + Math.sin(angle) * knockbackDist;
+                
+                          const tileX = Math.floor(newX);
+                          const tileY = Math.floor(newY);
+                
+                          let finalX = otherEnemy.x;
+                          let finalY = otherEnemy.y;
+                
+                          // Only move if destination is walkable
+                          if (
+                            tileX >= 0 && tileX < DUNGEON_SIZE &&
+                            tileY >= 0 && tileY < DUNGEON_SIZE &&
+                            dungeon[tileY][tileX] === TILE_FLOOR
+                          ) {
+                            finalX = newX;
+                            finalY = newY;
+                          }
+                
+                          const quakeDamage = finalDamage * 0.5 * earthDamageMult;
+                
+                          setTimeout(() => {
+                            createParticleEffect(finalX, finalY, '#92400e', 10, 'hit');
+                          }, 100);
+                
+                          return {
+                            ...otherEnemy,
+                            x: finalX,
+                            y: finalY,
+                            health: otherEnemy.health - quakeDamage
+                          };
+                        }
+                
+                        return otherEnemy;
+                      }).filter(e => e.health > 0)
+                    );
+                
+                    showNotification('🌍 SEISMIC SHOCKWAVE!', 'orange');
+                  }
+                
                   const newCombo = comboRef.current.count + 1;
                   const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
                   setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
@@ -1360,16 +2048,18 @@ const WizardDungeonCrawler = () => {
                     }
                     return newTotal;
                   });
-                  
-                  return { ...enemy, x: newX, y: newY, health: 0, dead: true };
-                }
                 
-                return { ...enemy, x: newX, y: newY, health: newHealth };
-              }
-              
-              if (newHealth <= 0) {
-                return { ...enemy, health: 0, dead: true };
-              }
+                  const lifeStealPercent = permanentUpgrades.lifeSteal * 0.02;
+                  const healAmount = finalDamage * lifeStealPercent;
+                  if (healAmount > 0) {
+                    setPlayer(p => ({
+                      ...p,
+                      health: Math.min(p.maxHealth, p.health + healAmount)
+                    }));
+                    createParticleEffect(player.x, player.y, '#00ff00', 5, 'hit');
+                  }
+                  return { ...enemy, health: 0, dead: true };
+                }
               return { ...enemy, health: newHealth };
             }
             return enemy;
@@ -1415,26 +2105,312 @@ const WizardDungeonCrawler = () => {
         // Normal projectile spell – spawn slightly in front of CURRENT position
         const spawnAngle = currentPlayer.angle;
         const spawnOffset = 0.7; // about 0.7 tiles in front
-
+        
         const spawnX = currentPlayer.x + Math.cos(spawnAngle) * spawnOffset;
         const spawnY = currentPlayer.y + Math.sin(spawnAngle) * spawnOffset;
-
-        setProjectiles(projs => [
-          ...projs,
-          {
-            id: Math.random(),
-            x: spawnX,
-            y: spawnY,
-            angle: spawnAngle,
-            speed: 8,
-            damage: finalDamage,
-            color: spell.color,
-            lifetime: 3,
-            dead: false,
-            spellType: spell.key
+        
+        // ========== PRESTIGE CLASS ATTACK MODIFICATIONS ==========
+        
+        let projectileSpeed = 8;
+        let projectileColor = spell.color;
+        let projectileCount = 1;
+        let spreadAngle = 0;
+        let piercing = false;
+        
+        // Elementalist - enhanced spell effects
+        if (currentClass === 'elementalist') {
+          const elementalBonus = PRESTIGE_CLASSES.elementalist.bonuses.elementalDamage;
+          // Visual enhancement - larger particles
+          createParticleEffect(spawnX, spawnY, spell.color, 15, 'explosion');
+          
+          // Multi-element burst effect
+          const colors = ['#ff4400', '#00aaff', '#ffff00', '#88ff88'];
+          colors.forEach((color, i) => {
+            setTimeout(() => {
+              createParticleEffect(spawnX, spawnY, color, 8, 'explosion');
+            }, i * 50);
+          });
+        }
+        
+        // Shadow Dancer - crit indicator
+        if (currentClass === 'shadowdancer') {
+          const critChance = PRESTIGE_CLASSES.shadowdancer.bonuses.criticalChance;
+          if (Math.random() < critChance) {
+            createParticleEffect(spawnX, spawnY, '#ffff00', 20, 'explosion');
+            showNotification('CRITICAL!', 'yellow');
+            addScreenShake(0.3);
           }
-        ]);
-      }
+        }
+        
+        // Archmagus - faster cooldowns (visual feedback)
+        if (currentClass === 'archmagus') {
+          createParticleEffect(spawnX, spawnY, '#a855f7', 12, 'explosion');
+          
+          // Magical runes appear
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            setTimeout(() => {
+              createParticleEffect(
+                spawnX + Math.cos(angle) * 0.5,
+                spawnY + Math.sin(angle) * 0.5,
+                '#a855f7',
+                6,
+                'hit'
+              );
+            }, i * 40);
+          }
+        }
+        
+        // Blood Mage - blood trail
+        if (currentClass === 'bloodmage') {
+          projectileColor = '#dc2626';
+          for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+              createParticleEffect(
+                spawnX - Math.cos(spawnAngle) * i * 0.2,
+                spawnY - Math.sin(spawnAngle) * i * 0.2,
+                '#dc2626',
+                4,
+                'hit'
+              );
+            }, i * 30);
+          }
+        }
+        
+        // Time Warden - slow-motion effect
+        if (currentClass === 'timewarden') {
+          createParticleEffect(spawnX, spawnY, '#06b6d4', 15, 'explosion');
+          
+          // Time ripple
+          for (let i = 1; i <= 3; i++) {
+            setTimeout(() => {
+              createParticleEffect(spawnX, spawnY, '#06b6d4', 10, 'explosion');
+            }, i * 100);
+          }
+        }
+        
+        // Void Caller - piercing projectiles
+        if (currentClass === 'voidcaller') {
+          piercing = true;
+          projectileColor = '#7c3aed';
+          
+          // Void trail
+          createParticleEffect(spawnX, spawnY, '#7c3aed', 20, 'explosion');
+        }
+        
+        // Storm Lord - lightning chains (visual prep)
+        if (currentClass === 'stormlord') {
+          projectileColor = '#eab308';
+          
+          // Lightning crackle
+          for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = 0.3 + Math.random() * 0.4;
+              createParticleEffect(
+                spawnX + Math.cos(angle) * dist,
+                spawnY + Math.sin(angle) * dist,
+                '#eab308',
+                6,
+                'explosion'
+              );
+            }, i * 50);
+          }
+        }
+        
+        // Runekeeper - runic enhancement
+        if (currentClass === 'runekeeper') {
+          const damageBonus = PRESTIGE_CLASSES.runekeeper.bonuses.runeDamageBonus;
+          
+          // Rune circle appears
+          createParticleEffect(spawnX, spawnY, '#f97316', 18, 'explosion');
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const dist = 0.6;
+            createParticleEffect(
+              spawnX + Math.cos(angle) * dist,
+              spawnY + Math.sin(angle) * dist,
+              '#f97316',
+              5,
+              'hit'
+            );
+          }
+        }
+        
+        // Frost Lord - frost nova effect
+        if (currentClass === 'frostlord') {
+          projectileColor = '#0ea5e9';
+          
+          // Ice crystals form
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            setTimeout(() => {
+              createParticleEffect(
+                spawnX + Math.cos(angle) * 0.4,
+                spawnY + Math.sin(angle) * 0.4,
+                '#0ea5e9',
+                8,
+                'explosion'
+              );
+            }, i * 60);
+          }
+        }
+        
+        // Pyromancer - fire burst
+        if (currentClass === 'pyromancer') {
+          projectileColor = '#ef4444';
+          
+          // Flame explosion
+          createParticleEffect(spawnX, spawnY, '#ef4444', 25, 'explosion');
+          addScreenShake(0.2);
+          
+          // Burning embers
+          for (let i = 0; i < 10; i++) {
+            setTimeout(() => {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = Math.random() * 0.8;
+              createParticleEffect(
+                spawnX + Math.cos(angle) * dist,
+                spawnY + Math.sin(angle) * dist,
+                '#ef4444',
+                4,
+                'hit'
+              );
+            }, i * 40);
+          }
+        }
+        
+        // Celestial - holy light
+        if (currentClass === 'celestial') {
+          projectileColor = '#fbbf24';
+          const holyDamage = PRESTIGE_CLASSES.celestial.bonuses.holyDamage;
+          
+          // Divine burst
+          createParticleEffect(spawnX, spawnY, '#fbbf24', 20, 'explosion');
+          
+          // Light rays
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            setTimeout(() => {
+              createParticleEffect(
+                spawnX + Math.cos(angle) * 0.6,
+                spawnY + Math.sin(angle) * 0.6,
+                '#fbbf24',
+                6,
+                'explosion'
+              );
+            }, i * 30);
+          }
+        }
+        
+        // Demon Pact - demonic power
+        if (currentClass === 'demonpact') {
+          projectileColor = '#991b1b';
+          const demonicPower = PRESTIGE_CLASSES.demonpact.bonuses.demonicPower;
+          
+          // Health cost effect
+          const healthCost = spell.manaCost * PRESTIGE_CLASSES.demonpact.bonuses.healthCost * 0.5;
+          setPlayer(p => ({
+            ...p,
+            health: Math.max(1, p.health - healthCost)
+          }));
+          
+          // Dark explosion
+          createParticleEffect(spawnX, spawnY, '#991b1b', 30, 'explosion');
+          addScreenShake(0.4);
+          
+          // Blood sacrifice visual
+          for (let i = 0; i < 12; i++) {
+            setTimeout(() => {
+              createParticleEffect(currentPlayer.x, currentPlayer.y, '#991b1b', 5, 'hit');
+            }, i * 30);
+          }
+        }
+        
+        // Earth Shaper - earth tremor
+        if (currentClass === 'earthshaper') {
+          projectileColor = '#92400e';
+          
+          // Ground shake
+          addScreenShake(0.5);
+          createParticleEffect(spawnX, spawnY, '#92400e', 25, 'explosion');
+          
+          // Rock debris
+          for (let i = 0; i < 15; i++) {
+            setTimeout(() => {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = Math.random() * 1.0;
+              createParticleEffect(
+                spawnX + Math.cos(angle) * dist,
+                spawnY + Math.sin(angle) * dist,
+                '#92400e',
+                6,
+                'hit'
+              );
+            }, i * 40);
+          }
+        }
+        
+        // Battle Mage - melee enhancement
+        if (currentClass === 'battlemage') {
+          projectileSpeed = 12; // Faster projectiles
+          createParticleEffect(spawnX, spawnY, '#ff6b35', 18, 'explosion');
+        }
+        
+        // Necromancer - dark energy
+        if (currentClass === 'necromancer') {
+          projectileColor = '#8b5cf6';
+          
+          // Soul energy
+          for (let i = 0; i < 4; i++) {
+            setTimeout(() => {
+              createParticleEffect(spawnX, spawnY, '#8b5cf6', 8, 'explosion');
+            }, i * 80);
+          }
+        }
+        
+        // ========== CREATE PROJECTILE(S) ==========
+        
+        if (projectileCount === 1) {
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: projectileSpeed,
+              damage: finalDamage,
+              color: projectileColor,
+              lifetime: 3,
+              dead: false,
+              spellType: spell.key,
+              piercing: piercing,
+              prestigeClass: currentClass
+            }
+          ]);
+        } else {
+          // Multi-projectile spread
+          const newProjs = [];
+          for (let i = 0; i < projectileCount; i++) {
+            const offset = spreadAngle * (i - (projectileCount - 1) / 2);
+            newProjs.push({
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle + offset,
+              speed: projectileSpeed,
+              damage: finalDamage,
+              color: projectileColor,
+              lifetime: 3,
+              dead: false,
+              spellType: spell.key,
+              piercing: piercing,
+              prestigeClass: currentClass
+            });
+          }
+          setProjectiles(projs => [...projs, ...newProjs]);
+        }
   
       return prev.map((s, i) =>
         i === idx ? { ...s, cooldown: s.maxCooldown } : s
@@ -6144,7 +7120,9 @@ const WizardDungeonCrawler = () => {
         let moveY = 0;
 
         const speedBonus = 1 + permanentUpgrades.speedBonus * 0.05;
-        const effectiveMoveSpeed = MOVE_SPEED * speedBonus;
+        const baseSpeed = MOVE_SPEED * speedBonus;
+        const classSpeed = applyClassBonuses(0, baseSpeed, 0);
+        const effectiveMoveSpeed = classSpeed.speed;
 
         if (keysPressed.current['arrowleft'] || keysPressed.current['q']) {
           newAngle -= TURN_SPEED * deltaTime;
@@ -6819,13 +7797,50 @@ const WizardDungeonCrawler = () => {
             }
           }
       
+          // Update status effects (burn, freeze)
+          let effectiveHealth = enemy.health;
+          let effectiveSpeed = enemy.speed;
+          let effectiveFrozen = enemy.frozen || false;
+          let effectiveFreezeTimer = enemy.freezeTimer || 0;
+          let effectiveBurning = enemy.burning || false;
+          let effectiveBurnTimer = enemy.burnTimer || 0;
+          
+          // Handle freeze
+          if (effectiveFrozen && effectiveFreezeTimer > 0) {
+            effectiveFreezeTimer -= deltaTime;
+            if (effectiveFreezeTimer <= 0) {
+              effectiveFrozen = false;
+              effectiveSpeed = enemy.speed;
+            }
+          }
+          
+          // Handle burn
+          if (effectiveBurning && effectiveBurnTimer > 0) {
+            effectiveBurnTimer -= deltaTime;
+            effectiveHealth -= (enemy.burnDamage || 0) * deltaTime;
+            
+            if (Math.random() < 0.1) {
+              createParticleEffect(enemy.x, enemy.y, '#ef4444', 3, 'hit');
+            }
+            
+            if (effectiveBurnTimer <= 0) {
+              effectiveBurning = false;
+            }
+          }
+          
+          // Add to return object:
           return {
             ...enemy,
             x: newX,
             y: newY,
             angle: newAngle,
             state: newState,
-            attackCooldown: newAttackCooldown
+            attackCooldown: newAttackCooldown,
+            frozen: effectiveFrozen,
+            freezeTimer: effectiveFreezeTimer,
+            burning: effectiveBurning,
+            burnTimer: effectiveBurnTimer,
+            health: effectiveHealth
           };
         })
       );
@@ -7144,8 +8159,16 @@ const WizardDungeonCrawler = () => {
       x: 5,
       y: 5,
       angle: 0,
-      health: 100 + permanentUpgrades.maxHealthBonus * 20,
-      maxHealth: 100 + permanentUpgrades.maxHealthBonus * 20,
+      health: (() => {
+        const baseHealth = 100 + permanentUpgrades.maxHealthBonus * 20;
+        const classHealth = applyClassBonuses(0, 0, baseHealth);
+        return classHealth.health;
+      })(),
+      maxHealth: (() => {
+        const baseHealth = 100 + permanentUpgrades.maxHealthBonus * 20;
+        const classHealth = applyClassBonuses(0, 0, baseHealth);
+        return classHealth.health;
+      })(),
       mana: 100 + permanentUpgrades.maxManaBonus * 15,
       maxMana: 100 + permanentUpgrades.maxManaBonus * 15,
       level: 1,
