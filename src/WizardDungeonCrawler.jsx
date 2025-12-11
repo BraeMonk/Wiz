@@ -2639,6 +2639,10 @@ const WizardDungeonCrawler = () => {
     showNotification('Prestige offer declined - you can try again later', 'blue');
   };
   
+  const getDifficultyMultiplier = () => {
+    return 1 + (prestigeLevel * 0.3); // 30% harder per prestige
+  };
+
   const applyClassBonuses = (baseDamage, baseSpeed, baseHealth) => {
     let damage = baseDamage;
     let speed = baseSpeed;
@@ -2655,11 +2659,7 @@ const WizardDungeonCrawler = () => {
     
     return { damage, speed, health };
   };
-  
-  const getDifficultyMultiplier = () => {
-    return 1 + (prestigeLevel * 0.3); // 30% harder per prestige
-  };
-  
+    
   const unlockRandomSecretSpell = useCallback(() => {
     setEquippedSpells(prev => {
       const ownedKeys = new Set(prev.map(s => s.key));
