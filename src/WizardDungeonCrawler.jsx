@@ -8514,7 +8514,7 @@ const WizardDungeonCrawler = () => {
                         
                         return next;
                       });
-                    }
+                    }}
                     disabled={!canAfford}
                     className={`w-full py-2 rounded text-white font-bold ${
                       canAfford
