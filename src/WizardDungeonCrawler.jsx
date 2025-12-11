@@ -7262,9 +7262,17 @@ const WizardDungeonCrawler = () => {
               
               createParticleEffect(proj.x, proj.y, proj.color, 12, 'explosion');
               addScreenShake(0.4);
-              return;
+              // Projectile hit player, don't add to remaining
+            } else {
+              // Enemy projectile didn't hit yet, keep it
+              remaining.push(proj);
             }
+            return; // Skip the player projectile logic below
           }
+      
+          // Player projectiles hitting enemies
+          let hit = false;
+
       
           // Player projectiles hitting enemies
           let hit = false;
