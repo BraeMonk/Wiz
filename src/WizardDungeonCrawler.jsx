@@ -1250,9 +1250,26 @@ const WizardDungeonCrawler = () => {
   
       // Replace the finalDamage line with:
       const bonusDamage = permanentUpgrades.damageBonus * 0.1;
-      const baseDamage = spell.damage * (1 + bonusDamage);
-      const classBonus = applyClassBonuses(baseDamage, 0, 0);
-      const finalDamage = classBonus.damage;
+      let finalDamage = spell.damage * (1 + bonusDamage);
+      
+      // Apply class bonuses
+      if (currentClass) {
+        const classData = PRESTIGE_CLASSES[currentClass];
+        if (classData.bonuses.damageMultiplier) {
+          finalDamage *= classData.bonuses.damageMultiplier;
+        }
+        if (classData.bonuses.elementalDamage) {
+          finalDamage *= classData.bonuses.elementalDamage;
+        }
+        if (classData.bonuses.allStatsMultiplier) {
+          finalDamage *= classData.bonuses.allStatsMultiplier;
+        }
+      }
+      
+      // Apply damage boost powerup
+      if (playerBuffs.damageBoost.active) {
+        finalDamage *= playerBuffs.damageBoost.multiplier;
+      }
       
       // Handle utility spells
       if (spell.key === 'dash') {
@@ -2171,24 +2188,24 @@ const WizardDungeonCrawler = () => {
         // Normal projectile spell – spawn slightly in front of CURRENT position
         const spawnAngle = currentPlayer.angle;
         const spawnOffset = 0.7; // about 0.7 tiles in front
-        
+
         const spawnX = currentPlayer.x + Math.cos(spawnAngle) * spawnOffset;
         const spawnY = currentPlayer.y + Math.sin(spawnAngle) * spawnOffset;
-        
+
         // ========== PRESTIGE CLASS ATTACK MODIFICATIONS ==========
-        
+
         let projectileSpeed = 8;
         let projectileColor = spell.color;
         let projectileCount = 1;
         let spreadAngle = 0;
         let piercing = false;
-        
+
         // Elementalist - enhanced spell effects
         if (currentClass === 'elementalist') {
           const elementalBonus = PRESTIGE_CLASSES.elementalist.bonuses.elementalDamage;
           // Visual enhancement - larger particles
           createParticleEffect(spawnX, spawnY, spell.color, 15, 'explosion');
-          
+
           // Multi-element burst effect
           const colors = ['#ff4400', '#00aaff', '#ffff00', '#88ff88'];
           colors.forEach((color, i) => {
@@ -2197,8 +2214,8 @@ const WizardDungeonCrawler = () => {
             }, i * 50);
           });
         }
-        
-        // Shadow Dancer - crit indicator
+
+        // Shadow Dancer - crit indicator (visual only here)
         if (currentClass === 'shadowdancer') {
           const critChance = PRESTIGE_CLASSES.shadowdancer.bonuses.criticalChance;
           if (Math.random() < critChance) {
@@ -2207,12 +2224,10 @@ const WizardDungeonCrawler = () => {
             addScreenShake(0.3);
           }
         }
-        
-        // Archmagus - faster cooldowns (visual feedback)
+
+        // Archmagus - arcane flair
         if (currentClass === 'archmagus') {
           createParticleEffect(spawnX, spawnY, '#a855f7', 12, 'explosion');
-          
-          // Magical runes appear
           for (let i = 0; i < 6; i++) {
             const angle = (i / 6) * Math.PI * 2;
             setTimeout(() => {
@@ -2226,7 +2241,7 @@ const WizardDungeonCrawler = () => {
             }, i * 40);
           }
         }
-        
+
         // Blood Mage - blood trail
         if (currentClass === 'bloodmage') {
           projectileColor = '#dc2626';
@@ -2242,33 +2257,27 @@ const WizardDungeonCrawler = () => {
             }, i * 30);
           }
         }
-        
-        // Time Warden - slow-motion effect
+
+        // Time Warden - time ripple
         if (currentClass === 'timewarden') {
           createParticleEffect(spawnX, spawnY, '#06b6d4', 15, 'explosion');
-          
-          // Time ripple
           for (let i = 1; i <= 3; i++) {
             setTimeout(() => {
               createParticleEffect(spawnX, spawnY, '#06b6d4', 10, 'explosion');
             }, i * 100);
           }
         }
-        
+
         // Void Caller - piercing projectiles
         if (currentClass === 'voidcaller') {
           piercing = true;
           projectileColor = '#7c3aed';
-          
-          // Void trail
           createParticleEffect(spawnX, spawnY, '#7c3aed', 20, 'explosion');
         }
-        
-        // Storm Lord - lightning chains (visual prep)
+
+        // Storm Lord - lightning crackle
         if (currentClass === 'stormlord') {
           projectileColor = '#eab308';
-          
-          // Lightning crackle
           for (let i = 0; i < 3; i++) {
             setTimeout(() => {
               const angle = Math.random() * Math.PI * 2;
@@ -2283,12 +2292,9 @@ const WizardDungeonCrawler = () => {
             }, i * 50);
           }
         }
-        
+
         // Runekeeper - runic enhancement
         if (currentClass === 'runekeeper') {
-          const damageBonus = PRESTIGE_CLASSES.runekeeper.bonuses.runeDamageBonus;
-          
-          // Rune circle appears
           createParticleEffect(spawnX, spawnY, '#f97316', 18, 'explosion');
           for (let i = 0; i < 8; i++) {
             const angle = (i / 8) * Math.PI * 2;
@@ -2302,141 +2308,15 @@ const WizardDungeonCrawler = () => {
             );
           }
         }
-        
-        // Frost Lord - frost nova effect
-        if (currentClass === 'frostlord') {
-          projectileColor = '#0ea5e9';
-          
-          // Ice crystals form
-          for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            setTimeout(() => {
-              createParticleEffect(
-                spawnX + Math.cos(angle) * 0.4,
-                spawnY + Math.sin(angle) * 0.4,
-                '#0ea5e9',
-                8,
-                'explosion'
-              );
-            }, i * 60);
-          }
-        }
-        
-        // Pyromancer - fire burst
-        if (currentClass === 'pyromancer') {
-          projectileColor = '#ef4444';
-          
-          // Flame explosion
-          createParticleEffect(spawnX, spawnY, '#ef4444', 25, 'explosion');
-          addScreenShake(0.2);
-          
-          // Burning embers
-          for (let i = 0; i < 10; i++) {
-            setTimeout(() => {
-              const angle = Math.random() * Math.PI * 2;
-              const dist = Math.random() * 0.8;
-              createParticleEffect(
-                spawnX + Math.cos(angle) * dist,
-                spawnY + Math.sin(angle) * dist,
-                '#ef4444',
-                4,
-                'hit'
-              );
-            }, i * 40);
-          }
-        }
-        
-        // Celestial - holy light
-        if (currentClass === 'celestial') {
-          projectileColor = '#fbbf24';
-          const holyDamage = PRESTIGE_CLASSES.celestial.bonuses.holyDamage;
-          
-          // Divine burst
-          createParticleEffect(spawnX, spawnY, '#fbbf24', 20, 'explosion');
-          
-          // Light rays
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            setTimeout(() => {
-              createParticleEffect(
-                spawnX + Math.cos(angle) * 0.6,
-                spawnY + Math.sin(angle) * 0.6,
-                '#fbbf24',
-                6,
-                'explosion'
-              );
-            }, i * 30);
-          }
-        }
-        
-        // Demon Pact - demonic power
-        if (currentClass === 'demonpact') {
-          projectileColor = '#991b1b';
-          const demonicPower = PRESTIGE_CLASSES.demonpact.bonuses.demonicPower;
-          
-          // Health cost effect
-          const healthCost = spell.manaCost * PRESTIGE_CLASSES.demonpact.bonuses.healthCost * 0.5;
-          setPlayer(p => ({
-            ...p,
-            health: Math.max(1, p.health - healthCost)
-          }));
-          
-          // Dark explosion
-          createParticleEffect(spawnX, spawnY, '#991b1b', 30, 'explosion');
-          addScreenShake(0.4);
-          
-          // Blood sacrifice visual
-          for (let i = 0; i < 12; i++) {
-            setTimeout(() => {
-              createParticleEffect(currentPlayer.x, currentPlayer.y, '#991b1b', 5, 'hit');
-            }, i * 30);
-          }
-        }
-        
-        // Earth Shaper - earth tremor
+
+        // Earthshaper - little ground pop on cast (full shockwave is in hit logic)
         if (currentClass === 'earthshaper') {
-          projectileColor = '#92400e';
-          
-          // Ground shake
           addScreenShake(0.5);
           createParticleEffect(spawnX, spawnY, '#92400e', 25, 'explosion');
-          
-          // Rock debris
-          for (let i = 0; i < 15; i++) {
-            setTimeout(() => {
-              const angle = Math.random() * Math.PI * 2;
-              const dist = Math.random() * 1.0;
-              createParticleEffect(
-                spawnX + Math.cos(angle) * dist,
-                spawnY + Math.sin(angle) * dist,
-                '#92400e',
-                6,
-                'hit'
-              );
-            }, i * 40);
-          }
         }
-        
-        // Battle Mage - melee enhancement
-        if (currentClass === 'battlemage') {
-          projectileSpeed = 12; // Faster projectiles
-          createParticleEffect(spawnX, spawnY, '#ff6b35', 18, 'explosion');
-        }
-        
-        // Necromancer - dark energy
-        if (currentClass === 'necromancer') {
-          projectileColor = '#8b5cf6';
-          
-          // Soul energy
-          for (let i = 0; i < 4; i++) {
-            setTimeout(() => {
-              createParticleEffect(spawnX, spawnY, '#8b5cf6', 8, 'explosion');
-            }, i * 80);
-          }
-        }
-        
+
         // ========== CREATE PROJECTILE(S) ==========
-        
+
         if (projectileCount === 1) {
           setProjectiles(projs => [
             ...projs,
@@ -2451,12 +2331,11 @@ const WizardDungeonCrawler = () => {
               lifetime: 3,
               dead: false,
               spellType: spell.key,
-              piercing: piercing,
+              piercing,
               prestigeClass: currentClass
             }
           ]);
         } else {
-          // Multi-projectile spread
           const newProjs = [];
           for (let i = 0; i < projectileCount; i++) {
             const offset = spreadAngle * (i - (projectileCount - 1) / 2);
@@ -2471,25 +2350,26 @@ const WizardDungeonCrawler = () => {
               lifetime: 3,
               dead: false,
               spellType: spell.key,
-              piercing: piercing,
+              piercing,
               prestigeClass: currentClass
             });
           }
           setProjectiles(projs => [...projs, ...newProjs]);
         }
-  
-      return prev.map((s, i) =>
-        i === idx ? { ...s, cooldown: s.maxCooldown } : s
-      );
-    });
-  
-    setPlayer(p => {
-      const spell = equippedSpells[selectedSpell];
-      if (!spell) return p;
-      
-      const newMana = Math.max(0, p.mana - spell.manaCost);
-      return { ...p, mana: newMana };
-    });
+
+        // Put spell on cooldown
+        setEquippedSpells(prev =>
+          prev.map((s, i) =>
+            i === idx ? { ...s, cooldown: s.maxCooldown } : s
+          )
+        );
+
+        // Spend mana
+        setPlayer(p => {
+          const newMana = Math.max(0, p.mana - spell.manaCost);
+          return { ...p, mana: newMana };
+        });
+      }
   }, [permanentUpgrades.damageBonus, dungeon]);
 
   function addSecretRoomsToDungeon(map, level) {
@@ -2760,25 +2640,18 @@ const WizardDungeonCrawler = () => {
   };
   
   const applyClassBonuses = (baseDamage, baseSpeed, baseHealth) => {
-    if (!currentClass) return { damage: baseDamage, speed: baseSpeed, health: baseHealth };
-    
-    const classData = PRESTIGE_CLASSES[currentClass];
-    const bonuses = classData.bonuses;
-    
     let damage = baseDamage;
     let speed = baseSpeed;
     let health = baseHealth;
     
-    if (bonuses.damageMultiplier) damage *= bonuses.damageMultiplier;
-    if (bonuses.elementalDamage) damage *= bonuses.elementalDamage;
-    if (bonuses.allStatsMultiplier) {
-      damage *= bonuses.allStatsMultiplier;
-      speed *= bonuses.allStatsMultiplier;
-      health *= bonuses.allStatsMultiplier;
+    if (currentClass) {
+      const classData = PRESTIGE_CLASSES[currentClass];
+      const bonuses = classData.bonuses;
+      
+      if (bonuses.damageMultiplier) damage *= bonuses.damageMultiplier;
+      if (bonuses.speedMultiplier) speed *= bonuses.speedMultiplier;
+      if (bonuses.maxHealthBonus) health += bonuses.maxHealthBonus;
     }
-    if (bonuses.speedMultiplier) speed *= bonuses.speedMultiplier;
-    if (bonuses.hasteSelf) speed *= bonuses.hasteSelf;
-    if (bonuses.maxHealthBonus) health += bonuses.maxHealthBonus;
     
     return { damage, speed, health };
   };
@@ -7186,9 +7059,18 @@ const WizardDungeonCrawler = () => {
         let moveY = 0;
 
         const speedBonus = 1 + permanentUpgrades.speedBonus * 0.05;
-        const baseSpeed = MOVE_SPEED * speedBonus;
-        const classSpeed = applyClassBonuses(0, baseSpeed, 0);
-        const effectiveMoveSpeed = classSpeed.speed;
+        let effectiveMoveSpeed = MOVE_SPEED * speedBonus;
+        
+        // Apply class bonuses
+        if (currentClass) {
+          const classData = PRESTIGE_CLASSES[currentClass];
+          if (classData.bonuses.speedMultiplier) {
+            effectiveMoveSpeed *= classData.bonuses.speedMultiplier;
+          }
+          if (classData.bonuses.hasteSelf) {
+            effectiveMoveSpeed *= classData.bonuses.hasteSelf;
+          }
+        }
 
         if (keysPressed.current['arrowleft'] || keysPressed.current['q']) {
           newAngle -= TURN_SPEED * deltaTime;
@@ -8215,16 +8097,8 @@ const WizardDungeonCrawler = () => {
       x: 5,
       y: 5,
       angle: 0,
-      health: (() => {
-        const baseHealth = 100 + permanentUpgrades.maxHealthBonus * 20;
-        const classHealth = applyClassBonuses(0, 0, baseHealth);
-        return classHealth.health;
-      })(),
-      maxHealth: (() => {
-        const baseHealth = 100 + permanentUpgrades.maxHealthBonus * 20;
-        const classHealth = applyClassBonuses(0, 0, baseHealth);
-        return classHealth.health;
-      })(),
+      health: 100 + permanentUpgrades.maxHealthBonus * 20,
+      maxHealth: 100 + permanentUpgrades.maxHealthBonus * 20,
       mana: 100 + permanentUpgrades.maxManaBonus * 15,
       maxMana: 100 + permanentUpgrades.maxManaBonus * 15,
       level: 1,
