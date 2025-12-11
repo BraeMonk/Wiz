@@ -8904,17 +8904,17 @@ const WizardDungeonCrawler = () => {
     );
   }
 
-  {notification && (
-    <div className="absolute top-20 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
-      <div className={`bg-${notification.color}-600 bg-opacity-90 px-6 py-3 rounded-lg text-white font-bold text-lg animate-pulse`}>
-        {notification.text}
-      </div>
-    </div>
-  )}
-
   // MAIN GAME VIEW
   return (
     <div className="w-full h-screen bg-black overflow-hidden relative touch-none">
+      {notification && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
+          <div className={`bg-${notification.color}-600 bg-opacity-90 px-6 py-3 rounded-lg text-white font-bold text-lg animate-pulse`}>
+            {notification.text}
+          </div>
+        </div>
+      )}
+      
       <canvas
         ref={canvasRef}
         width={dimensions.width}
