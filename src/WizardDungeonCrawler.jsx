@@ -9365,7 +9365,11 @@ const WizardDungeonCrawler = () => {
         gamepadConnected,
         isMobile,
         castCurrentSpell,
-        permanentUpgrades
+        permanentUpgrades,
+        handleEnemyDeath,  // ADD THIS
+        createParticleEffect,  // ADD THIS
+        addScreenShake,  // ADD THIS
+        showNotification  // ADD THIS
     ]);
 
     useEffect(() => {
