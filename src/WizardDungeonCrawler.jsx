@@ -1629,6 +1629,52 @@ const WizardDungeonCrawler = () => {
       .filter(p => p.life > 0);
   }, []);
 
+  const handleEnemyDeath = useCallback((enemy, damage) => {
+    soundEffectsRef.current?.death?.();
+    createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
+    addScreenShake(enemy.isBoss ? 0.8 : 0.3);
+  
+    const newCombo = comboRef.current.count + 1;
+    const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
+    setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
+    
+    const comboBonus = comboRef.current.multiplier;
+    setPlayer(p => ({
+      ...p,
+      xp: p.xp + Math.floor((enemy.xp ?? 0) * comboBonus),
+      gold: p.gold + Math.floor((enemy.gold ?? 0) * comboBonus),
+      kills: p.kills + 1
+    }));
+    
+    const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
+    const baseEssence = Number(enemy?.essence ?? 0);
+    const essenceBonus = 1 + essenceGainUpgrade * 0.2;
+    const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
+    
+    setEssence(prev => {
+      const safePrev = Number.isFinite(prev) ? prev : 0;
+      return safePrev + gainedEssence;
+    });
+    
+    setTotalKills(prev => {
+      const newTotal = prev + 1;
+      if (newTotal % 100 === 0) {
+        showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
+      }
+      return newTotal;
+    });
+  
+    const lifeStealPercent = (permanentUpgrades?.lifeSteal ?? 0) * 0.02;
+    const healAmount = damage * lifeStealPercent;
+    if (healAmount > 0) {
+      setPlayer(p => ({
+        ...p,
+        health: Math.min(p.maxHealth, p.health + healAmount)
+      }));
+      createParticleEffect(playerRef.current.x, playerRef.current.y, '#00ff00', 5, 'hit');
+    }
+  }, [permanentUpgrades, showNotification, createParticleEffect, addScreenShake, setCombo, setPlayer, setEssence, setTotalKills]);
+  
   // ===== HELPERS =====
   const dealEnemyDamage = (enemy, dmg) => {
     const newHealth = enemy.health - dmg;
@@ -8111,52 +8157,6 @@ const WizardDungeonCrawler = () => {
         selectedSpell,
         isMobile,
     ]);
-
-    const handleEnemyDeath = useCallback((enemy, damage) => {
-      soundEffectsRef.current?.death?.();
-      createParticleEffect(enemy.x, enemy.y, enemy.color, 20, 'explosion');
-      addScreenShake(enemy.isBoss ? 0.8 : 0.3);
-    
-      const newCombo = comboRef.current.count + 1;
-      const newMultiplier = 1.0 + Math.min(newCombo * 0.1, 3.0);
-      setCombo({ count: newCombo, multiplier: newMultiplier, timer: 3.0 });
-      
-      const comboBonus = comboRef.current.multiplier;
-      setPlayer(p => ({
-        ...p,
-        xp: p.xp + Math.floor((enemy.xp ?? 0) * comboBonus),
-        gold: p.gold + Math.floor((enemy.gold ?? 0) * comboBonus),
-        kills: p.kills + 1
-      }));
-      
-      const essenceGainUpgrade = Number(permanentUpgrades?.essenceGain ?? 0);
-      const baseEssence = Number(enemy?.essence ?? 0);
-      const essenceBonus = 1 + essenceGainUpgrade * 0.2;
-      const gainedEssence = Math.floor(baseEssence * essenceBonus) || 0;
-      
-      setEssence(prev => {
-        const safePrev = Number.isFinite(prev) ? prev : 0;
-        return safePrev + gainedEssence;
-      });
-      
-      setTotalKills(prev => {
-        const newTotal = prev + 1;
-        if (newTotal % 100 === 0) {
-          showNotification(`🎯 ${newTotal} Total Kills!`, 'purple');
-        }
-        return newTotal;
-      });
-    
-      const lifeStealPercent = (permanentUpgrades?.lifeSteal ?? 0) * 0.02;
-      const healAmount = damage * lifeStealPercent;
-      if (healAmount > 0) {
-        setPlayer(p => ({
-          ...p,
-          health: Math.min(p.maxHealth, p.health + healAmount)
-        }));
-        createParticleEffect(playerRef.current.x, playerRef.current.y, '#00ff00', 5, 'hit');
-      }
-    }, [permanentUpgrades, showNotification, createParticleEffect, addScreenShake, setCombo, setPlayer, setEssence, setTotalKills]);
   
     // Game loop
     useEffect(() => {
