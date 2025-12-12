@@ -3172,7 +3172,7 @@ const WizardDungeonCrawler = () => {
         addScreenShake(0.4);
 
         } else if (spell.key === 'voidrift') {
-          castVoidRift(spell, currentPlayer, finalDamage, deltaTime);
+          castVoidRift(spell, currentPlayer, finalDamage);
         
         } else if (spell.key === 'phoenixflare') {
           castPhoenixFlare(spell, currentPlayer, finalDamage);
