@@ -8156,7 +8156,7 @@ const WizardDungeonCrawler = () => {
         }));
         createParticleEffect(playerRef.current.x, playerRef.current.y, '#00ff00', 5, 'hit');
       }
-    }, [permanentUpgrades, showNotification, createParticleEffect, addScreenShake]);
+    }, [permanentUpgrades, showNotification, createParticleEffect, addScreenShake, setCombo, setPlayer, setEssence, setTotalKills]);
   
     // Game loop
     useEffect(() => {
