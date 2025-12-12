@@ -633,6 +633,20 @@ const WizardDungeonCrawler = () => {
     NETHER_CHAIN_STEP_DELAY_MS: 200,
   };
 
+  // ===== SPELL VFX EVENTS (stable overlay layer) =====
+  const [spellVfx, setSpellVfx] = useState([]);
+  
+  // helper: add one VFX event
+  const addVfx = useCallback((evt) => {
+    setSpellVfx(prev => [...prev, { id: nextId(), t0: performance.now(), ...evt }]);
+  }, []);
+  
+  // helper: prune expired VFX
+  const pruneVfx = useCallback(() => {
+    const now = performance.now();
+    setSpellVfx(prev => prev.filter(v => (now - v.t0) < (v.lifeMs ?? 600)));
+  }, []);
+
   // Spells
   const [equippedSpells, setEquippedSpells] = useState([
     { ...ALL_SPELLS.fire },
@@ -1530,9 +1544,102 @@ const WizardDungeonCrawler = () => {
     return Math.abs(d);
   };
 
+  const emitPrestigeVfx = (spellKey) => {
+    const cx = dimensions.width * 0.5;
+    const cy = dimensions.height * 0.62;
+  
+    switch (spellKey) {
+      case 'voidrift':
+        // purple spiraling void + collapsing ring
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#9b4aff', r0:20, r1:140, lifeMs:650, lineWidth:4, alpha:0.8 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#2b003a', r0:10, r1:90, lifeMs:520, spin:8, count:26, size:5, alpha:0.7 });
+        addScreenShake(0.8);
+        break;
+  
+      case 'phoenixflare':
+        // sunburst + fiery petals
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#ff6b00', r0:20, r1:160, lifeMs:600, spin:2.5, count:30, size:6, alpha:0.85 });
+        addVfx({ type:'ring',  sx:cx, sy:cy, color:'#ffd166', r0:10, r1:120, lifeMs:520, lineWidth:3, alpha:0.6 });
+        addScreenShake(1.0);
+        break;
+  
+      case 'frostprison':
+        // icy containment ring + rune
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#00d4ff', r0:18, r1:90, lifeMs:700, lineWidth:5, alpha:0.65 });
+        addVfx({ type:'sigil', sx:cx, sy:cy, color:'#aaffff', lifeMs:700, rotSpeed:1.3, scale:1.0, alpha:0.55 });
+        break;
+  
+      case 'stormcaller':
+        // repeated lightning “stamps”
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            addVfx({ type:'burst', sx:cx, sy:cy, color:'#ffee00', r0:10, r1:140, lifeMs:280, spin:12, count:14, size:4, alpha:0.8 });
+          }, i * 120);
+        }
+        addScreenShake(0.9);
+        break;
+  
+      case 'soulreaper':
+        // violet/black rune + inward spiral feel
+        addVfx({ type:'sigil', sx:cx, sy:cy, color:'#8b00ff', lifeMs:700, rotSpeed:-2.2, scale:1.2, alpha:0.75 });
+        addVfx({ type:'ring',  sx:cx, sy:cy, color:'#2a0a3a', r0:120, r1:-90, lifeMs:650, lineWidth:4, alpha:0.5 });
+        break;
+  
+      case 'celestialbeam':
+        // bright holy line + halo
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#ffd700', r0:10, r1:120, lifeMs:520, lineWidth:3, alpha:0.7 });
+        // beam is better if you know aim direction; default straight up:
+        addVfx({ type:'beam', x1:cx, y1:cy, x2:cx, y2:cy - 260, color:'#fff2a8', core:'#ffffff', width:18, lifeMs:260, alpha:0.9 });
+        break;
+  
+      case 'bloodpact':
+        // crimson pulse + sharp sigil
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#ff0000', r0:10, r1:110, lifeMs:420, lineWidth:5, alpha:0.8 });
+        addVfx({ type:'sigil', sx:cx, sy:cy, color:'#7a0000', lifeMs:520, rotSpeed:3.0, scale:0.9, alpha:0.65 });
+        addScreenShake(0.6);
+        break;
+  
+      case 'timewarp':
+        // cyan double-ring + slow “wobble”
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#00ffff', r0:30, r1:150, lifeMs:800, lineWidth:3, alpha:0.5 });
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#66ffff', r0:15, r1:90,  lifeMs:650, lineWidth:2, alpha:0.4 });
+        break;
+  
+      case 'netherburst':
+        // purple pop + chaining vibes
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#aa00aa', r0:15, r1:130, lifeMs:520, spin:6, count:22, size:5, alpha:0.8 });
+        addVfx({ type:'ring',  sx:cx, sy:cy, color:'#ff66ff', r0:10, r1:90,  lifeMs:360, lineWidth:2, alpha:0.6 });
+        break;
+  
+      case 'starfall':
+        // white/gold sparkle burst + halo
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#ffffff', r0:10, r1:150, lifeMs:700, spin:4, count:34, size:3, alpha:0.75 });
+        addVfx({ type:'ring',  sx:cx, sy:cy, color:'#ffd700', r0:10, r1:110, lifeMs:550, lineWidth:2, alpha:0.45 });
+        break;
+  
+      case 'plaguecloud':
+        // toxic ring + blotchy burst
+        addVfx({ type:'ring',  sx:cx, sy:cy, color:'#88ff00', r0:20, r1:130, lifeMs:900, lineWidth:4, alpha:0.35 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#2f4f10', r0:10, r1:90,  lifeMs:700, spin:1.5, count:20, size:6, alpha:0.35 });
+        break;
+  
+      case 'divinewrath':
+        // holy detonation + rune stamp
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#ffaa00', r0:20, r1:160, lifeMs:520, spin:2.0, count:26, size:6, alpha:0.85 });
+        addVfx({ type:'sigil', sx:cx, sy:cy, color:'#fff2a8', lifeMs:520, rotSpeed:0.8, scale:1.1, alpha:0.6 });
+        addScreenShake(1.1);
+        break;
+  
+      default:
+        break;
+    }
+  };
+
   // ===== PRESTIGE SPELL EXECUTORS =====
 
   const castVoidRift = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     const radius = spell.aoeRadius ?? 4.0;
     const pullStrength = spell.pullStrength ?? 2.0;
   
@@ -1576,6 +1683,8 @@ const WizardDungeonCrawler = () => {
   };
     
   const castPhoenixFlare = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     const radius = spell.aoeRadius;
     let totalDamageDealt = 0;
   
@@ -1655,6 +1764,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castFrostPrison = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 50, 'explosion');
   
     for (let i = 0; i < 8; i++) {
@@ -1702,6 +1813,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castStormCaller = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     showNotification('⚡ STORM CALLED!', 'yellow');
   
     for (let i = 0; i < 15; i++) {
@@ -1750,6 +1863,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castSoulReaper = (spell, currentPlayer) => {
+    emitPrestigeVfx(spell.key);
+
     createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 50, 'explosion');
   
     for (let i = 0; i < 10; i++) {
@@ -1787,6 +1902,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castCelestialBeam = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     const beamAngle = currentPlayer.angle;
     const beamLength = spell.range;
   
@@ -1849,6 +1966,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castBloodPact = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     const healthCost = spell.healthCost ?? 30;
   
     setPlayer(p => ({ ...p, health: Math.max(1, p.health - healthCost) }));
@@ -1882,6 +2001,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castTimeWarp = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     createParticleEffect(currentPlayer.x, currentPlayer.y, '#00ffff', 60, 'explosion');
     showNotification('⏰ TIME WARPED!', 'cyan');
   
@@ -1924,6 +2045,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castNetherBurst = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     const targetX = currentPlayer.x + Math.cos(currentPlayer.angle) * 3;
     const targetY = currentPlayer.y + Math.sin(currentPlayer.angle) * 3;
   
@@ -1981,6 +2104,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castStarfall = (spell, currentPlayer, finalDamage) => {
+    emitPrestigeVfx(spell.key);
+
     const targetX = currentPlayer.x + Math.cos(currentPlayer.angle) * 5;
     const targetY = currentPlayer.y + Math.sin(currentPlayer.angle) * 5;
   
@@ -2032,6 +2157,8 @@ const WizardDungeonCrawler = () => {
   };
   
   const castPlagueCloud = (spell, currentPlayer) => {
+    emitPrestigeVfx(spell.key);
+
     const cloudX = currentPlayer.x + Math.cos(currentPlayer.angle) * 3;
     const cloudY = currentPlayer.y + Math.sin(currentPlayer.angle) * 3;
   
@@ -4071,6 +4198,92 @@ const WizardDungeonCrawler = () => {
 
         return null;
     }, []);
+
+    const drawSpellVfx = (ctx, timeNowMs) => {
+      for (const v of spellVfx) {
+        const age = timeNowMs - v.t0;
+        const t = Math.max(0, Math.min(1, age / (v.lifeMs ?? 600)));
+    
+        // Convert world -> screen (simple “billboard-ish”): reuse your raycast projection helper if you have one.
+        // If you DON’T have a helper, you can still draw these as floor-space HUD effects around center:
+        // ctx.translate(dimensions.width/2, dimensions.height*0.62) and offset by (v.dx, v.dy) in pixels.
+    
+        switch (v.type) {
+          case 'ring':
+            ctx.save();
+            ctx.globalAlpha = (1 - t) * (v.alpha ?? 0.9);
+            ctx.lineWidth = v.lineWidth ?? 3;
+            ctx.strokeStyle = v.color;
+            ctx.beginPath();
+            ctx.arc(v.sx, v.sy, (v.r0 ?? 10) + (v.r1 ?? 80) * t, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            break;
+    
+          case 'beam':
+            ctx.save();
+            ctx.globalAlpha = (1 - t) * (v.alpha ?? 0.9);
+            ctx.lineWidth = v.width ?? 10;
+            ctx.strokeStyle = v.color;
+            ctx.beginPath();
+            ctx.moveTo(v.x1, v.y1);
+            ctx.lineTo(v.x2, v.y2);
+            ctx.stroke();
+            // core line
+            ctx.globalAlpha *= 0.8;
+            ctx.lineWidth = Math.max(2, (v.width ?? 10) * 0.35);
+            ctx.strokeStyle = v.core ?? '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(v.x1, v.y1);
+            ctx.lineTo(v.x2, v.y2);
+            ctx.stroke();
+            ctx.restore();
+            break;
+    
+          case 'burst':
+            ctx.save();
+            ctx.globalAlpha = (1 - t) * (v.alpha ?? 0.9);
+            ctx.fillStyle = v.color;
+            const count = v.count ?? 18;
+            const rad = (v.r0 ?? 10) + (v.r1 ?? 70) * t;
+            for (let i = 0; i < count; i++) {
+              const a = (i / count) * Math.PI * 2 + t * (v.spin ?? 3);
+              const px = v.sx + Math.cos(a) * rad;
+              const py = v.sy + Math.sin(a) * rad;
+              ctx.beginPath();
+              ctx.arc(px, py, (v.size ?? 4) * (1 - t), 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+            break;
+    
+          case 'sigil':
+            ctx.save();
+            ctx.globalAlpha = (1 - t) * (v.alpha ?? 0.9);
+            ctx.strokeStyle = v.color;
+            ctx.lineWidth = v.lineWidth ?? 2;
+            ctx.translate(v.sx, v.sy);
+            ctx.rotate((v.rot ?? 0) + t * (v.rotSpeed ?? 2));
+            const s = (v.scale ?? 1) * (0.7 + 0.6 * t);
+            ctx.scale(s, s);
+            // simple rune-ish star
+            ctx.beginPath();
+            ctx.moveTo(0, -22);
+            ctx.lineTo(18, 10);
+            ctx.lineTo(-18, 10);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 0, 26, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            break;
+    
+          default:
+            break;
+        }
+      }
+    };
 
     // N64-style distinct monster sprites with professional polish
     const drawMonsterSprite = (ctx, sprite, x, y, w, h, brightness, time) => {
@@ -7126,7 +7339,8 @@ const WizardDungeonCrawler = () => {
         const ctx = canvas.getContext('2d');
         const { width, height } = dimensions;
 
-        const time = performance.now() / 1000;
+        const nowMs = performance.now();
+        const time = nowMs / 1000;
 
         ctx.save();
         const shake = screenShakeRef.current;
@@ -7770,6 +7984,9 @@ const WizardDungeonCrawler = () => {
         }
         
         ctx.restore(); // Restore screen shake transform
+
+        pruneVfx();
+        drawSpellVfx(ctx, nowMs);
 
         // Damage vignette overlay (light at low damage, solid at high damage)
         if (damageVignette > 0.01) {
