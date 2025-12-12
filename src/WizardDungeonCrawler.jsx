@@ -798,12 +798,6 @@ const WizardDungeonCrawler = () => {
     NETHER_CHAIN_STEP_DELAY_MS: 200,
   };
 
-  const enemiesRef = useRef(enemies);
-
-  useEffect(() => {
-    enemiesRef.current = enemies;
-  }, [enemies]);
-
   // Spells
   const [equippedSpells, setEquippedSpells] = useState([
     { ...ALL_SPELLS.fire },
@@ -829,6 +823,12 @@ const WizardDungeonCrawler = () => {
   const [projectiles, setProjectiles] = useState([]);
   const particlesRef = useRef([]);
 
+  const enemiesRef = useRef(enemies);
+
+  useEffect(() => {
+    enemiesRef.current = enemies;
+  }, [enemies]);
+  
   const [bossIntro, setBossIntro] = useState(null);
 
   const levelStartTimeRef = useRef(Date.now());
