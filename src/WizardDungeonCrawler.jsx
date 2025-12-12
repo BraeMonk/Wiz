@@ -567,191 +567,26 @@ const WizardDungeonCrawler = () => {
     }
   };
 
-  // PRESTIGE SPELLS - Locked behind prestige level 1+
-  const PRESTIGE_SPELLS = {
-    voidrift: {
-      key: 'voidrift',
-      name: 'Void Rift',
-      damage: 80,
-      manaCost: 60,
-      cooldown: 0,
-      maxCooldown: 5.0,
-      color: '#9b4aff',
-      icon: Skull,
-      price: 400,
-      description: 'Tear reality apart - AoE damage + pulls enemies in',
-      requiresPrestige: 1,
-      aoeRadius: 4.0,
-      pullStrength: 2.0
-    },
-    phoenixflare: {
-      key: 'phoenixflare',
-      name: 'Phoenix Flare',
-      damage: 100,
-      manaCost: 70,
-      cooldown: 0,
-      maxCooldown: 6.0,
-      color: '#ff6b00',
-      icon: Flame,
-      price: 450,
-      description: 'Massive explosion that heals you for damage dealt',
-      requiresPrestige: 1,
-      aoeRadius: 5.0,
-      lifestealPercent: 0.5
-    },
-    frostprison: {
-      key: 'frostprison',
-      name: 'Frost Prison',
-      damage: 40,
-      manaCost: 50,
-      cooldown: 0,
-      maxCooldown: 4.5,
-      color: '#00d4ff',
-      icon: Droplet,
-      price: 380,
-      description: 'Freeze enemies in place + DoT over 5 seconds',
-      requiresPrestige: 1,
-      duration: 5.0,
-      dotDamage: 15
-    },
-    stormcaller: {
-      key: 'stormcaller',
-      name: 'Storm Caller',
-      damage: 90,
-      manaCost: 65,
-      cooldown: 0,
-      maxCooldown: 5.5,
-      color: '#ffee00',
-      icon: Zap,
-      price: 420,
-      description: 'Call lightning strikes on all visible enemies',
-      requiresPrestige: 1,
-      strikeDelay: 0.3
-    },
-    soulreaper: {
-      key: 'soulreaper',
-      name: 'Soul Reaper',
-      damage: 70,
-      manaCost: 55,
-      cooldown: 0,
-      maxCooldown: 4.0,
-      color: '#8b00ff',
-      icon: Skull,
-      price: 390,
-      description: 'Damage over time that restores mana on kill',
-      requiresPrestige: 1,
-      dotDuration: 4.0,
-      dotDamage: 20,
-      manaRestore: 40
-    },
-    celestialbeam: {
-      key: 'celestialbeam',
-      name: 'Celestial Beam',
-      damage: 120,
-      manaCost: 80,
-      cooldown: 0,
-      maxCooldown: 7.0,
-      color: '#ffd700',
-      icon: Sparkles,
-      price: 500,
-      description: 'Pierce through all enemies in a line',
-      requiresPrestige: 1,
-      piercing: true,
-      range: 15
-    },
-    bloodpact: {
-      key: 'bloodpact',
-      name: 'Blood Pact',
-      damage: 150,
-      manaCost: 0,
-      healthCost: 30,
-      cooldown: 0,
-      maxCooldown: 6.0,
-      color: '#ff0000',
-      icon: Heart,
-      price: 450,
-      description: 'Costs health instead of mana - massive damage',
-      requiresPrestige: 1
-    },
-    timewarp: {
-      key: 'timewarp',
-      name: 'Time Warp',
-      damage: 50,
-      manaCost: 60,
-      cooldown: 0,
-      maxCooldown: 8.0,
-      color: '#00ffff',
-      icon: Wind,
-      price: 480,
-      description: 'Slow all enemies by 70% for 6 seconds',
-      requiresPrestige: 1,
-      slowDuration: 6.0,
-      slowAmount: 0.7,
-      aoeRadius: 12
-    },
-    netherburst: {
-      key: 'netherburst',
-      name: 'Nether Burst',
-      damage: 85,
-      manaCost: 58,
-      cooldown: 0,
-      maxCooldown: 4.8,
-      color: '#aa00aa',
-      icon: Skull,
-      price: 410,
-      description: 'Explosion that chains to nearby enemies',
-      requiresPrestige: 1,
-      chainCount: 3,
-      chainRadius: 3.0
-    },
-    starfall: {
-      key: 'starfall',
-      name: 'Starfall',
-      damage: 110,
-      manaCost: 75,
-      cooldown: 0,
-      maxCooldown: 6.5,
-      color: '#ffffff',
-      icon: Sparkles,
-      price: 470,
-      description: 'Rain stars from above on target area',
-      requiresPrestige: 1,
-      starCount: 8,
-      aoeRadius: 4.5
-    },
-    plaguecloud: {
-      key: 'plaguecloud',
-      name: 'Plague Cloud',
-      damage: 60,
-      manaCost: 52,
-      cooldown: 0,
-      maxCooldown: 5.0,
-      color: '#88ff00',
-      icon: Droplet,
-      price: 400,
-      description: 'Creates lingering poison cloud',
-      requiresPrestige: 1,
-      cloudDuration: 8.0,
-      cloudDamage: 12,
-      cloudRadius: 3.5
-    },
-    divinewrath: {
-      key: 'divinewrath',
-      name: 'Divine Wrath',
-      damage: 95,
-      manaCost: 68,
-      cooldown: 0,
-      maxCooldown: 5.8,
-      color: '#ffaa00',
-      icon: Flame,
-      price: 440,
-      description: 'Holy explosion that damages and stuns enemies',
-      requiresPrestige: 1,
-      aoeRadius: 4.0,
-      stunDuration: 2.5
-    }
-  };
+  const getSpellByKey = (key) => ALL_SPELLS[key] || null;
 
+  const isSpellUnlocked = (spellKey) => {
+    const s = getSpellByKey(spellKey);
+    if (!s) return false;
+  
+    const reqP = s.requiresPrestige ?? 0;
+    if (prestigeLevel < reqP) return false;
+  
+    // keep your existing purchased logic:
+    return purchasedSpells.includes(spellKey);
+  };
+  
+  const canSeeSpellInShop = (spellKey) => {
+    const s = getSpellByKey(spellKey);
+    if (!s) return false;
+  
+    // allow seeing locked prestige spells (so UI can show lock + requirement)
+    return true;
+  };
 
   // Spells that can be unlocked from secret chests
   const SECRET_SPELL_KEYS = [
@@ -905,6 +740,30 @@ const WizardDungeonCrawler = () => {
   const musicInitializedRef = useRef(false);
 
   const [chests, setChests] = useState([]);
+
+  // ===== STABILITY REFS (drop-in) =====
+  const timeRef = useRef(0);          // seconds
+  const deltaTimeRef = useRef(0);     // seconds
+  const dungeonRef = useRef(dungeon); // keep latest dungeon
+  useEffect(() => { dungeonRef.current = dungeon; }, [dungeon]);
+  
+  // Timeout manager so prestige FX can’t leak / stack forever
+  const timeoutIdsRef = useRef(new Set());
+  const safeTimeout = useCallback((fn, ms) => {
+    const id = window.setTimeout(() => {
+      timeoutIdsRef.current.delete(id);
+      fn();
+    }, ms);
+    timeoutIdsRef.current.add(id);
+    return id;
+  }, []);
+  
+  const clearAllTimeouts = useCallback(() => {
+    timeoutIdsRef.current.forEach(id => window.clearTimeout(id));
+    timeoutIdsRef.current.clear();
+  }, []);
+  
+  useEffect(() => () => clearAllTimeouts(), [clearAllTimeouts]);
 
   // Constants
   const DUNGEON_SIZE = 30;
@@ -1673,20 +1532,25 @@ const WizardDungeonCrawler = () => {
 
   // ===== PRESTIGE SPELL EXECUTORS =====
 
-  const castVoidRift = (spell, currentPlayer, finalDamage, deltaTime) => {
-    const radius = spell.aoeRadius;
-    const pullStrength = spell.pullStrength;
+  const castVoidRift = (spell, currentPlayer, finalDamage) => {
+    const radius = spell.aoeRadius ?? 4.0;
+    const pullStrength = spell.pullStrength ?? 2.0;
+  
+    const tNow = timeRef.current;
+    const dt = deltaTimeRef.current || 0.016;
+    const liveDungeon = dungeonRef.current;
   
     createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 60, 'explosion');
   
     for (let i = 0; i < 20; i++) {
-      setTimeout(() => {
-        const angle = (i / 20) * Math.PI * 2 + time * 5;
+      safeTimeout(() => {
+        const angle = (i / 20) * Math.PI * 2 + tNow * 5;
         const dist = (1 - i / 20) * radius;
+  
         createParticleEffect(
           currentPlayer.x + Math.cos(angle) * dist,
           currentPlayer.y + Math.sin(angle) * dist,
-          '#9b4aff',
+          spell.color,
           15,
           'explosion'
         );
@@ -1701,16 +1565,16 @@ const WizardDungeonCrawler = () => {
         .map(enemy => {
           if (!inRadius(enemy.x, enemy.y, currentPlayer.x, currentPlayer.y, radius)) return enemy;
   
-          const pulled = pullToward(enemy, currentPlayer.x, currentPlayer.y, pullStrength * deltaTime, dungeon);
-          createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'hit');
+          // pull uses dt + LIVE dungeon
+          const pulled = pullToward(enemy, currentPlayer.x, currentPlayer.y, pullStrength * dt, liveDungeon);
   
-          const damaged = dealEnemyDamage({ ...enemy, x: pulled.x, y: pulled.y }, finalDamage);
-          return damaged;
+          createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'hit');
+          return dealEnemyDamage({ ...enemy, x: pulled.x, y: pulled.y }, finalDamage);
         })
         .filter(e => !e.dead)
     );
   };
-  
+    
   const castPhoenixFlare = (spell, currentPlayer, finalDamage) => {
     const radius = spell.aoeRadius;
     let totalDamageDealt = 0;
@@ -1985,13 +1849,13 @@ const WizardDungeonCrawler = () => {
   };
   
   const castBloodPact = (spell, currentPlayer, finalDamage) => {
-    const healthCost = spell.healthCost;
+    const healthCost = spell.healthCost ?? 30;
   
     setPlayer(p => ({ ...p, health: Math.max(1, p.health - healthCost) }));
     showNotification(`🩸 -${healthCost} HP for POWER!`, 'red');
   
     for (let i = 0; i < 20; i++) {
-      setTimeout(() => {
+      safeTimeout(() => {
         const angle = (i / 20) * Math.PI * 2;
         createParticleEffect(
           currentPlayer.x + Math.cos(angle) * 0.8,
@@ -2008,10 +1872,11 @@ const WizardDungeonCrawler = () => {
   
     setEnemies(prev =>
       prev
-        .map(enemy => (inRadius(enemy.x, enemy.y, currentPlayer.x, currentPlayer.y, 5)
-          ? dealEnemyDamage((createParticleEffect(enemy.x, enemy.y, '#aa0000', 35, 'hit'), enemy), finalDamage)
-          : enemy
-        ))
+        .map(enemy => {
+          if (!inRadius(enemy.x, enemy.y, currentPlayer.x, currentPlayer.y, 5)) return enemy;
+          createParticleEffect(enemy.x, enemy.y, '#aa0000', 35, 'hit');
+          return dealEnemyDamage(enemy, finalDamage);
+        })
         .filter(e => !e.dead)
     );
   };
@@ -8166,6 +8031,9 @@ const WizardDungeonCrawler = () => {
         const gameLoop = () => {
         const now = Date.now();
         const deltaTime = (now - lastTime.current) / 1000;
+        timeRef.current = performance.now() / 1000;
+        deltaTimeRef.current = deltaTime;
+
 
         // Fade damage vignette
         setDamageVignette(prev => Math.max(0, prev - deltaTime * 2));
@@ -9883,9 +9751,7 @@ const WizardDungeonCrawler = () => {
             <div className="flex-1 overflow-y-auto px-4 py-4">
             <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.values(ALL_SPELLS).map(spell => {
-                  if (spell.requiresPrestige && prestigeLevel < spell.requiresPrestige) {
-                    return null;
-                  }
+                const lockedByPrestige = spell.requiresPrestige && prestigeLevel < spell.requiresPrestige;
 
                 const Icon = spell.icon;
                 const owned = purchasedSpells.includes(spell.key);
@@ -9894,29 +9760,65 @@ const WizardDungeonCrawler = () => {
 
                 return (
                     <div
-                    key={spell.key}
-                    className={`bg-black bg-opacity-60 p-4 rounded-lg border-2 ${
-                        equipped
-                        ? 'border-yellow-400'
-                        : owned
-                        ? 'border-green-600'
-                        : 'border-gray-600'
-                    }`}
+                      key={spell.key}
+                      className={[
+                        "relative overflow-hidden bg-black/60 p-4 rounded-lg border-2 transition-transform",
+                        !lockedByPrestige && "hover:scale-[1.01]",
+                        lockedByPrestige ? "border-yellow-500/40 opacity-70" :
+                        equipped ? "border-yellow-400" :
+                        owned ? "border-green-600" : "border-gray-600",
+                        spell.requiresPrestige ? "shadow-[0_0_0_1px_rgba(255,215,0,0.18),0_12px_30px_rgba(0,0,0,0.45)]" :
+                        "shadow-[0_12px_30px_rgba(0,0,0,0.45)]",
+                      ].filter(Boolean).join(" ")}
                     >
-                    <div className="flex items-center gap-3 mb-3">
-                        <Icon size={32} style={{ color: spell.color }} />
-                        <div className="text-left flex-1">
-                        <h3 className="text-white font-bold text-base">
-                            {spell.name}
-                        </h3>
-                        <p className="text-gray-300 text-sm">
-                            Damage: {spell.damage} | Mana: {spell.manaCost}
-                        </p>
-                        <p className="text-gray-400 text-xs">
-                            {spell.description}
-                        </p>
+                      {/* Prestige top glow */}
+                      {spell.requiresPrestige && (
+                        <div className="pointer-events-none absolute -inset-16 bg-[radial-gradient(circle_at_30%_20%,rgba(255,215,0,0.22),transparent_55%)]" />
+                      )}
+                    
+                      {/* Header */}
+                      <div className="flex items-center gap-3 mb-3 relative">
+                        <div className={[
+                          "w-11 h-11 rounded-xl grid place-items-center border",
+                          spell.requiresPrestige
+                            ? "bg-yellow-500/10 border-yellow-400/30"
+                            : "bg-white/5 border-white/10"
+                        ].join(" ")}>
+                          <Icon size={22} style={{ color: spell.color }} />
                         </div>
-                    </div>
+                    
+                        <div className="text-left flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="text-white font-extrabold text-base leading-tight">
+                              {spell.name}
+                            </h3>
+                    
+                            {spell.requiresPrestige && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-extrabold
+                                               bg-yellow-500/15 border border-yellow-400/30 text-yellow-100">
+                                <Crown size={14} /> Prestige {spell.requiresPrestige}+
+                              </span>
+                            )}
+                          </div>
+                    
+                          <p className="text-gray-300 text-sm">
+                            Damage: {spell.damage} | Mana: {spell.manaCost}
+                          </p>
+                          <p className="text-gray-400 text-xs">
+                            {spell.description}
+                          </p>
+                        </div>
+                      </div>
+                    
+                      {/* Locked overlay */}
+                      {lockedByPrestige && (
+                        <div className="pointer-events-none absolute inset-0 grid place-items-center
+                                        bg-gradient-to-b from-black/10 to-black/60">
+                          <div className="px-3 py-2 rounded-full bg-black/60 border border-white/15 text-white font-extrabold text-xs">
+                            🔒 Requires Prestige {spell.requiresPrestige}+
+                          </div>
+                        </div>
+                      )}
 
                     {/* Buttons */}
                     {!owned && (
