@@ -384,25 +384,405 @@ const WizardDungeonCrawler = () => {
       description: 'Suspend and damage enemies over time',
       isUtility: false
     },
+    voidrift: {
+    key: 'voidrift',
+    name: 'Void Rift',
+    damage: 80,
+    manaCost: 60,
+    cooldown: 0,
+    maxCooldown: 5.0,
+    color: '#9b4aff',
+    icon: Skull,
+    price: 400,
+    description: 'Tear reality apart - AoE damage + pulls enemies in',
+    requiresPrestige: 1,
+    aoeRadius: 4.0,
+    pullStrength: 2.0
+  },
+  phoenixflare: {
+    key: 'phoenixflare',
+    name: 'Phoenix Flare',
+    damage: 100,
+    manaCost: 70,
+    cooldown: 0,
+    maxCooldown: 6.0,
+    color: '#ff6b00',
+    icon: Flame,
+    price: 450,
+    description: 'Massive explosion that heals you for damage dealt',
+    requiresPrestige: 1,
+    aoeRadius: 5.0,
+    lifestealPercent: 0.5
+  },
+  frostprison: {
+    key: 'frostprison',
+    name: 'Frost Prison',
+    damage: 40,
+    manaCost: 50,
+    cooldown: 0,
+    maxCooldown: 4.5,
+    color: '#00d4ff',
+    icon: Droplet,
+    price: 380,
+    description: 'Freeze enemies in place + DoT over 5 seconds',
+    requiresPrestige: 1,
+    duration: 5.0,
+    dotDamage: 15
+  },
+  stormcaller: {
+    key: 'stormcaller',
+    name: 'Storm Caller',
+    damage: 90,
+    manaCost: 65,
+    cooldown: 0,
+    maxCooldown: 5.5,
+    color: '#ffee00',
+    icon: Zap,
+    price: 420,
+    description: 'Call lightning strikes on all visible enemies',
+    requiresPrestige: 1,
+    strikeDelay: 0.3
+  },
+  soulreaper: {
+    key: 'soulreaper',
+    name: 'Soul Reaper',
+    damage: 70,
+    manaCost: 55,
+    cooldown: 0,
+    maxCooldown: 4.0,
+    color: '#8b00ff',
+    icon: Skull,
+    price: 390,
+    description: 'Damage over time that restores mana on kill',
+    requiresPrestige: 1,
+    dotDuration: 4.0,
+    dotDamage: 20,
+    manaRestore: 40
+  },
+  celestialbeam: {
+    key: 'celestialbeam',
+    name: 'Celestial Beam',
+    damage: 120,
+    manaCost: 80,
+    cooldown: 0,
+    maxCooldown: 7.0,
+    color: '#ffd700',
+    icon: Sparkles,
+    price: 500,
+    description: 'Pierce through all enemies in a line',
+    requiresPrestige: 1,
+    piercing: true,
+    range: 15
+  },
+  bloodpact: {
+    key: 'bloodpact',
+    name: 'Blood Pact',
+    damage: 150,
+    manaCost: 0,
+    healthCost: 30,
+    cooldown: 0,
+    maxCooldown: 6.0,
+    color: '#ff0000',
+    icon: Heart,
+    price: 450,
+    description: 'Costs health instead of mana - massive damage',
+    requiresPrestige: 1
+  },
+  timewarp: {
+    key: 'timewarp',
+    name: 'Time Warp',
+    damage: 50,
+    manaCost: 60,
+    cooldown: 0,
+    maxCooldown: 8.0,
+    color: '#00ffff',
+    icon: Wind,
+    price: 480,
+    description: 'Slow all enemies by 70% for 6 seconds',
+    requiresPrestige: 1,
+    slowDuration: 6.0,
+    slowAmount: 0.7,
+    aoeRadius: 12
+  },
+  netherburst: {
+    key: 'netherburst',
+    name: 'Nether Burst',
+    damage: 85,
+    manaCost: 58,
+    cooldown: 0,
+    maxCooldown: 4.8,
+    color: '#aa00aa',
+    icon: Skull,
+    price: 410,
+    description: 'Explosion that chains to nearby enemies',
+    requiresPrestige: 1,
+    chainCount: 3,
+    chainRadius: 3.0
+  },
+  starfall: {
+    key: 'starfall',
+    name: 'Starfall',
+    damage: 110,
+    manaCost: 75,
+    cooldown: 0,
+    maxCooldown: 6.5,
+    color: '#ffffff',
+    icon: Sparkles,
+    price: 470,
+    description: 'Rain stars from above on target area',
+    requiresPrestige: 1,
+    starCount: 8,
+    aoeRadius: 4.5
+  },
+  plaguecloud: {
+    key: 'plaguecloud',
+    name: 'Plague Cloud',
+    damage: 60,
+    manaCost: 52,
+    cooldown: 0,
+    maxCooldown: 5.0,
+    color: '#88ff00',
+    icon: Droplet,
+    price: 400,
+    description: 'Creates lingering poison cloud',
+    requiresPrestige: 1,
+    cloudDuration: 8.0,
+    cloudDamage: 12,
+    cloudRadius: 3.5
+  },
+  divinewrath: {
+    key: 'divinewrath',
+    name: 'Divine Wrath',
+    damage: 95,
+    manaCost: 68,
+    cooldown: 0,
+    maxCooldown: 5.8,
+    color: '#ffaa00',
+    icon: Flame,
+    price: 440,
+    description: 'Holy explosion that damages and stuns enemies',
+    requiresPrestige: 1,
+    aoeRadius: 4.0,
+    stunDuration: 2.5
+  }
   };
+
+  // PRESTIGE SPELLS - Locked behind prestige level 1+
+const PRESTIGE_SPELLS = {
+  voidrift: {
+    key: 'voidrift',
+    name: 'Void Rift',
+    damage: 80,
+    manaCost: 60,
+    cooldown: 0,
+    maxCooldown: 5.0,
+    color: '#9b4aff',
+    icon: Skull,
+    price: 400,
+    description: 'Tear reality apart - AoE damage + pulls enemies in',
+    requiresPrestige: 1,
+    aoeRadius: 4.0,
+    pullStrength: 2.0
+  },
+  phoenixflare: {
+    key: 'phoenixflare',
+    name: 'Phoenix Flare',
+    damage: 100,
+    manaCost: 70,
+    cooldown: 0,
+    maxCooldown: 6.0,
+    color: '#ff6b00',
+    icon: Flame,
+    price: 450,
+    description: 'Massive explosion that heals you for damage dealt',
+    requiresPrestige: 1,
+    aoeRadius: 5.0,
+    lifestealPercent: 0.5
+  },
+  frostprison: {
+    key: 'frostprison',
+    name: 'Frost Prison',
+    damage: 40,
+    manaCost: 50,
+    cooldown: 0,
+    maxCooldown: 4.5,
+    color: '#00d4ff',
+    icon: Droplet,
+    price: 380,
+    description: 'Freeze enemies in place + DoT over 5 seconds',
+    requiresPrestige: 1,
+    duration: 5.0,
+    dotDamage: 15
+  },
+  stormcaller: {
+    key: 'stormcaller',
+    name: 'Storm Caller',
+    damage: 90,
+    manaCost: 65,
+    cooldown: 0,
+    maxCooldown: 5.5,
+    color: '#ffee00',
+    icon: Zap,
+    price: 420,
+    description: 'Call lightning strikes on all visible enemies',
+    requiresPrestige: 1,
+    strikeDelay: 0.3
+  },
+  soulreaper: {
+    key: 'soulreaper',
+    name: 'Soul Reaper',
+    damage: 70,
+    manaCost: 55,
+    cooldown: 0,
+    maxCooldown: 4.0,
+    color: '#8b00ff',
+    icon: Skull,
+    price: 390,
+    description: 'Damage over time that restores mana on kill',
+    requiresPrestige: 1,
+    dotDuration: 4.0,
+    dotDamage: 20,
+    manaRestore: 40
+  },
+  celestialbeam: {
+    key: 'celestialbeam',
+    name: 'Celestial Beam',
+    damage: 120,
+    manaCost: 80,
+    cooldown: 0,
+    maxCooldown: 7.0,
+    color: '#ffd700',
+    icon: Sparkles,
+    price: 500,
+    description: 'Pierce through all enemies in a line',
+    requiresPrestige: 1,
+    piercing: true,
+    range: 15
+  },
+  bloodpact: {
+    key: 'bloodpact',
+    name: 'Blood Pact',
+    damage: 150,
+    manaCost: 0,
+    healthCost: 30,
+    cooldown: 0,
+    maxCooldown: 6.0,
+    color: '#ff0000',
+    icon: Heart,
+    price: 450,
+    description: 'Costs health instead of mana - massive damage',
+    requiresPrestige: 1
+  },
+  timewarp: {
+    key: 'timewarp',
+    name: 'Time Warp',
+    damage: 50,
+    manaCost: 60,
+    cooldown: 0,
+    maxCooldown: 8.0,
+    color: '#00ffff',
+    icon: Wind,
+    price: 480,
+    description: 'Slow all enemies by 70% for 6 seconds',
+    requiresPrestige: 1,
+    slowDuration: 6.0,
+    slowAmount: 0.7,
+    aoeRadius: 12
+  },
+  netherburst: {
+    key: 'netherburst',
+    name: 'Nether Burst',
+    damage: 85,
+    manaCost: 58,
+    cooldown: 0,
+    maxCooldown: 4.8,
+    color: '#aa00aa',
+    icon: Skull,
+    price: 410,
+    description: 'Explosion that chains to nearby enemies',
+    requiresPrestige: 1,
+    chainCount: 3,
+    chainRadius: 3.0
+  },
+  starfall: {
+    key: 'starfall',
+    name: 'Starfall',
+    damage: 110,
+    manaCost: 75,
+    cooldown: 0,
+    maxCooldown: 6.5,
+    color: '#ffffff',
+    icon: Sparkles,
+    price: 470,
+    description: 'Rain stars from above on target area',
+    requiresPrestige: 1,
+    starCount: 8,
+    aoeRadius: 4.5
+  },
+  plaguecloud: {
+    key: 'plaguecloud',
+    name: 'Plague Cloud',
+    damage: 60,
+    manaCost: 52,
+    cooldown: 0,
+    maxCooldown: 5.0,
+    color: '#88ff00',
+    icon: Droplet,
+    price: 400,
+    description: 'Creates lingering poison cloud',
+    requiresPrestige: 1,
+    cloudDuration: 8.0,
+    cloudDamage: 12,
+    cloudRadius: 3.5
+  },
+  divinewrath: {
+    key: 'divinewrath',
+    name: 'Divine Wrath',
+    damage: 95,
+    manaCost: 68,
+    cooldown: 0,
+    maxCooldown: 5.8,
+    color: '#ffaa00',
+    icon: Flame,
+    price: 440,
+    description: 'Holy explosion that damages and stuns enemies',
+    requiresPrestige: 1,
+    aoeRadius: 4.0,
+    stunDuration: 2.5
+  }
+};
+
 
   // Spells that can be unlocked from secret chests
   const SECRET_SPELL_KEYS = [
-    'meteor',
-    'frost',
-    'chain',
-    'windblast',
-    'arcane',
-    'inferno',
-    'blizzard',
-    'storm',
-    'shadow',
-    'dash',
-    'pushback',
-    'arcaneward',
-    'gravitychoke'
-    // you can tweak this list however you want
-  ];
+  'meteor',
+  'frost',
+  'chain',
+  'windblast',
+  'arcane',
+  'inferno',
+  'blizzard',
+  'storm',
+  'shadow',
+  'dash',
+  'pushback',
+  'arcaneward',
+  'gravitychoke',
+  // Prestige spells
+  'voidrift',
+  'phoenixflare',
+  'frostprison',
+  'stormcaller',
+  'soulreaper',
+  'celestialbeam',
+  'bloodpact',
+  'timewarp',
+  'netherburst',
+  'starfall',
+  'plaguecloud',
+  'divinewrath'
+];
+
 
   // Spells
   const [equippedSpells, setEquippedSpells] = useState([
@@ -2206,7 +2586,362 @@ const WizardDungeonCrawler = () => {
         );
         setGravitySuspendedEnemies(suspendedIds);
         addScreenShake(0.4);
+        // ==============================
+//   PRESTIGE-ONLY SPELLS
+// ==============================
+
+if (spell.key === 'voidrift') {
+  const radius = spell.aoeRadius;
   
+  // Visual vortex
+  createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 50, 'explosion');
+  addScreenShake(0.8);
+  
+  // Damage and pull enemies
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const dx = enemy.x - currentPlayer.x;
+      const dy = enemy.y - currentPlayer.y;
+      const distance = Math.hypot(dx, dy);
+      
+      if (distance < radius) {
+        const newHealth = enemy.health - finalDamage;
+        
+        // Pull towards player
+        const pullAngle = Math.atan2(-dy, -dx);
+        const pullDist = spell.pullStrength * 0.3;
+        const newX = enemy.x + Math.cos(pullAngle) * pullDist;
+        const newY = enemy.y + Math.sin(pullAngle) * pullDist;
+        
+        createParticleEffect(enemy.x, enemy.y, spell.color, 15, 'hit');
+        
+        if (newHealth <= 0) {
+          handleEnemyDeath(enemy, finalDamage);
+          return { ...enemy, health: 0, dead: true };
+        }
+        
+        return { ...enemy, health: newHealth, x: newX, y: newY };
+      }
+      return enemy;
+    }).filter(e => !e.dead)
+  );
+
+} else if (spell.key === 'phoenixflare') {
+  const radius = spell.aoeRadius;
+  let totalDamageDealt = 0;
+  
+  createParticleEffect(currentPlayer.x, currentPlayer.y, '#ff6b00', 60, 'explosion');
+  addScreenShake(1.0);
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const distance = Math.hypot(enemy.x - currentPlayer.x, enemy.y - currentPlayer.y);
+      
+      if (distance < radius) {
+        const damageDealt = Math.min(enemy.health, finalDamage);
+        totalDamageDealt += damageDealt;
+        
+        const newHealth = enemy.health - finalDamage;
+        createParticleEffect(enemy.x, enemy.y, '#ff8800', 20, 'hit');
+        
+        if (newHealth <= 0) {
+          handleEnemyDeath(enemy, finalDamage);
+          return { ...enemy, health: 0, dead: true };
+        }
+        return { ...enemy, health: newHealth };
+      }
+      return enemy;
+    }).filter(e => !e.dead)
+  );
+  
+  // Heal player
+  const healAmount = totalDamageDealt * spell.lifestealPercent;
+  setPlayer(p => ({
+    ...p,
+    health: Math.min(p.maxHealth, p.health + healAmount)
+  }));
+  
+  showNotification(`🔥 +${Math.floor(healAmount)} HP!`, 'orange');
+
+} else if (spell.key === 'frostprison') {
+  createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 40, 'explosion');
+  addScreenShake(0.6);
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const distance = Math.hypot(enemy.x - currentPlayer.x, enemy.y - currentPlayer.y);
+      
+      if (distance < 5) {
+        createParticleEffect(enemy.x, enemy.y, '#00d4ff', 25, 'hit');
+        
+        return {
+          ...enemy,
+          health: enemy.health - finalDamage,
+          frozen: true,
+          speed: 0,
+          frozenTimer: spell.duration,
+          dotDamage: spell.dotDamage,
+          dotTimer: spell.duration
+        };
+      }
+      return enemy;
+    })
+  );
+
+} else if (spell.key === 'stormcaller') {
+  showNotification('⚡ STORM CALLED!', 'yellow');
+  
+  enemies.forEach((enemy, index) => {
+    setTimeout(() => {
+      createParticleEffect(enemy.x, enemy.y, '#ffee00', 30, 'explosion');
+      addScreenShake(0.4);
+      
+      setEnemies(prev =>
+        prev.map(e => {
+          if (e.id === enemy.id) {
+            const newHealth = e.health - finalDamage;
+            if (newHealth <= 0) {
+              handleEnemyDeath(e, finalDamage);
+              return { ...e, health: 0, dead: true };
+            }
+            return { ...e, health: newHealth };
+          }
+          return e;
+        }).filter(e => !e.dead)
+      );
+    }, index * spell.strikeDelay * 1000);
+  });
+
+} else if (spell.key === 'soulreaper') {
+  createParticleEffect(currentPlayer.x, currentPlayer.y, spell.color, 45, 'explosion');
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const distance = Math.hypot(enemy.x - currentPlayer.x, enemy.y - currentPlayer.y);
+      
+      if (distance < 6) {
+        return {
+          ...enemy,
+          soulReaperDot: true,
+          soulReaperDamage: spell.dotDamage,
+          soulReaperTimer: spell.dotDuration,
+          soulReaperManaRestore: spell.manaRestore
+        };
+      }
+      return enemy;
+    })
+  );
+
+} else if (spell.key === 'celestialbeam') {
+  const beamAngle = currentPlayer.angle;
+  const beamLength = spell.range;
+  
+  // Visual beam effect
+  for (let i = 0; i < 20; i++) {
+    const dist = (i / 20) * beamLength;
+    const x = currentPlayer.x + Math.cos(beamAngle) * dist;
+    const y = currentPlayer.y + Math.sin(beamAngle) * dist;
+    
+    setTimeout(() => {
+      createParticleEffect(x, y, '#ffd700', 15, 'explosion');
+    }, i * 30);
+  }
+  
+  addScreenShake(0.8);
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      // Check if enemy is in beam path
+      const dx = enemy.x - currentPlayer.x;
+      const dy = enemy.y - currentPlayer.y;
+      const enemyAngle = Math.atan2(dy, dx);
+      const angleDiff = Math.abs(enemyAngle - beamAngle);
+      const distance = Math.hypot(dx, dy);
+      
+      if (angleDiff < 0.2 && distance < beamLength) {
+        const newHealth = enemy.health - finalDamage;
+        createParticleEffect(enemy.x, enemy.y, '#ffd700', 25, 'hit');
+        
+        if (newHealth <= 0) {
+          handleEnemyDeath(enemy, finalDamage);
+          return { ...enemy, health: 0, dead: true };
+        }
+        return { ...enemy, health: newHealth };
+      }
+      return enemy;
+    }).filter(e => !e.dead)
+  );
+
+} else if (spell.key === 'bloodpact') {
+  // Cost health instead of mana
+  setPlayer(p => ({
+    ...p,
+    health: Math.max(1, p.health - spell.healthCost)
+  }));
+  
+  createParticleEffect(currentPlayer.x, currentPlayer.y, '#ff0000', 50, 'explosion');
+  addScreenShake(1.0);
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const distance = Math.hypot(enemy.x - currentPlayer.x, enemy.y - currentPlayer.y);
+      
+      if (distance < 5) {
+        const newHealth = enemy.health - finalDamage;
+        createParticleEffect(enemy.x, enemy.y, '#aa0000', 30, 'hit');
+        
+        if (newHealth <= 0) {
+          handleEnemyDeath(enemy, finalDamage);
+          return { ...enemy, health: 0, dead: true };
+        }
+        return { ...enemy, health: newHealth };
+      }
+      return enemy;
+    }).filter(e => !e.dead)
+  );
+
+} else if (spell.key === 'timewarp') {
+  createParticleEffect(currentPlayer.x, currentPlayer.y, '#00ffff', 55, 'explosion');
+  showNotification('⏰ TIME WARPED!', 'cyan');
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const distance = Math.hypot(enemy.x - currentPlayer.x, enemy.y - currentPlayer.y);
+      
+      if (distance < spell.aoeRadius) {
+        return {
+          ...enemy,
+          health: enemy.health - finalDamage,
+          timeWarped: true,
+          originalSpeed: enemy.speed,
+          speed: enemy.speed * (1 - spell.slowAmount),
+          timeWarpTimer: spell.slowDuration
+        };
+      }
+      return enemy;
+    })
+  );
+
+} else if (spell.key === 'netherburst') {
+  createParticleEffect(currentPlayer.x, currentPlayer.y, '#aa00aa', 40, 'explosion');
+  
+  let chainTargets = [];
+  let lastPos = { x: currentPlayer.x, y: currentPlayer.y };
+  
+  setEnemies(prevEnemies => {
+    const sortedByDistance = [...prevEnemies]
+      .sort((a, b) => {
+        const distA = Math.hypot(a.x - lastPos.x, a.y - lastPos.y);
+        const distB = Math.hypot(b.x - lastPos.x, b.y - lastPos.y);
+        return distA - distB;
+      });
+    
+    for (let i = 0; i < Math.min(spell.chainCount, sortedByDistance.length); i++) {
+      const target = sortedByDistance[i];
+      if (Math.hypot(target.x - lastPos.x, target.y - lastPos.y) < spell.chainRadius) {
+        chainTargets.push(target);
+        lastPos = { x: target.x, y: target.y };
+      }
+    }
+    
+    return prevEnemies.map(enemy => {
+      if (chainTargets.some(t => t.id === enemy.id)) {
+        const newHealth = enemy.health - finalDamage;
+        
+        setTimeout(() => {
+          createParticleEffect(enemy.x, enemy.y, '#aa00aa', 25, 'explosion');
+        }, chainTargets.findIndex(t => t.id === enemy.id) * 200);
+        
+        if (newHealth <= 0) {
+          handleEnemyDeath(enemy, finalDamage);
+          return { ...enemy, health: 0, dead: true };
+        }
+        return { ...enemy, health: newHealth };
+      }
+      return enemy;
+    }).filter(e => !e.dead);
+  });
+
+} else if (spell.key === 'starfall') {
+  const targetX = currentPlayer.x + Math.cos(currentPlayer.angle) * 5;
+  const targetY = currentPlayer.y + Math.sin(currentPlayer.angle) * 5;
+  
+  showNotification('⭐ STARFALL!', 'white');
+  
+  for (let i = 0; i < spell.starCount; i++) {
+    setTimeout(() => {
+      const angle = (i / spell.starCount) * Math.PI * 2;
+      const dist = Math.random() * spell.aoeRadius;
+      const x = targetX + Math.cos(angle) * dist;
+      const y = targetY + Math.sin(angle) * dist;
+      
+      createParticleEffect(x, y, '#ffffff', 30, 'explosion');
+      addScreenShake(0.3);
+      
+      setEnemies(prev =>
+        prev.map(enemy => {
+          if (Math.hypot(enemy.x - x, enemy.y - y) < 1.5) {
+            const newHealth = enemy.health - finalDamage / spell.starCount;
+            if (newHealth <= 0) {
+              handleEnemyDeath(enemy, finalDamage);
+              return { ...enemy, health: 0, dead: true };
+            }
+            return { ...enemy, health: newHealth };
+          }
+          return enemy;
+        }).filter(e => !e.dead)
+      );
+    }, i * 150);
+  }
+
+} else if (spell.key === 'plaguecloud') {
+  const cloudX = currentPlayer.x + Math.cos(currentPlayer.angle) * 3;
+  const cloudY = currentPlayer.y + Math.sin(currentPlayer.angle) * 3;
+  
+  createParticleEffect(cloudX, cloudY, '#88ff00', 45, 'explosion');
+  
+  // Create persistent cloud damage zone
+  const cloudId = Math.random();
+  const cloudData = {
+    id: cloudId,
+    x: cloudX,
+    y: cloudY,
+    radius: spell.cloudRadius,
+    damage: spell.cloudDamage,
+    timer: spell.cloudDuration
+  };
+  
+  // You'd need to track this in state and apply damage each frame
+
+} else if (spell.key === 'divinewrath') {
+  createParticleEffect(currentPlayer.x, currentPlayer.y, '#ffaa00', 55, 'explosion');
+  addScreenShake(0.9);
+  
+  setEnemies(prevEnemies =>
+    prevEnemies.map(enemy => {
+      const distance = Math.hypot(enemy.x - currentPlayer.x, enemy.y - currentPlayer.y);
+      
+      if (distance < spell.aoeRadius) {
+        const newHealth = enemy.health - finalDamage;
+        createParticleEffect(enemy.x, enemy.y, '#ffdd00', 25, 'hit');
+        
+        if (newHealth <= 0) {
+          handleEnemyDeath(enemy, finalDamage);
+          return { ...enemy, health: 0, dead: true };
+        }
+        
+        return {
+          ...enemy,
+          health: newHealth,
+          stunned: true,
+          stunnedTimer: spell.stunDuration,
+          speed: 0
+        };
+      }
+      return enemy;
+    }).filter(e => !e.dead)
+  );
+}
       } else {
         // ==============================
         //   NORMAL PROJECTILE SPELLS
@@ -8654,6 +9389,10 @@ const WizardDungeonCrawler = () => {
             <div className="flex-1 overflow-y-auto px-4 py-4">
             <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.values(ALL_SPELLS).map(spell => {
+                  if (spell.requiresPrestige && prestigeLevel < spell.requiresPrestige) {
+                    return null;
+                  }
+
                 const Icon = spell.icon;
                 const owned = purchasedSpells.includes(spell.key);
                 const equipped = equippedSpells.some(s => s.key === spell.key);
