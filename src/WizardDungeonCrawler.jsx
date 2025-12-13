@@ -7745,8 +7745,8 @@ const WizardDungeonCrawler = () => {
           // Void trail distortion
           for (let i = 1; i <= 6; i++) {
             const trailDist = i * 0.15;
-            const trailX = -Math.cos(projectile.angle) * trailDist * width * 0.02;
-            const trailY = -Math.sin(projectile.angle) * trailDist * height * 0.02;
+            const trailX = -Math.cos(projectile.angle) * trailDist * dimensions.width * 0.02;
+            const trailY = -Math.sin(projectile.angle) * trailDist * dimensions.height * 0.02;
             
             ctx.globalAlpha = brightness * (1 - i * 0.15) * 0.6;
             ctx.fillStyle = '#1a0033';
@@ -8709,10 +8709,10 @@ const WizardDungeonCrawler = () => {
         
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
-            for (let t = 1; t <= 4; t++) {
+              for (let t = 1; t <= 4; t++) {
                 const trailDist = t * 0.2;
-                const trailX = centerX - Math.cos(sprite.angle) * trailDist * width * 0.015;
-                const trailY = centerY - Math.sin(sprite.angle) * trailDist * height * 0.015;
+                const trailX = centerX - Math.cos(sprite.angle) * trailDist * dimensions.width * 0.015;
+                const trailY = centerY - Math.sin(sprite.angle) * trailDist * dimensions.height * 0.015;
                 const trailSize = size * (1 - t * 0.15);
                 const trailAlpha = brightness * (1 - t * 0.2) * 0.4;
         
@@ -9228,31 +9228,31 @@ const WizardDungeonCrawler = () => {
         );
 
         setProjectiles(prev =>
-            prev
+          prev
             .map(p => {
-                const newX = p.x + Math.cos(p.angle) * p.speed * deltaTime;
-                const newY = p.y + Math.sin(p.angle) * p.speed * deltaTime;
-                const newLifetime = p.lifetime - deltaTime;
-
-                const tileX = Math.floor(newX);
-                const tileY = Math.floor(newY);
-                if (
+              const newX = p.x + Math.cos(p.angle) * p.speed * deltaTime;
+              const newY = p.y + Math.sin(p.angle) * p.speed * deltaTime;
+              const newLifetime = p.lifetime - deltaTime;
+        
+              const tileX = Math.floor(newX);
+              const tileY = Math.floor(newY);
+              if (
                 tileX < 0 ||
                 tileX >= DUNGEON_SIZE ||
                 tileY < 0 ||
                 tileY >= DUNGEON_SIZE ||
                 dungeon[tileY][tileX] > 0
-                ) {
+              ) {
                 return { ...p, dead: true };
-                }
-
-                return {
+              }
+        
+              return {
                 ...p,
                 x: newX,
                 y: newY,
                 lifetime: newLifetime,
                 dead: newLifetime <= 0
-                };
+              };
             })
             .filter(p => !p.dead)
         );
