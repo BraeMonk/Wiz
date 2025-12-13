@@ -348,7 +348,7 @@ const WizardDungeonCrawler = () => {
     pushback: {
       key: 'pushback',
       name: 'Force Push',
-      damage: 10,
+      damage: 30,
       manaCost: 25,
       cooldown: 0,
       maxCooldown: 4.0,
@@ -374,7 +374,7 @@ const WizardDungeonCrawler = () => {
     gravitychoke: {
       key: 'gravitychoke',
       name: 'Gravity Choke',
-      damage: 75,
+      damage: 150,
       manaCost: 40,
       cooldown: 0,
       maxCooldown: 8.0,
