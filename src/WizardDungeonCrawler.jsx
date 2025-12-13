@@ -374,7 +374,7 @@ const WizardDungeonCrawler = () => {
     gravitychoke: {
       key: 'gravitychoke',
       name: 'Gravity Choke',
-      damage: 10,
+      damage: 75,
       manaCost: 40,
       cooldown: 0,
       maxCooldown: 8.0,
