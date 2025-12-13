@@ -7397,7 +7397,7 @@ const WizardDungeonCrawler = () => {
         ctx.restore();
     };
 
-    const drawProjectileSprite = (ctx, projectile, x, y, size, brightness) => {
+    const drawProjectileSprite = (ctx, projectile, x, y, size, brightness, time) => {
         ctx.save();
         
         const baseColor = projectile.color || '#ffffff';
@@ -8724,7 +8724,7 @@ const WizardDungeonCrawler = () => {
             }
             ctx.restore();
         
-            drawProjectileSprite(ctx, sprite, centerX, centerY, size, brightness);
+            drawProjectileSprite(ctx, sprite, centerX, centerY, size, brightness, timeRef.current);
             }
         }
         });
