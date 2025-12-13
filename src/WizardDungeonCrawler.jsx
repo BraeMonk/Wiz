@@ -564,6 +564,135 @@ const WizardDungeonCrawler = () => {
       requiresPrestige: 1,
       aoeRadius: 4.0,
       stunDuration: 2.5
+    },
+    // ========== PRESTIGE 3 SPELLS ==========
+    solarflare: {
+      key: 'solarflare',
+      name: 'Solar Flare',
+      damage: 140,
+      manaCost: 85,
+      cooldown: 0,
+      maxCooldown: 6.5,
+      color: '#ffeb3b',
+      icon: Flame,
+      price: 550,
+      description: 'Launch a miniature sun that explodes on impact',
+      requiresPrestige: 3,
+      aoeRadius: 5.5,
+      burnDuration: 6.0
+    },
+    
+    voidlance: {
+      key: 'voidlance',
+      name: 'Void Lance',
+      damage: 160,
+      manaCost: 90,
+      cooldown: 0,
+      maxCooldown: 7.0,
+      color: '#1a0033',
+      icon: Skull,
+      price: 580,
+      description: 'Pierce reality itself - ignores armor and shields',
+      requiresPrestige: 3,
+      piercing: true,
+      voidTrail: true
+    },
+    
+    cryoblast: {
+      key: 'cryoblast',
+      name: 'Cryo Blast',
+      damage: 130,
+      manaCost: 80,
+      cooldown: 0,
+      maxCooldown: 6.0,
+      color: '#00e5ff',
+      icon: Droplet,
+      price: 520,
+      description: 'Absolute zero projectile that shatters enemies',
+      requiresPrestige: 3,
+      shatterRadius: 4.0,
+      shatterDamage: 80
+    },
+    
+    arcanenova: {
+      key: 'arcanenova',
+      name: 'Arcane Nova',
+      damage: 150,
+      manaCost: 88,
+      cooldown: 0,
+      maxCooldown: 6.8,
+      color: '#e040fb',
+      icon: Sparkles,
+      price: 560,
+      description: 'Exploding sphere of pure magic energy',
+      requiresPrestige: 3,
+      expandRadius: 6.0,
+      pulseWaves: 3
+    },
+    
+    // ========== PRESTIGE 5 SPELLS ==========
+    antimatter: {
+      key: 'antimatter',
+      name: 'Antimatter',
+      damage: 200,
+      manaCost: 100,
+      cooldown: 0,
+      maxCooldown: 8.0,
+      color: '#ff1744',
+      icon: Skull,
+      price: 650,
+      description: 'Annihilate everything in a massive radius',
+      requiresPrestige: 5,
+      annihilationRadius: 7.0,
+      vaporize: true
+    },
+    
+    galaxycrush: {
+      key: 'galaxycrush',
+      name: 'Galaxy Crush',
+      damage: 180,
+      manaCost: 95,
+      cooldown: 0,
+      maxCooldown: 7.5,
+      color: '#3d5afe',
+      icon: Sparkles,
+      price: 620,
+      description: 'Gravitational singularity that crushes all matter',
+      requiresPrestige: 5,
+      crushRadius: 6.5,
+      gravitationalPulls: 5
+    },
+    
+    supernovabeam: {
+      key: 'supernovabeam',
+      name: 'Supernova Beam',
+      damage: 220,
+      manaCost: 110,
+      cooldown: 0,
+      maxCooldown: 9.0,
+      color: '#ff6d00',
+      icon: Flame,
+      price: 700,
+      description: 'Stellar death ray that incinerates everything',
+      requiresPrestige: 5,
+      beamWidth: 2.0,
+      beamLength: 20
+    },
+    
+    oblivionsphere: {
+      key: 'oblivionsphere',
+      name: 'Oblivion Sphere',
+      damage: 190,
+      manaCost: 98,
+      cooldown: 0,
+      maxCooldown: 8.5,
+      color: '#000000',
+      icon: Skull,
+      price: 680,
+      description: 'Black hole that erases existence itself',
+      requiresPrestige: 5,
+      eventHorizon: 8.0,
+      disintegrate: true
     }
   };
 
@@ -1628,6 +1757,64 @@ const WizardDungeonCrawler = () => {
         addVfx({ type:'burst', sx:cx, sy:cy, color:'#ffaa00', r0:20, r1:160, lifeMs:520, spin:2.0, count:26, size:6, alpha:0.85 });
         addVfx({ type:'sigil', sx:cx, sy:cy, color:'#fff2a8', lifeMs:520, rotSpeed:0.8, scale:1.1, alpha:0.6 });
         addScreenShake(1.1);
+        break;
+
+      case 'solarflare':
+        // Bright solar burst
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#ffeb3b', r0:25, r1:180, lifeMs:550, spin:3.5, count:40, size:8, alpha:0.9 });
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#ff6d00', r0:15, r1:140, lifeMs:480, lineWidth:5, alpha:0.8 });
+        addScreenShake(1.1);
+        break;
+      
+      case 'voidlance':
+        // Dark void pierce
+        addVfx({ type:'beam', x1:cx, y1:cy, x2:cx, y2:cy-280, color:'#1a0033', core:'#9b4aff', width:12, lifeMs:320, alpha:0.95 });
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#1a0033', r0:25, r1:100, lifeMs:400, lineWidth:6, alpha:0.7 });
+        addScreenShake(0.9);
+        break;
+      
+      case 'cryoblast':
+        // Crystalline ice burst
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#00e5ff', r0:20, r1:160, lifeMs:580, spin:4.0, count:35, size:7, alpha:0.85 });
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#80deea', r0:10, r1:130, lifeMs:520, lineWidth:4, alpha:0.7 });
+        addScreenShake(0.8);
+        break;
+      
+      case 'arcanenova':
+        // Expanding magical sphere
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#e040fb', r0:20, r1:170, lifeMs:650, lineWidth:5, alpha:0.8 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#ce93d8', r0:15, r1:150, lifeMs:580, spin:2.8, count:32, size:6, alpha:0.75 });
+        addScreenShake(1.0);
+        break;
+      
+      case 'antimatter':
+        // Reality-breaking explosion
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#ff1744', r0:30, r1:200, lifeMs:750, lineWidth:8, alpha:0.9 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#000000', r0:25, r1:180, lifeMs:680, spin:5.0, count:50, size:10, alpha:0.85 });
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#ffffff', r0:15, r1:150, lifeMs:550, lineWidth:3, alpha:0.6 });
+        addScreenShake(1.5);
+        break;
+      
+      case 'galaxycrush':
+        // Gravitational implosion
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#3d5afe', r0:180, r1:20, lifeMs:700, lineWidth:6, alpha:0.8 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#1976d2', r0:150, r1:10, lifeMs:650, spin:-4.0, count:45, size:8, alpha:0.75 });
+        addScreenShake(1.2);
+        break;
+      
+      case 'supernovabeam':
+        // Stellar beam
+        addVfx({ type:'beam', x1:cx, y1:cy, x2:cx+Math.cos(0)*300, y2:cy+Math.sin(0)*300, color:'#ff6d00', core:'#ffffff', width:25, lifeMs:450, alpha:0.95 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#ffab00', r0:20, r1:160, lifeMs:520, spin:6.0, count:40, size:9, alpha:0.9 });
+        addScreenShake(1.8);
+        break;
+      
+      case 'oblivionsphere':
+        // Black hole effect
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#000000', r0:25, r1:190, lifeMs:800, lineWidth:10, alpha:0.95 });
+        addVfx({ type:'burst', sx:cx, sy:cy, color:'#1a0033', r0:170, r1:15, lifeMs:750, spin:-5.5, count:55, size:7, alpha:0.8 });
+        addVfx({ type:'ring', sx:cx, sy:cy, color:'#9b4aff', r0:10, r1:140, lifeMs:650, lineWidth:2, alpha:0.5 });
+        addScreenShake(1.6);
         break;
   
       default:
@@ -3228,8 +3415,7 @@ const WizardDungeonCrawler = () => {
                 );
               }
             }, ring * 100);
-          }
-          
+          }          
           setEnemies(prev =>
             prev
               .map(enemy => {
@@ -3251,8 +3437,256 @@ const WizardDungeonCrawler = () => {
                 return enemy;
               })
               .filter(e => !e.dead)
-          );
-      } else {
+          );            
+        } else if (spell.key === 'solarflare') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          // Launch solar projectile
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 10,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 4,
+              dead: false,
+              spellType: 'solarflare',
+              piercing: false,
+              prestigeClass: currentClass,
+              radius: spell.aoeRadius
+            }
+          ]);
+          
+          showNotification('☀️ SOLAR FLARE!', 'yellow');
+        
+        } else if (spell.key === 'voidlance') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 15,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 3,
+              dead: false,
+              spellType: 'voidlance',
+              piercing: true,
+              voidTrail: true,
+              prestigeClass: currentClass
+            }
+          ]);
+          
+          showNotification('🌌 VOID LANCE!', 'purple');
+        
+        } else if (spell.key === 'cryoblast') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 12,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 3.5,
+              dead: false,
+              spellType: 'cryoblast',
+              piercing: false,
+              shatterRadius: spell.shatterRadius,
+              shatterDamage: spell.shatterDamage,
+              prestigeClass: currentClass
+            }
+          ]);
+          
+          showNotification('❄️ CRYO BLAST!', 'cyan');
+        
+        } else if (spell.key === 'arcanenova') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 8,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 4,
+              dead: false,
+              spellType: 'arcanenova',
+              piercing: false,
+              expandRadius: spell.expandRadius,
+              pulseWaves: spell.pulseWaves,
+              prestigeClass: currentClass
+            }
+          ]);
+          
+          showNotification('✨ ARCANE NOVA!', 'purple');
+        
+        } else if (spell.key === 'antimatter') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 6,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 5,
+              dead: false,
+              spellType: 'antimatter',
+              piercing: false,
+              annihilationRadius: spell.annihilationRadius,
+              vaporize: true,
+              prestigeClass: currentClass
+            }
+          ]);
+          
+          showNotification('💥 ANTIMATTER!', 'red');
+          addScreenShake(1.2);
+        
+        } else if (spell.key === 'galaxycrush') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 7,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 4.5,
+              dead: false,
+              spellType: 'galaxycrush',
+              piercing: false,
+              crushRadius: spell.crushRadius,
+              gravitationalPulls: spell.gravitationalPulls,
+              prestigeClass: currentClass
+            }
+          ]);
+          
+          showNotification('🌀 GALAXY CRUSH!', 'blue');
+          addScreenShake(1.0);
+        
+        } else if (spell.key === 'supernovabeam') {
+          emitPrestigeVfx(spell.key);
+          
+          const beamAngle = currentPlayer.angle;
+          const beamLength = spell.beamLength;
+          
+          showNotification('⭐ SUPERNOVA BEAM!', 'orange');
+          addScreenShake(1.5);
+          
+          // Create continuous beam effect
+          for (let i = 0; i < 15; i++) {
+            setTimeout(() => {
+              createParticleEffect(
+                currentPlayer.x + Math.cos(beamAngle) * (i * 1.5),
+                currentPlayer.y + Math.sin(beamAngle) * (i * 1.5),
+                '#ff6d00',
+                25,
+                'explosion'
+              );
+            }, i * 50);
+          }
+          
+          // Damage all enemies in beam path
+          setTimeout(() => {
+            setEnemies(prev =>
+              prev
+                .map(enemy => {
+                  const dx = enemy.x - currentPlayer.x;
+                  const dy = enemy.y - currentPlayer.y;
+                  const enemyAngle = Math.atan2(dy, dx);
+                  const diff = angleDiffAbs(enemyAngle, beamAngle);
+                  const dist = Math.hypot(dx, dy);
+                  
+                  if (diff < 0.15 && dist < beamLength) {
+                    createParticleEffect(enemy.x, enemy.y, '#ff6d00', 40, 'explosion');
+                    return dealEnemyDamage(enemy, finalDamage);
+                  }
+                  return enemy;
+                })
+                .filter(e => !e.dead)
+            );
+          }, 400);
+        
+        } else if (spell.key === 'oblivionsphere') {
+          emitPrestigeVfx(spell.key);
+          
+          const spawnAngle = currentPlayer.angle;
+          const spawnX = currentPlayer.x + Math.cos(spawnAngle) * 0.7;
+          const spawnY = currentPlayer.y + Math.sin(spawnAngle) * 0.7;
+          
+          setProjectiles(projs => [
+            ...projs,
+            {
+              id: Math.random(),
+              x: spawnX,
+              y: spawnY,
+              angle: spawnAngle,
+              speed: 5,
+              damage: finalDamage,
+              color: spell.color,
+              lifetime: 6,
+              dead: false,
+              spellType: 'oblivionsphere',
+              piercing: false,
+              eventHorizon: spell.eventHorizon,
+              disintegrate: true,
+              prestigeClass: currentClass
+            }
+          ]);
+          
+          showNotification('⚫ OBLIVION SPHERE!', 'red');
+          addScreenShake(1.3);
+        
+        } else {
         // ==============================
         //   NORMAL PROJECTILE SPELLS
         // ==============================
@@ -7265,6 +7699,356 @@ const WizardDungeonCrawler = () => {
             ctx.fill();
             }
             break;
+        }
+
+        case 'solarflare': {
+          ctx.translate(x, y);
+          
+          // Outer solar corona
+          const coronaGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 4);
+          coronaGlow.addColorStop(0, 'rgba(255, 235, 59, 0.6)');
+          coronaGlow.addColorStop(0.5, 'rgba(255, 152, 0, 0.3)');
+          coronaGlow.addColorStop(1, 'rgba(255, 87, 34, 0)');
+          ctx.fillStyle = coronaGlow;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 4, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Core sun
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.fillStyle = '#ffeb3b';
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Solar flares
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + time * 3;
+            const flareLen = size * (2 + Math.sin(time * 5 + i) * 0.5);
+            ctx.strokeStyle = 'rgba(255, 152, 0, 0.7)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * size * 1.5, Math.sin(angle) * size * 1.5);
+            ctx.lineTo(Math.cos(angle) * flareLen, Math.sin(angle) * flareLen);
+            ctx.stroke();
+          }
+          break;
+        }
+        
+        case 'voidlance': {
+          ctx.translate(x, y);
+          
+          // Void trail distortion
+          for (let i = 1; i <= 6; i++) {
+            const trailDist = i * 0.15;
+            const trailX = -Math.cos(projectile.angle) * trailDist * width * 0.02;
+            const trailY = -Math.sin(projectile.angle) * trailDist * height * 0.02;
+            
+            ctx.globalAlpha = brightness * (1 - i * 0.15) * 0.6;
+            ctx.fillStyle = '#1a0033';
+            ctx.beginPath();
+            ctx.arc(trailX, trailY, size * (1.5 - i * 0.15), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          ctx.globalAlpha = brightness;
+          
+          // Dark core
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Purple rim
+          ctx.strokeStyle = '#9b4aff';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.3, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Void particles
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 + time * 4;
+            const dist = size * (1.8 + Math.sin(time * 6 + i) * 0.3);
+            ctx.fillStyle = '#9b4aff';
+            ctx.beginPath();
+            ctx.arc(Math.cos(angle) * dist, Math.sin(angle) * dist, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        
+        case 'cryoblast': {
+          ctx.translate(x, y);
+          
+          // Ice mist
+          const mistGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 3.5);
+          mistGlow.addColorStop(0, 'rgba(0, 229, 255, 0.5)');
+          mistGlow.addColorStop(1, 'rgba(0, 229, 255, 0)');
+          ctx.fillStyle = mistGlow;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Ice crystal core
+          ctx.fillStyle = '#e1f5fe';
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 + time * 2;
+            const px = Math.cos(angle) * size * 1.5;
+            const py = Math.sin(angle) * size * 1.5;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.fillStyle = '#00e5ff';
+          ctx.beginPath();
+          ctx.arc(0, 0, size, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Ice shards
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + time * 3;
+            const shardLen = size * (1.8 + Math.sin(time * 4 + i) * 0.4);
+            ctx.strokeStyle = '#80deea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * size, Math.sin(angle) * size);
+            ctx.lineTo(Math.cos(angle) * shardLen, Math.sin(angle) * shardLen);
+            ctx.stroke();
+          }
+          break;
+        }
+        
+        case 'arcanenova': {
+          ctx.translate(x, y);
+          
+          // Expanding arcane rings
+          for (let ring = 0; ring < 3; ring++) {
+            const ringPhase = (time * 2 + ring * 0.4) % 1;
+            const ringRadius = size * (1.5 + ringPhase * 2);
+            ctx.globalAlpha = brightness * (1 - ringPhase) * 0.7;
+            ctx.strokeStyle = '#e040fb';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          ctx.globalAlpha = brightness;
+          
+          // Core sphere
+          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
+          coreGrad.addColorStop(0, '#ffffff');
+          coreGrad.addColorStop(0.5, '#e040fb');
+          coreGrad.addColorStop(1, '#ce93d8');
+          ctx.fillStyle = coreGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Orbiting runes
+          for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2 + time * 4;
+            const orbitR = size * 2.2;
+            const px = Math.cos(angle) * orbitR;
+            const py = Math.sin(angle) * orbitR;
+            
+            ctx.fillStyle = '#ce93d8';
+            ctx.fillRect(px - 3, py - 3, 6, 6);
+          }
+          break;
+        }
+        
+        case 'antimatter': {
+          ctx.translate(x, y);
+          
+          // Reality distortion waves
+          for (let wave = 0; wave < 4; wave++) {
+            const wavePhase = (time * 3 + wave * 0.3) % 1;
+            const waveR = size * (2 + wavePhase * 3);
+            ctx.globalAlpha = brightness * (1 - wavePhase) * 0.8;
+            ctx.strokeStyle = '#ff1744';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, waveR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          ctx.globalAlpha = brightness;
+          
+          // Black void
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Red energy rim
+          ctx.strokeStyle = '#ff1744';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Antimatter particles
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 + time * 5;
+            const dist = size * (3 + Math.sin(time * 8 + i) * 0.5);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(Math.cos(angle) * dist, Math.sin(angle) * dist, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        
+        case 'galaxycrush': {
+          ctx.translate(x, y);
+          
+          // Spiral arms
+          for (let arm = 0; arm < 3; arm++) {
+            const armOffset = (arm / 3) * Math.PI * 2;
+            ctx.strokeStyle = '#3d5afe';
+            ctx.lineWidth = 3;
+            
+            for (let i = 0; i < 20; i++) {
+              const t = i / 20;
+              const angle = armOffset + t * Math.PI * 4 + time * 2;
+              const r = size * t * 3;
+              const x1 = Math.cos(angle) * r;
+              const y1 = Math.sin(angle) * r;
+              const x2 = Math.cos(angle + 0.1) * (r * 1.05);
+              const y2 = Math.sin(angle + 0.1) * (r * 1.05);
+              
+              ctx.globalAlpha = brightness * (1 - t * 0.5);
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+            }
+          }
+          
+          ctx.globalAlpha = brightness;
+          
+          // Core singularity
+          const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.8);
+          coreGrad.addColorStop(0, '#ffffff');
+          coreGrad.addColorStop(0.3, '#3d5afe');
+          coreGrad.addColorStop(1, '#1976d2');
+          ctx.fillStyle = coreGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Star particles
+          for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * size * 3.5;
+            const starSize = 1 + Math.random() * 2;
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = brightness * 0.8;
+            ctx.fillRect(Math.cos(angle) * dist - starSize/2, Math.sin(angle) * dist - starSize/2, starSize, starSize);
+          }
+          break;
+        }
+        
+        case 'supernovabeam': {
+          ctx.translate(x, y);
+          
+          // Beam core
+          ctx.globalAlpha = brightness;
+          const beamGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2.5);
+          beamGrad.addColorStop(0, '#ffffff');
+          beamGrad.addColorStop(0.3, '#ff6d00');
+          beamGrad.addColorStop(1, 'rgba(255, 109, 0, 0)');
+          ctx.fillStyle = beamGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Inner core
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Energy waves
+          for (let i = 0; i < 3; i++) {
+            const wavePhase = (time * 4 + i * 0.4) % 1;
+            const waveR = size * (1 + wavePhase * 2);
+            ctx.globalAlpha = brightness * (1 - wavePhase) * 0.6;
+            ctx.strokeStyle = '#ffab00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, waveR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          ctx.globalAlpha = brightness;
+          
+          // Stellar particles
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + time * 6;
+            const dist = size * (2 + Math.sin(time * 5 + i) * 0.4);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(Math.cos(angle) * dist, Math.sin(angle) * dist, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        
+        case 'oblivionsphere': {
+          ctx.translate(x, y);
+          
+          // Event horizon
+          const horizonGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 3);
+          horizonGrad.addColorStop(0, '#000000');
+          horizonGrad.addColorStop(0.4, '#1a0033');
+          horizonGrad.addColorStop(1, 'rgba(26, 0, 51, 0)');
+          ctx.fillStyle = horizonGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 3, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Black core
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Purple accretion disk
+          for (let i = 0; i < 3; i++) {
+            const diskPhase = (time * 3 - i * 0.3) % 1;
+            const diskR = size * (1.5 + diskPhase * 1.5);
+            ctx.globalAlpha = brightness * (1 - diskPhase) * 0.7;
+            ctx.strokeStyle = '#9b4aff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, diskR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          
+          ctx.globalAlpha = brightness;
+          
+          // Void tendrils
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 + time * 2;
+            const tendrilLen = size * (2 + Math.sin(time * 4 + i) * 0.5);
+            ctx.strokeStyle = 'rgba(155, 74, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * size * 1.5, Math.sin(angle) * size * 1.5);
+            ctx.lineTo(Math.cos(angle) * tendrilLen, Math.sin(angle) * tendrilLen);
+            ctx.stroke();
+          }
+          break;
         }
 
         default: {
